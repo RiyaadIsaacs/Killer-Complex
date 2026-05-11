@@ -21,6 +21,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 120f;
     [SerializeField] private float verticalLookLimit = 80f;
 
+    // Interaction
+    [Header("Interaction")]
+    [SerializeField] private float interactDistance = 3f;
+    [SerializeField] private LayerMask interactableLayers = ~0;
+
     // Ref to player used for collision and movement
     private CharacterController _controller;
 
@@ -69,6 +74,15 @@ public class PlayerController : MonoBehaviour
         {
             _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
+    }
+
+    // Triggers interaction when the mapped key (E) is pressed
+    public void OnInteract(InputValue value)
+    {
+        if (!value.isPressed)
+            return;
+
+        TryInteract();
     }
     #endregion
 
@@ -143,5 +157,17 @@ public class PlayerController : MonoBehaviour
         velocity.y = _verticalVelocity;
 
         _controller.Move(velocity * Time.deltaTime);
+    }
+
+    // Casts a short ray from the camera forward and invokes Interact() on hit objects
+    private void TryInteract()
+    {
+        Transform source = cameraTransform != null ? cameraTransform : transform;
+        Ray ray = new Ray(source.position, source.forward);
+
+        if (!Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayers))
+            return;
+
+        hit.collider.SendMessage("Interact", SendMessageOptions.DontRequireReceiver);
     }
 }
