@@ -1,23 +1,46 @@
 # Killer Complex
 
-A first-person Unity game project built with the Universal Render Pipeline and the New Input System. 
+First-person Unity project (**URP**, **Input System**) for **Game Design 3A — Part 2**: a local **Ollama** LLM drives an in-fiction online persona that blackmails the player, assigns **package deliveries** in a multi-floor complex, and reacts while the player uses a **home computer** (hacking mini-games, waiting for the next job). **Fiction only** — no real personal data is collected; see content note below.
 
-The player recieves a disturbing email with pictures of their friends and family as well as all their personal information. The sender has sent a list of targets that are in the player's complex. The player will have to get rid of them or risk having that info being sent to those targets with the same task.
+**Unity version:** **6000.3.15f1** (authoritative: `ProjectSettings/ProjectVersion.txt`)
+
+---
+
+## Content note
+
+This prototype includes **pressure / blackmail / thriller** themes and optional references to **illicit packages** as **ambiguous fiction**. Generated text may be unsettling. The game uses a **local LLM**; players should be aware output is **machine-generated** and may be inconsistent. Not suitable for young children.
+
+---
+
+## Documentation index (POE + team)
+
+| File | Purpose |
+|------|---------|
+| [ollama-plan.md](ollama-plan.md) | **Required** — model, data flow, prompts summary, risks, inference timing |
+| [plan.md](plan.md) | Milestones, slice scope, ownership |
+| [setup.md](setup.md) | Unity + Ollama install, troubleshooting |
+| [rules.md](rules.md) | Git discipline, **pre-push checklist** (includes `prompts-used.md`) |
+| [refinements-changes.md](refinements-changes.md) | Dated changelog and AI-assisted decisions |
+| [prompts-used.md](prompts-used.md) | **All prompts tested** — update before every push |
+| [RiyaadWork.md](RiyaadWork.md) | Riyaad’s contribution log *(partner: add your own file)* |
+
+**Also required by the brief (add when ready):** High Concept document, **LLM Integration Report** (600–800 words, IEEE-style references as per module rules).
 
 ---
 
 ## Requirements
 
-- **Unity:** 6000.3.9f1 (or the exact version in `ProjectSettings/ProjectVersion.txt`)
-- Open in Unity Hub and use the recommended editor version for this project.
+- **Unity Hub** + editor **6000.3.15f1**
+- **Ollama** installed locally for Part 2 LLM features ([ollama.com](https://ollama.com)) — see [setup.md](setup.md)
 
 ---
 
-## Getting Started
+## Getting started
 
-1. Open the project in **Unity Hub** (Add → select this folder).
-2. Open the scene: **Assets → Scenes → SampleScene**.
-3. Press **Play** in the Editor.
+1. Clone / open this folder in **Unity Hub** → Add project.
+2. Open **`Assets/Scenes/SampleScene`** (until a dedicated Part 2 scene is added).
+3. Install and run **Ollama**; pull the model your team documents in `ollama-plan.md`.
+4. Press **Play** *(Ollama integration pending — see `plan.md` milestones)*.
 
 ---
 
@@ -30,27 +53,42 @@ The player recieves a disturbing email with pictures of their friends and family
 | Sprint   | Left Shift |
 | Jump     | Space      |
 
-Sprint is **toggle**: press once to sprint, press again to stop.
+Sprint is **toggle**: press once to sprint, press again to stop.  
+**Interact:** see `Assets/InputSystem_Actions.inputactions` (commonly **E** once wired).
 
 ---
 
-## Tech Stack
+## Tech stack
 
-- **Unity** 6000.3.9f1  
+- **Unity** 6000.3.15f1  
 - **Universal Render Pipeline (URP)**  
-- **Input System** (new) — `Assets/InputSystem_Actions.inputactions`  
-- **CharacterController** — first-person movement in `Assets/Scripts/PlayerController.cs`  
+- **Input System** — `Assets/InputSystem_Actions.inputactions`  
+- **CharacterController** — `Assets/Scripts/PlayerController.cs`  
+- **Ollama** — local HTTP API (integration **planned**; see `ollama-plan.md`)
 
 ---
 
-## Project Structure
+## Project structure
 
-| Folder / File                    | Description                    |
-|----------------------------------|--------------------------------|
-| `Assets/Scenes/`                 | Game scenes (e.g. SampleScene) |
-| `Assets/Scripts/`                | C# scripts (e.g. PlayerController) |
-| `Assets/Settings/`               | URP and volume settings       |
-| `Assets/InputSystem_Actions.inputactions` | Input actions and bindings |
+| Path | Description |
+|------|-------------|
+| `Assets/Scenes/` | Scenes |
+| `Assets/Scripts/` | Gameplay scripts |
+| `Assets/Settings/` | URP / rendering settings |
+| `Assets/InputSystem_Actions.inputactions` | Input bindings |
+
+---
+
+## AI tools used (edit as appropriate)
+
+- **Cursor** — planning, documentation, future code assistance *(list others: ChatGPT, etc.)*
+- **Ollama** — in-game local LLM *(once integrated)*
+
+---
+
+## Credits
+
+- *(Team names, assets, licences)*
 
 ---
 
