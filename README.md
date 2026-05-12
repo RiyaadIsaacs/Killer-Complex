@@ -40,7 +40,7 @@ This prototype includes **pressure / blackmail / thriller** themes and optional 
 1. Clone / open this folder in **Unity Hub** → Add project.
 2. Open **`Assets/Scenes/Main Game.unity`** for the primary playtest layout, or **`Assets/Scenes/Tester scene.unity`** for a compact scene used to validate new scripts and UI.
 3. Install and run **Ollama**; pull the model your team documents in `ollama-plan.md`.
-4. Press **Play** *(Ollama integration pending — see `plan.md` milestones)*.
+4. Wire **Messenger → Ollama** in the scene: on `ChatManager`, assign **`OllamaConnector`**; on `OllamaConnector`, assign **`ChatManager`** and (optionally) **`DeliveryManager`** so the hidden LLM context matches delivery progress. Run **Ollama** with the model named in `ollama-plan.md`, then press **Play** and send a chat message to trigger a generate call.
 
 ---
 
@@ -64,7 +64,7 @@ Sprint is **toggle**: press once to sprint, press again to stop.
 - **Universal Render Pipeline (URP)**  
 - **Input System** — `Assets/InputSystem_Actions.inputactions`  
 - **CharacterController** — `Assets/Scripts/PlayerController.cs`  
-- **Ollama** — local HTTP API (integration **planned**; see `ollama-plan.md`)
+- **Ollama** — local HTTP **`/api/generate`** via `Assets/Scripts/OllamaConnector.cs` (see `ollama-plan.md` for prompt contract and context block)
 
 ---
 
@@ -82,7 +82,7 @@ Sprint is **toggle**: press once to sprint, press again to stop.
 ## AI tools used (edit as appropriate)
 
 - **Cursor** — planning, documentation, future code assistance *(list others: ChatGPT, etc.)*
-- **Ollama** — in-game local LLM *(once integrated)*
+- **Ollama** — in-game local LLM via `OllamaConnector` + `ChatManager` send hook
 
 ---
 

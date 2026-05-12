@@ -34,10 +34,10 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 
 ## 3. Unity ↔ Ollama
 
-- Integration is **not yet in code** as of doc creation — when `OllamaChatClient` exists, this section should list:
-  - Endpoint used (`/api/chat` recommended).
-  - Any ScriptableObject path for host override.
-  - Timeout seconds.
+- **Script:** `Assets/Scripts/OllamaConnector.cs` — `UnityWebRequest` **POST** to **`http://localhost:11434/api/generate`** (override in the Inspector on the component). JSON body: `model`, `prompt`, `stream: false`. Default model field: **`mistral:7b-instruct`** (change to match what you pulled).
+- **Timeout:** `requestTimeoutSeconds` on the component (default **180**).
+- **Chat hook:** `Assets/Scripts/UI/ChatManager.cs` has an optional **`OllamaConnector`** reference. When set, each player send appends the visible `[Player]: …` line, then calls **`SendToOllama`** with the same plain text. The **prompt** sent to Ollama is **not** the raw line only: see **`ollama-plan.md`** (hidden `[CONTEXT: …] Player says: …` block).
+- **References to assign in the scene:** `OllamaConnector` → **Chat Manager**, optional **Delivery Manager** (for `X/Y deliveries` in context). `ChatManager` → **Ollama Connector** (optional; leave empty to skip LLM calls during playtest).
 
 ---
 
