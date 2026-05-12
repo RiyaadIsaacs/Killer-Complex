@@ -37,7 +37,7 @@ Team schedule and ownership live in **`plan.md`**. Update this document whenever
 
 | When | Where | Purpose |
 |------|--------|---------|
-| **Runtime** | Unity → Ollama `POST /api/chat` | Blackmail + mission text, ongoing conversation |
+| **Runtime** | Unity → Ollama `POST /api/generate` (`OllamaConnector`) | Messenger replies from persona **V**; each send includes hidden game **context** + player line (see §4–5) |
 | **Preprocessing** *(if any)* | *(Editor / batch — or “none”)* | *(e.g. baked test strings only — state explicitly)* |
 
 ---
@@ -45,23 +45,33 @@ Team schedule and ownership live in **`plan.md`**. Update this document whenever
 ## 4. Data flow (Unity ↔ Ollama)
 
 ```text
-[Computer UI / Mission state] → build messages[] (system + user + optional history)
-       → OllamaChatClient (UnityWebRequest JSON)
-       → parse assistant content → update UI + mission fields (floor/unit, flavour text)
+ChatManager (player SEND)
+  → visible TMP: "[Player]: {typed}"
+  → OllamaConnector.SendToOllama(typed plain text)
+
+OllamaConnector
+  → BuildPlayerTurnForPrompt: "[CONTEXT: …] Player says: {typed}"
+  → fullPrompt = systemPrompt + separator + player turn
+  → POST /api/generate { model, prompt, stream: false }
+  → parse JSON "response" → ChatManager.UpdateChatFeed("V", reply)
 ```
 
-- **Structured output:** Target machine-readable fields (JSON or rigid line format). Document **fallback** if the model drifts (regex, retry prompt, safe defaults).
-- **State:** What is sent each call (full history vs sliding window — pick one and note token/latency impact).
+- **History:** Each request is **stateless** for now (no prior turns in `prompt`). Sliding-window or chat API migration should be documented here when added.
+- **Structured output:** Not required for the current generate path; assistant text is plain prose. If you add JSON mission fields later, document parse + **fallback** here.
+- **Context sources today:** Optional **`DeliveryManager`** → completed count = `currentDeliveryID` clamped to `totalDeliveries` (default **3**). **`LikeabilityPercent`** (0–100, default **50**) on `OllamaConnector`; other scripts can set `LikeabilityPercent` at runtime.
 
 ---
 
 ## 5. Prompt structure (summary)
 
-- **System prompt:** Persona rules, fiction-only PII, tone, max length, no real-world instruction for crime, output format instructions.
-- **User prompt:** Current mission phase, pickup site (if rolled), prior delivery count, hacking flags if they should influence taunts.
-- **Safety:** If the model refuses or sanitizes heavily, what does the player see?
+- **System prompt:** Hardcoded in `OllamaConnector` — persona **V** (blackmailer, South African complex), concise replies, fiction-only / no real PII, instruction to treat **`[CONTEXT: …]`** before **`Player says:`** as true in-world state (errands, rapport).
+- **User-side of prompt (single string after system + `---`):**  
+  `[CONTEXT: Player has completed X/Y deliveries. Likeability is Z%.] Player says: {player message}`  
+  The bracketed block is **not** shown in the messenger UI; it exists only in the HTTP `prompt` field.
+- **Future:** Mission phase, pickup site, hacking flags — extend `BuildPlayerTurnForPrompt` or a dedicated context builder and log changes in **`prompts-used.md`**.
+- **Safety / failures:** On network or parse failure, `OllamaConnector` logs to Console and appends a **fallback** `[V]` line in the feed (see code).
 
-*(Link detailed prompt text and iterations in **`prompts-used.md`**.)*
+*(Exact system string and dated experiments: **`prompts-used.md`**.)*
 
 ---
 
@@ -88,3 +98,4 @@ Team schedule and ownership live in **`plan.md`**. Update this document whenever
 |------|--------|
 | 2026-05-11 | Initial skeleton for POE submission structure |
 | 2026-05-11 | Team docs added (`plan.md`, `rules.md`, `setup.md`, `refinements-changes.md`, `prompts-used.md`, `RiyaadWork.md`); `README.md` expanded with doc index |
+| 2026-05-12 | **`OllamaConnector`** + **`ChatManager`** hook; **`POST /api/generate`**; hidden **`[CONTEXT: …] Player says:`** prefix (deliveries + likeability); docs (`README`, `setup`, §4–5 here) aligned |

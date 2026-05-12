@@ -15,6 +15,10 @@ public class ChatManager : MonoBehaviour
     [SerializeField] private TMP_InputField chatInputField;
     [SerializeField] private Button sendButton;
 
+    [Header("LLM")]
+    [Tooltip("Optional. When set, player messages are also sent to Ollama (with hidden game context on the connector).")]
+    [SerializeField] private OllamaConnector ollamaConnector;
+
     private void Awake()
     {
         if (sendButton != null)
@@ -66,6 +70,9 @@ public class ChatManager : MonoBehaviour
         AppendLine(FormatLine(PlayerLabel, text));
         chatInputField.text = string.Empty;
         chatInputField.ActivateInputField();
+
+        if (ollamaConnector != null)
+            ollamaConnector.SendToOllama(text);
     }
 
     private static string FormatLine(string senderName, string body)

@@ -27,6 +27,7 @@
 - **Player / interaction:** `PlayerController` — interact ray debug, `SendMessageUpwards("Interact")`, `Interact` action behaviour aligned with Input System SendMessages + `InputValue`; package `com.unity.textmeshpro` in `Packages/manifest.json`.
 - **World / UI scripts:** `InteractDoor` (hinge + optional animator disable), `ComputerTerminal` (disable player, show canvas, Escape), `ComputerDesktopUI` + Editor builders for overlay desktop, `ChatManager`, `DeliveryManager`, `MessengerChatUIBuilder`, `DeliveryPanelUIBuilder`; prefab `Assets/Prefabs/ComputerDesktopCanvas.prefab` (regenerate via **GameObject → Computer Desktop Canvas** after TMP essentials import).
 - **Docs pushed with code:** Updated `RiyaadWork.md`, `prompts-used.md`, `setup.md`, `README.md`, `refinements-changes.md` to match repo state.
+- **Ollama + context (same day, follow-up):** `OllamaConnector.cs` — local **`/api/generate`**, system prompt for **V**, hidden **`[CONTEXT: …] Player says:`** line (delivery progress from optional `DeliveryManager`, likeability %); `ChatManager` optional reference to trigger sends; team docs (`ollama-plan.md`, `setup.md`, `README.md`, `refinements-changes.md`, `prompts-used.md`) updated and pushed to GitHub.
 
 ---
 
