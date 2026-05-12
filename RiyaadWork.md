@@ -21,6 +21,15 @@
 
 ---
 
+## 2026-05-12
+
+- **Scenes:** Primary slice scene **`Assets/Scenes/Main Game.unity`**; added **`Assets/Scenes/Tester scene.unity`** as a lightweight scene for exercising new scripts (player, doors, computer UI) without the full apartment layout. Removed unused `SampleScene` from the repo (replaced by Main Game).
+- **Player / interaction:** `PlayerController` — interact ray debug, `SendMessageUpwards("Interact")`, `Interact` action behaviour aligned with Input System SendMessages + `InputValue`; package `com.unity.textmeshpro` in `Packages/manifest.json`.
+- **World / UI scripts:** `InteractDoor` (hinge + optional animator disable), `ComputerTerminal` (disable player, show canvas, Escape), `ComputerDesktopUI` + Editor builders for overlay desktop, `ChatManager`, `DeliveryManager`, `MessengerChatUIBuilder`, `DeliveryPanelUIBuilder`; prefab `Assets/Prefabs/ComputerDesktopCanvas.prefab` (regenerate via **GameObject → Computer Desktop Canvas** after TMP essentials import).
+- **Docs pushed with code:** Updated `RiyaadWork.md`, `prompts-used.md`, `setup.md`, `README.md`, `refinements-changes.md` to match repo state.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

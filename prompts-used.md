@@ -41,6 +41,18 @@ Ollama as online persona blackmailing with fictional personal info; designates a
 
 ---
 
+## Cursor — 2026-05-12 — Interact door + computer terminal + UI builders
+
+**Goal:** Hinge door script with pivot; fix E interact (raycast / SendMessage); computer terminal opens UI and restores on Escape; desktop with MESSENGER/DELIVERIES, chat scroll + TMP input, delivery list + complete button; sharper UI (TMP labels, point-filter sprite, scaler).
+
+**Prompt (condensed):** Multiple user requests across the session: `InteractDoor`; interact debug + `SendMessageUpwards`; `ComputerTerminal`; plan then implement computer canvas with icons/panels; `ChatManager` + TMP scroll/input/SEND + `UpdateChatFeed`; `DeliveryManager` + three assignment lines + `OnDeliveryCompleted`; clarity pass on text/icons; update contribution MDs and push with note about test scene.
+
+**Outcome:** Success — scripts and Editor menu builders in `Assets/Scripts` / `Assets/Scripts/Editor` / `Assets/Scripts/UI`; scenes `Main Game.unity`, `Tester scene.unity`; TMP package; prefab path documented.
+
+**Iteration notes:** Re-run **GameObject → Computer Desktop Canvas (Screen Space Overlay)** after changing builder code; TMP Essential Resources required once per machine.
+
+---
+
 ## Template — copy for new rows
 
 ### YYYY-MM-DD — Game Ollama — 

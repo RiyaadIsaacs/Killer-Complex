@@ -6,7 +6,7 @@
 2. Install editor version **6000.3.15f1** (see `ProjectSettings/ProjectVersion.txt` if this file drifts).
 3. Hub → **Add** → select the `Killer-Complex` folder.
 4. Open the project; allow packages to resolve.
-5. Open **`Assets/Scenes/SampleScene`** (or the scene your team uses for the slice).
+5. Open **`Assets/Scenes/Main Game.unity`** for the main apartment slice, or **`Assets/Scenes/Tester scene.unity`** for a smaller scene used to exercise new gameplay/UI code in isolation.
 
 ---
 

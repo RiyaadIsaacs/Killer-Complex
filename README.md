@@ -38,7 +38,7 @@ This prototype includes **pressure / blackmail / thriller** themes and optional 
 ## Getting started
 
 1. Clone / open this folder in **Unity Hub** → Add project.
-2. Open **`Assets/Scenes/SampleScene`** (until a dedicated Part 2 scene is added).
+2. Open **`Assets/Scenes/Main Game.unity`** for the primary playtest layout, or **`Assets/Scenes/Tester scene.unity`** for a compact scene used to validate new scripts and UI.
 3. Install and run **Ollama**; pull the model your team documents in `ollama-plan.md`.
 4. Press **Play** *(Ollama integration pending — see `plan.md` milestones)*.
 
