@@ -39,6 +39,15 @@
 
 ---
 
+## 2026-05-13 (documentation + delivery pipeline push)
+
+- **Deliveries & chat gate:** `DeliveryManager` — pickup required before zone when `DeliveryItem` set; id→room **0–6**→**201–208**; no scene-start first job by default. `ChatManager` — intro without package copy; first player send prepares job + scripted **H** follow-up. `DeliveryItem` — `Interact` pickup. `DeliveryZone` / HUD / editor repair menu aligned with TMP-on-child pattern.
+- **LLM:** `OllamaConnector` — `[CONTEXT: …]` includes drop id, apartment room, pickup; system prompt references room authority.
+- **Computer UI:** Crisp TMP canvas settings on `ComputerDesktopUI` / creator prefab.
+- **Documentation:** `README.md`, `setup.md`, `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md`, `RiyaadWork.md` (this entry) updated; committed and pushed to GitHub.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

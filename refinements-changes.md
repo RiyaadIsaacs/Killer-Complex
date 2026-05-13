@@ -38,3 +38,15 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify in Editor: Ollama wired, model pulled, chat send + typing + **H** replies.
 
 ---
+
+## 2026-05-13 — Deliveries, messenger gating, HUD, computer UI
+
+- **Deliveries:** `DeliveryManager` — removed assignment TMP / debug complete button; optional **physical pickup** via `DeliveryItem.Interact` before `DeliveryZone` accepts drop-off when a reception item is set; **drop-off id → apartment room** map (**0–6** → **201–208**) for LLM + docs; default **no** auto-first-delivery on scene start.
+- **Messenger:** `ChatManager` — opening intro **without** errands by default; **first player SEND** calls `PrepareNextDeliveryFromAi` and optional scripted **H** follow-up (lobby/package); optional explicit `DeliveryManager` or auto-find. `DeliveryCompletionChatNotifier` still prepares the next leg after scripted completion lines when enabled.
+- **HUD / editor:** `GlobalNotificationHud` + `GlobalNotificationHudCreator` — package-delivered row uses **Image** parent + **Text** child (one Graphic per object); **Repair Package Delivered Label (add TMP)** menu. `DeliveryZone` resolves HUD label via manager on shared root when unassigned.
+- **Computer UI:** `ComputerDesktopUI` + `ComputerDesktopUICreator` — canvas **pixel perfect** + **additional shader channels** for sharper TMP.
+- **LLM:** `OllamaConnector` hidden context includes **drop id**, **room**, **pickup**; system prompt instructs model to honour **apartment room** in context.
+- **Docs / compliance:** `README.md`, `setup.md`, `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md`, `RiyaadWork.md` updated for this push.
+- **AI-assisted:** Cursor; verify in Editor: first message rolls delivery + context, zones use ids **0–6**, interact pickup + zone **E**, Ollama replies.
+
+---

@@ -35,10 +35,20 @@ public class ChatManager : MonoBehaviour
     private string openingMessage =
         "I see you've finally logged on. Don't bother looking for the files you deleted; I have copies of everything. " +
         "Your computer wasn't all that secure. You're going to do exactly as I say if you want to keep your reputation in this market. " +
-        "There's a package in the lobby. Move it now, or everyone in your contacts list and the building manager will get a very interesting email. " +
-        "Don't keep me waiting, bru.";
+        "Message me when you're done pretending this isn't happening — and don't waste my time, bru.";
+
+    [Header("First player send → first delivery")]
+    [Tooltip("When true, the first non-empty SEND prepares a delivery leg (DeliveryManager) if none is active yet, then optionally appends a scripted H line (lobby/errands) before Ollama runs.")]
+    [SerializeField] private bool prepareFirstDeliveryOnFirstPlayerMessage = true;
+    [Tooltip("Optional. If unset, the first DeliveryManager found in loaded scenes is used.")]
+    [SerializeField] private DeliveryManager deliveryManager;
+    [SerializeField, TextArea(3, 12)]
+    private string scriptedFollowUpAfterFirstPlayerMessage =
+        "There's a package in the lobby — get it and move it. Now. Or everyone in your contacts list and the building manager gets a very interesting email. Don't keep me waiting, bru.";
 
     private bool _openingMessageShown;
+    private bool _firstPlayerDeliveryGateDone;
+    private DeliveryManager _cachedDeliveryManager;
 
     private bool _typingLineInFeed;
     private string _typingFeedLineSnapshot;
@@ -172,8 +182,38 @@ public class ChatManager : MonoBehaviour
         chatInputField.text = string.Empty;
         chatInputField.ActivateInputField();
 
+        MaybePrepareFirstDeliveryAfterFirstPlayerMessage();
+
         if (ollamaConnector != null)
             ollamaConnector.SendToOllama(text);
+    }
+
+    void MaybePrepareFirstDeliveryAfterFirstPlayerMessage()
+    {
+        if (!prepareFirstDeliveryOnFirstPlayerMessage || _firstPlayerDeliveryGateDone)
+            return;
+
+        var dm = ResolveDeliveryManager();
+        if (dm == null || dm.currentDeliveryID >= 3 || dm.ActiveDropPointId >= 0)
+            return;
+
+        _firstPlayerDeliveryGateDone = true;
+        dm.PrepareNextDeliveryFromAi();
+
+        if (!string.IsNullOrWhiteSpace(scriptedFollowUpAfterFirstPlayerMessage))
+        {
+            var sender = string.IsNullOrWhiteSpace(introSenderName) ? "H" : introSenderName.Trim();
+            UpdateChatFeed(sender, scriptedFollowUpAfterFirstPlayerMessage.Trim());
+        }
+    }
+
+    DeliveryManager ResolveDeliveryManager()
+    {
+        if (deliveryManager != null)
+            return deliveryManager;
+        if (_cachedDeliveryManager == null)
+            _cachedDeliveryManager = Object.FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
+        return _cachedDeliveryManager;
     }
 
     private static string FormatLineStatic(string senderName, string body)

@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 /// World computer: interact opens a UI canvas and disables <see cref="PlayerController"/>.
 /// Escape (or <see cref="CloseTerminal"/>) closes the UI and re-enables the player.
 /// Put on the same hierarchy as the collider the player looks at, or a parent (SendMessageUpwards).
+/// You can also use <see cref="ComputerInteract"/> on the collider object to forward to this component.
 /// </summary>
 public class ComputerTerminal : MonoBehaviour
 {
