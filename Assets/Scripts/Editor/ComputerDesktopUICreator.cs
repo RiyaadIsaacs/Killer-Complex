@@ -33,6 +33,10 @@ public static class ComputerDesktopUICreator
         var canvas = root.GetComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 100;
+        canvas.pixelPerfect = true;
+        canvas.additionalShaderChannels |= AdditionalCanvasShaderChannels.TexCoord1
+                                           | AdditionalCanvasShaderChannels.Normal
+                                           | AdditionalCanvasShaderChannels.Tangent;
 
         var scaler = root.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -58,24 +62,27 @@ public static class ComputerDesktopUICreator
         dockRt.sizeDelta = new Vector2(400f, 176f);
 
         var messengerBtn = CreateIconButton("BtnMessenger", dock.transform, new Color32(28, 40, 51, 255), sprite, tmpFont, "MESSENGER", new Vector2(0f, 0f), true);
-        var deliveriesBtn = CreateIconButton("BtnDeliveries", dock.transform, new Color32(160, 130, 109, 255), sprite, tmpFont, "DELIVERIES", new Vector2(196f, 0f), false);
+        var hackingBtn = CreateIconButton("BtnHackingTerminal", dock.transform, new Color32(160, 130, 109, 255), sprite, tmpFont, "HACKING", new Vector2(196f, 0f), false);
 
         var messengerPanel = CreateWindowPanel("PanelMessenger", root.transform, sprite, font, tmpFont, "MESSENGER", "Chat window (placeholder).", new Color32(44, 62, 80, 255), false, out var messengerClose);
         MessengerChatUIBuilder.AttachToPanel(messengerPanel, sprite);
-        var deliveriesPanel = CreateWindowPanel("PanelDeliveries", root.transform, sprite, font, tmpFont, "DELIVERIES", "Deliveries (placeholder).", new Color32(93, 109, 126, 255), false, out var deliveriesClose);
-        DeliveryPanelUIBuilder.AttachToPanel(deliveriesPanel, sprite);
+        var hackingPanel = CreateWindowPanel("PanelHackingTerminal", root.transform, sprite, font, tmpFont, "HACKING TERMINAL", "Hacking terminal (placeholder).", new Color32(93, 109, 126, 255), false, out var hackingClose);
+        HackingTerminalPanelUIBuilder.AttachToPanel(hackingPanel, sprite);
+
+        var shutdownBtn = CreateShutdownComputerButton(root.transform, sprite, tmpFont);
 
         messengerPanel.SetActive(false);
-        deliveriesPanel.SetActive(false);
+        hackingPanel.SetActive(false);
 
         var desktop = root.GetComponent<ComputerDesktopUI>();
         var so = new SerializedObject(desktop);
         so.FindProperty("messengerIconButton").objectReferenceValue = messengerBtn;
-        so.FindProperty("deliveriesIconButton").objectReferenceValue = deliveriesBtn;
+        so.FindProperty("hackingTerminalIconButton").objectReferenceValue = hackingBtn;
         so.FindProperty("messengerPanel").objectReferenceValue = messengerPanel;
-        so.FindProperty("deliveriesPanel").objectReferenceValue = deliveriesPanel;
+        so.FindProperty("hackingTerminalPanel").objectReferenceValue = hackingPanel;
         so.FindProperty("messengerCloseButton").objectReferenceValue = messengerClose;
-        so.FindProperty("deliveriesCloseButton").objectReferenceValue = deliveriesClose;
+        so.FindProperty("hackingTerminalCloseButton").objectReferenceValue = hackingClose;
+        so.FindProperty("shutdownComputerButton").objectReferenceValue = shutdownBtn;
         so.ApplyModifiedProperties();
 
         Selection.activeGameObject = root;
@@ -84,7 +91,44 @@ public static class ComputerDesktopUICreator
             AssetDatabase.CreateFolder("Assets", "Prefabs");
 
         PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
-        Debug.Log("Computer desktop canvas saved to " + PrefabPath + ". Root is inactive; assign it to ComputerTerminal.computerScreenRoot.");
+        Debug.Log("Computer desktop canvas saved to " + PrefabPath + ". Root is inactive; assign it to ComputerTerminal.computerScreenRoot. Wire ComputerDesktopUI.computerTerminal if the canvas is not a child of the desk with ComputerTerminal.");
+    }
+
+    static Button CreateShutdownComputerButton(Transform root, Sprite sprite, TMP_FontAsset tmpFont)
+    {
+        var go = new GameObject("BtnShutdownComputer", typeof(RectTransform), typeof(Image), typeof(Button));
+        Undo.RegisterCreatedObjectUndo(go, "Create BtnShutdownComputer");
+        go.transform.SetParent(root, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(1f, 1f);
+        rt.anchoredPosition = new Vector2(-20f, -20f);
+        rt.sizeDelta = new Vector2(168f, 44f);
+
+        var img = go.GetComponent<Image>();
+        img.sprite = sprite;
+        img.type = Image.Type.Simple;
+        img.color = new Color32(149, 165, 166, 255);
+
+        var btn = go.GetComponent<Button>();
+        btn.targetGraphic = img;
+
+        var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        Undo.RegisterCreatedObjectUndo(labelGo, "Create Shutdown label");
+        labelGo.transform.SetParent(go.transform, false);
+        StretchFull(labelGo.GetComponent<RectTransform>());
+        var tmp = labelGo.GetComponent<TextMeshProUGUI>();
+        tmp.font = tmpFont;
+        tmp.fontSize = 18;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = Color.white;
+        tmp.text = "Shutdown";
+        tmp.enableWordWrapping = false;
+        tmp.overflowMode = TextOverflowModes.Overflow;
+
+        return btn;
     }
 
     static void EnsureEventSystemForInputSystem()

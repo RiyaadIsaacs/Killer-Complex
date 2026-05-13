@@ -58,16 +58,17 @@ OllamaConnector
 
 - **History:** Each request is **stateless** for now (no prior turns in `prompt`). Sliding-window or chat API migration should be documented here when added.
 - **Structured output:** Not required for the current generate path; assistant text is plain prose. If you add JSON mission fields later, document parse + **fallback** here.
-- **Context sources today:** Optional **`DeliveryManager`** → completed count = `currentDeliveryID` clamped to `totalDeliveries` (default **3**). **`LikeabilityPercent`** (0–100, default **50**) on `OllamaConnector`; other scripts can set `LikeabilityPercent` at runtime.
+- **Context sources today:** Optional **`DeliveryManager`** → completed count = `currentDeliveryID` clamped to `totalDeliveries` (default **3**). While a delivery leg is active: **`ActiveDropPointId`**, optional **apartment room** from the fixed map (**ids 0–6** → rooms **201, 202, 203, 205, 206, 207, 208** via `TryGetApartmentRoomForDropPoint`), and optional **pickup state** when a **`DeliveryItem`** is configured. **`LikeabilityPercent`** (0–100, default **50**) on `OllamaConnector`; other scripts can set `LikeabilityPercent` at runtime.
 
 ---
 
 ## 5. Prompt structure (summary)
 
-- **System prompt:** Hardcoded in `OllamaConnector` — persona **H** (hacker antagonist: threatening, impatient, transactional; sarcastic SA slang only; never apologize; rude player → threaten leak of **Project_Bleed_v2.docx**), South African complex setting, concise replies, fiction-only / no real PII, instruction to treat **`[CONTEXT: …]`** before **`Player says:`** as true in-world state (errands, rapport).
+- **System prompt:** Hardcoded in `OllamaConnector` — persona **H** (hacker antagonist: threatening, impatient, transactional; sarcastic SA slang only; never apologize; rude player → threaten leak of **Project_Bleed_v2.docx**), South African complex setting, concise replies, fiction-only / no real PII, instruction to treat **`[CONTEXT: …]`** before **`Player says:`** as true in-world state (errands, rapport, **apartment room for the current delivery when listed** — model should treat that room as where the package must go).
 - **User-side of prompt (single string after system + `---`):**  
-  `[CONTEXT: Player has completed X/Y deliveries. Likeability is Z%.] Player says: {player message}`  
-  The bracketed block is **not** shown in the messenger UI; it exists only in the HTTP `prompt` field.
+  `[CONTEXT: Player has completed X/Y deliveries. Likeability is Z%. …] Player says: {player message}`  
+  When a leg is active, the bracketed block may also include **drop-off id**, **apartment room**, and **pickup** lines (see `prompts-used.md`, **Game — Ollama context extension — 2026-05-13**). The bracketed block is **not** shown in the messenger UI; it exists only in the HTTP `prompt` field.
+- **First delivery timing:** Default is **not** to prepare the first leg on scene start (`DeliveryManager.prepareFirstDeliveryAfterSceneTick` off). **`ChatManager`** can prepare the first leg on the **first player send** and optionally append a scripted **H** line (no delivery in the opening intro). Later legs: **`DeliveryCompletionChatNotifier`** + `PrepareNextDeliveryFromAi` when used.
 - **Future:** Mission phase, pickup site, hacking flags — extend `BuildPlayerTurnForPrompt` or a dedicated context builder and log changes in **`prompts-used.md`**.
 - **Safety / failures:** On network or parse failure, `OllamaConnector` logs to Console and appends a **fallback** `[H]` line in the feed (see code).
 
@@ -99,3 +100,4 @@ OllamaConnector
 | 2026-05-11 | Initial skeleton for POE submission structure |
 | 2026-05-11 | Team docs added (`plan.md`, `rules.md`, `setup.md`, `refinements-changes.md`, `prompts-used.md`, `RiyaadWork.md`); `README.md` expanded with doc index |
 | 2026-05-12 | **`OllamaConnector`** + **`ChatManager`** hook; **`POST /api/generate`**; hidden **`[CONTEXT: …] Player says:`** prefix (deliveries + likeability); docs (`README`, `setup`, §4–5 here) aligned |
+| 2026-05-13 | **H** messenger slice + extended **`[CONTEXT: …]`** (drop id, apartment room 0–6→201–208, physical pickup when `DeliveryItem` set); first delivery often from **`ChatManager`** first send; `prompts-used.md` + `refinements-changes.md` updated |

@@ -23,12 +23,12 @@ public class OllamaConnector : MonoBehaviour
         "RULE: never apologize, back down, or admit fault. " +
         "If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). " +
         "Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). " +
-        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, rapport); use them naturally when applying pressure. " +
+        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, rapport, apartment room for the current delivery when listed); treat that room as where the package must go. " +
         "This is fiction only — do not reference real people's private data.";
 
     [Header("References")]
     [SerializeField] private ChatManager chatManager;
-    [Tooltip("Optional. If set, delivery progress in the LLM context matches the DELIVERIES panel.")]
+    [Tooltip("Optional. If set, delivery progress in the LLM context matches gameplay.")]
     [SerializeField] private DeliveryManager deliveryManager;
 
     [Header("LLM context (not shown in chat UI)")]
@@ -81,15 +81,41 @@ public class OllamaConnector : MonoBehaviour
             return;
         }
 
+        string playerTurn = BuildPlayerTurnForPrompt(userPrompt.Trim());
+        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{playerTurn}";
         chatManager.ShowTypingIndicator();
-        StartCoroutine(GenerateCoroutine(userPrompt.Trim()));
+        StartCoroutine(RequestOllamaCoroutine(fullPrompt));
     }
 
-    private IEnumerator GenerateCoroutine(string userPrompt)
+    /// <summary>
+    /// After the hacking terminal reaches 100%, posts a visible <c>[SYSTEM]</c> line and asks Ollama for H's reaction
+    /// to the player reversing the blackmail (fiction only).
+    /// </summary>
+    public void SendHackReversalPrompt()
     {
-        string playerTurn = BuildPlayerTurnForPrompt(userPrompt);
-        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{playerTurn}";
+        if (chatManager == null)
+        {
+            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned.", this);
+            return;
+        }
 
+        const string escalation =
+            "[SYSTEM]: The player has successfully decrypted your personal photos. They are now blackmailing YOU.";
+
+        chatManager.UpdateChatFeed("SYSTEM", escalation);
+        chatManager.ShowTypingIndicator();
+
+        string narrative =
+            escalation +
+            "\n\nTreat the [SYSTEM] line above as true in-world fiction for this game only. " +
+            "Reply in-character as H: you are now on the defensive but never apologize or admit fault; stay threatening and transactional; a few sentences only.";
+
+        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{narrative}";
+        StartCoroutine(RequestOllamaCoroutine(fullPrompt));
+    }
+
+    private IEnumerator RequestOllamaCoroutine(string fullPrompt)
+    {
         var payload = new OllamaGenerateRequest
         {
             model = model,
@@ -182,6 +208,20 @@ public class OllamaConnector : MonoBehaviour
             completed = Mathf.Clamp(deliveryManager.currentDeliveryID, 0, total);
 
         int like = Mathf.RoundToInt(likeabilityPercent);
-        return $"[CONTEXT: Player has completed {completed}/{total} deliveries. Likeability is {like}%.] Player says: {userMessage}";
+        string drop = string.Empty;
+        if (deliveryManager != null && deliveryManager.ActiveDropPointId >= 0)
+        {
+            drop = $" Current delivery drop-off id is {deliveryManager.ActiveDropPointId}.";
+            if (deliveryManager.TryGetApartmentRoomForActiveDrop(out int room))
+                drop += $" Apartment room for this leg is {room}.";
+            if (deliveryManager.RequiresPhysicalPickup)
+            {
+                drop += deliveryManager.HasPickedUpCurrentPackage
+                    ? " Player has picked up the package for this leg."
+                    : " Player has not picked up the package for this leg yet.";
+            }
+        }
+
+        return $"[CONTEXT: Player has completed {completed}/{total} deliveries. Likeability is {like}%.{drop}] Player says: {userMessage}";
     }
 }
