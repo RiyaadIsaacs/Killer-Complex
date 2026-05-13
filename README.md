@@ -1,6 +1,6 @@
 # Killer Complex
 
-First-person Unity project (**URP**, **Input System**) for **Game Design 3A — Part 2**: a local **Ollama** LLM drives an in-fiction online persona that blackmails the player, assigns **package deliveries** in a multi-floor complex, and reacts while the player uses a **home computer** (hacking mini-games, waiting for the next job). **Fiction only** — no real personal data is collected; see content note below.
+First-person Unity project (**URP**, **Input System**) for **Game Design 3A — Part 2**: a local **Ollama** LLM drives an in-fiction online persona (**H**, a threatening hacker) who coerces the player through chat, assigns **package deliveries** in a multi-floor complex, and reacts while the player uses a **home computer** (hacking mini-games, waiting for the next job). **Fiction only** — no real personal data is collected; see content note below.
 
 **Unity version:** **6000.3.15f1** (authoritative: `ProjectSettings/ProjectVersion.txt`)
 
@@ -40,7 +40,7 @@ This prototype includes **pressure / blackmail / thriller** themes and optional 
 1. Clone / open this folder in **Unity Hub** → Add project.
 2. Open **`Assets/Scenes/Main Game.unity`** for the primary playtest layout, or **`Assets/Scenes/Tester scene.unity`** for a compact scene used to validate new scripts and UI.
 3. Install and run **Ollama**; pull the model your team documents in `ollama-plan.md`.
-4. Wire **Messenger → Ollama** in the scene: on `ChatManager`, assign **`OllamaConnector`**; on `OllamaConnector`, assign **`ChatManager`** and (optionally) **`DeliveryManager`** so the hidden LLM context matches delivery progress. Run **Ollama** with the model named in `ollama-plan.md`, then press **Play** and send a chat message to trigger a generate call.
+4. Wire **Messenger → Ollama** in the scene: on `ChatManager`, assign **`OllamaConnector`**; on `OllamaConnector`, assign **`ChatManager`** and (optionally) **`DeliveryManager`** so the hidden LLM context matches delivery progress. Optionally assign **`Typing Indicator Text`** on `ChatManager` for a pulsing “H is typing…” label (otherwise a temporary line is appended to the feed). Run **Ollama** with the model named in `ollama-plan.md`, then press **Play** and send a chat message to trigger a generate call. Model replies appear as **`[H]: …`** in the messenger.
 
 ---
 

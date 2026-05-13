@@ -31,6 +31,14 @@
 
 ---
 
+## 2026-05-13
+
+- **LLM / UI:** `OllamaConnector.cs` — persona **H** (new system prompt: tone, sarcastic SA slang rule, no apologies, **Project_Bleed_v2.docx** escalation); `UpdateChatFeed` sender **`H`**. `ChatManager.cs` — opening intro line on first enable; typing indicator (`ShowTypingIndicator` / `HideTypingIndicator`, optional `TMP_Text` pulse or feed line); defaults **H** for intro + typing copy; `BuildTypingFeedLine` uses `introSenderName`.
+- **Documentation:** `prompts-used.md` (2026-05-13 **H** prompt + archived **V**), `ollama-plan.md` (**H** persona / flow / fallback), `README.md`, `setup.md` (typing + **H**), `plan.md` (persona **H**), `refinements-changes.md`, `RiyaadWork.md` (this entry).
+- **Pushed:** Commit to GitHub with the above files and script changes.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

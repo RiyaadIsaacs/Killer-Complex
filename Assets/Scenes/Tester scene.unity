@@ -874,6 +874,57 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1a83256f7767c2c46a1371969648490c, type: 3}
+--- !u!1 &96839658
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 96839660}
+  - component: {fileID: 96839659}
+  m_Layer: 0
+  m_Name: OllamaChatManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &96839659
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 96839658}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5df1b0a8a59a20b42aeaed0a2c405c33, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OllamaConnector
+  chatManager: {fileID: 2061777034}
+  deliveryManager: {fileID: 0}
+  likeabilityPercent: 50
+  totalDeliveries: 3
+  apiUrl: http://localhost:11434/api/generate
+  model: mistral:7b-instruct
+  requestTimeoutSeconds: 180
+--- !u!4 &96839660
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 96839658}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -21.53043, y: 0.87601, z: -21.47}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &110019578
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14287,7 +14338,7 @@ MonoBehaviour:
   chatFeedText: {fileID: 131915222}
   chatInputField: {fileID: 1270528568}
   sendButton: {fileID: 704904827}
-  ollamaConnector: {fileID: 0}
+  ollamaConnector: {fileID: 96839659}
 --- !u!1001 &2071373632
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14771,3 +14822,4 @@ SceneRoots:
   - {fileID: 532823091}
   - {fileID: 1424280406}
   - {fileID: 1198964385}
+  - {fileID: 96839660}

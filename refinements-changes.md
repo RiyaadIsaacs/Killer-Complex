@@ -28,3 +28,13 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **Docs / compliance:** `ollama-plan.md` (data flow §4, prompt §5, changelog), `setup.md` §3, `README.md` (getting started + stack), `prompts-used.md` (exact system + context template), `RiyaadWork.md` — updated before push per `rules.md`.
 - **AI-assisted:** Cursor authored C# + markdown; verify in Editor: references assigned, Ollama running, model pulled.
 
+---
+
+## 2026-05-13 — Persona **H**, messenger UX, docs
+
+- **LLM persona:** **`OllamaConnector`** system prompt retargeted from **V** to **H** (hacker antagonist): threatening / impatient / transactional tone; South Africanisms (*eish*, *sharp*, *lekker*) only sarcastically; never apologize; rude player → threaten leak of **`Project_Bleed_v2.docx`**. Replies and errors use **`[H]: …`** in the feed (`HackerSenderLabel`).
+- **Messenger:** **`ChatManager`** — scripted opening intro on first UI enable; **`ShowTypingIndicator` / `HideTypingIndicator`** (optional pulsing `TMP_Text` or feed fallback); ref-counted for overlapping requests; defaults **`introSenderName`** / typing copy aligned to **H**.
+- **Docs:** `prompts-used.md` (dated **H** system string + archived **V**), `ollama-plan.md` (persona **H**, data flow, prompt summary), `README.md`, `setup.md`, `plan.md`, `refinements-changes.md`, `RiyaadWork.md` updated for this push.
+- **AI-assisted:** Cursor; verify in Editor: Ollama wired, model pulled, chat send + typing + **H** replies.
+
+---

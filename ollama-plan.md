@@ -7,7 +7,7 @@ Team schedule and ownership live in **`plan.md`**. Update this document whenever
 
 ## 1. Role of the LLM in the game loop
 
-- **Persona:** Local Ollama plays an in-fiction online blackmailer (pressure, fictional “personal” details, delivery orders).
+- **Persona:** Local Ollama plays an in-fiction online hacker antagonist **H** (pressure, fictional “personal” details, delivery orders).
 - **Primary slice:** Most **vertical-slice** time is spent at the **computer** interacting with Ollama (messages, missions, tone), not roaming a large map.
 - **World actions:** Deliveries to random units across **three floors**; package **pickup** at one of: **room window**, **front entrance**, **rooftop** (spawn choice can be code-driven; model may reference it in prose).
 - **Parallel beat:** At the computer, player can **wait** for the next delivery and/or play **hacking mini-games** (trace persona, delete data, police evidence) — mostly scripted unless you add optional LLM lines.
@@ -37,7 +37,7 @@ Team schedule and ownership live in **`plan.md`**. Update this document whenever
 
 | When | Where | Purpose |
 |------|--------|---------|
-| **Runtime** | Unity → Ollama `POST /api/generate` (`OllamaConnector`) | Messenger replies from persona **V**; each send includes hidden game **context** + player line (see §4–5) |
+| **Runtime** | Unity → Ollama `POST /api/generate` (`OllamaConnector`) | Messenger replies from persona **H**; each send includes hidden game **context** + player line (see §4–5) |
 | **Preprocessing** *(if any)* | *(Editor / batch — or “none”)* | *(e.g. baked test strings only — state explicitly)* |
 
 ---
@@ -53,7 +53,7 @@ OllamaConnector
   → BuildPlayerTurnForPrompt: "[CONTEXT: …] Player says: {typed}"
   → fullPrompt = systemPrompt + separator + player turn
   → POST /api/generate { model, prompt, stream: false }
-  → parse JSON "response" → ChatManager.UpdateChatFeed("V", reply)
+  → parse JSON "response" → ChatManager.UpdateChatFeed("H", reply)
 ```
 
 - **History:** Each request is **stateless** for now (no prior turns in `prompt`). Sliding-window or chat API migration should be documented here when added.
@@ -64,12 +64,12 @@ OllamaConnector
 
 ## 5. Prompt structure (summary)
 
-- **System prompt:** Hardcoded in `OllamaConnector` — persona **V** (blackmailer, South African complex), concise replies, fiction-only / no real PII, instruction to treat **`[CONTEXT: …]`** before **`Player says:`** as true in-world state (errands, rapport).
+- **System prompt:** Hardcoded in `OllamaConnector` — persona **H** (hacker antagonist: threatening, impatient, transactional; sarcastic SA slang only; never apologize; rude player → threaten leak of **Project_Bleed_v2.docx**), South African complex setting, concise replies, fiction-only / no real PII, instruction to treat **`[CONTEXT: …]`** before **`Player says:`** as true in-world state (errands, rapport).
 - **User-side of prompt (single string after system + `---`):**  
   `[CONTEXT: Player has completed X/Y deliveries. Likeability is Z%.] Player says: {player message}`  
   The bracketed block is **not** shown in the messenger UI; it exists only in the HTTP `prompt` field.
 - **Future:** Mission phase, pickup site, hacking flags — extend `BuildPlayerTurnForPrompt` or a dedicated context builder and log changes in **`prompts-used.md`**.
-- **Safety / failures:** On network or parse failure, `OllamaConnector` logs to Console and appends a **fallback** `[V]` line in the feed (see code).
+- **Safety / failures:** On network or parse failure, `OllamaConnector` logs to Console and appends a **fallback** `[H]` line in the feed (see code).
 
 *(Exact system string and dated experiments: **`prompts-used.md`**.)*
 

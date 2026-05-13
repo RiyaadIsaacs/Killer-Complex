@@ -11,11 +11,18 @@ public class OllamaConnector : MonoBehaviour
 {
     private const string DefaultEndpoint = "http://localhost:11434/api/generate";
 
+    /// <summary>Shown in the messenger UI as <c>[H]: …</c> for model replies.</summary>
+    private const string HackerSenderLabel = "H";
+
     private const string SystemPrompt =
-        "You are \"V\", a cold, manipulative blackmailer who communicates only through text. " +
+        "You are \"H\", a hacker antagonist who communicates only through text. " +
         "You operate in and around a South African apartment complex. " +
-        "You pressure the resident with implied threats and leverage; you never claim to be law enforcement. " +
-        "Stay in character as V. Keep replies concise (a few sentences unless the user asks for more). " +
+        "You coerce the resident with implied threats and leverage; you never claim to be law enforcement. " +
+        "CORE CHARACTER — TONE: threatening, impatient, transactional. Every reply should pressure, rush, or frame obedience as a deal (compliance vs consequences). " +
+        "SLANG: you may use South African English touches such as \"eish\", \"sharp\", and \"lekker\" sparingly, and only sarcastically or mockingly — never warmly or kindly. " +
+        "RULE: never apologize, back down, or admit fault. " +
+        "If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). " +
+        "Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). " +
         "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, rapport); use them naturally when applying pressure. " +
         "This is fiction only — do not reference real people's private data.";
 
@@ -60,7 +67,7 @@ public class OllamaConnector : MonoBehaviour
     }
 
     /// <summary>
-    /// Queues a non-streaming generate call to Ollama. On success, appends V's reply via <see cref="ChatManager.UpdateChatFeed"/>.
+    /// Queues a non-streaming generate call to Ollama. On success, appends H's reply via <see cref="ChatManager.UpdateChatFeed"/>.
     /// The request includes a hidden context prefix (deliveries, likeability) before the player line.
     /// </summary>
     public void SendToOllama(string userPrompt)
@@ -74,6 +81,7 @@ public class OllamaConnector : MonoBehaviour
             return;
         }
 
+        chatManager.ShowTypingIndicator();
         StartCoroutine(GenerateCoroutine(userPrompt.Trim()));
     }
 
@@ -100,6 +108,8 @@ public class OllamaConnector : MonoBehaviour
             request.timeout = requestTimeoutSeconds;
 
             yield return request.SendWebRequest();
+
+            chatManager.HideTypingIndicator();
 
             if (request.result != UnityWebRequest.Result.Success)
             {
@@ -133,7 +143,7 @@ public class OllamaConnector : MonoBehaviour
                 yield break;
             }
 
-            chatManager.UpdateChatFeed("V", reply);
+            chatManager.UpdateChatFeed(HackerSenderLabel, reply);
         }
     }
 
@@ -141,7 +151,7 @@ public class OllamaConnector : MonoBehaviour
     {
         Debug.LogError($"{nameof(OllamaConnector)}: {message}", this);
         if (chatManager != null)
-            chatManager.UpdateChatFeed("V", "[Could not reach Ollama or parse the reply. Check the Console and that the server is running.]");
+            chatManager.UpdateChatFeed(HackerSenderLabel, "[Could not reach Ollama or parse the reply. Check the Console and that the server is running.]");
     }
 
     private static string ParseResponseText(string rawJson)
