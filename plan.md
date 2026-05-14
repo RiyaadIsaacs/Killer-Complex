@@ -6,7 +6,7 @@ Living document for **milestones**, **scope**, and **ownership**. Technical LLM 
 
 ## Vision (short)
 
-First-person thriller: an **Ollama-driven** online persona (**H**) coerces the player through chat (fiction-only “personal” data), assigns **package deliveries** across a **three-floor** complex, and sometimes hints at **illicit** contents. The player returns to a **home computer** to wait for the next job and can run **hacking mini-games** (trace persona, delete data, police evidence). **Dual endings:** delivery quota vs escape blackmail.
+First-person thriller: an **Ollama-driven** online persona (**H**, kidnapper fiction) coerces the player through chat (hostage leverage, fiction-only), assigns **package deliveries** across a **three-floor** complex, and watches from **in-fiction surveillance**. The player returns to a **home computer** to wait for the next job and can run **hacking mini-games** (trace persona, delete data, police evidence). **Dual endings:** delivery quota vs escape blackmail.
 
 ---
 

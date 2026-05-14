@@ -32,7 +32,7 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 
 ## 2026-05-13 — Persona **H**, messenger UX, docs
 
-- **LLM persona:** **`OllamaConnector`** system prompt retargeted from **V** to **H** (hacker antagonist): threatening / impatient / transactional tone; South Africanisms (*eish*, *sharp*, *lekker*) only sarcastically; never apologize; rude player → threaten leak of **`Project_Bleed_v2.docx`**. Replies and errors use **`[H]: …`** in the feed (`HackerSenderLabel`).
+- **LLM persona:** **`OllamaConnector`** system prompt retargeted from **V** to **H** *(historical 2026-05-13 framing: hacker antagonist, Project_Bleed escalation — superseded **2026-05-15** by kidnapper / hostage narrative; see **`prompts-used.md`**)*. Replies and errors use **`[H]: …`** in the feed (`HackerSenderLabel`).
 - **Messenger:** **`ChatManager`** — scripted opening intro on first UI enable; **`ShowTypingIndicator` / `HideTypingIndicator`** (optional pulsing `TMP_Text` or feed fallback); ref-counted for overlapping requests; defaults **`introSenderName`** / typing copy aligned to **H**.
 - **Docs:** `prompts-used.md` (dated **H** system string + archived **V**), `ollama-plan.md` (persona **H**, data flow, prompt summary), `README.md`, `setup.md`, `plan.md`, `refinements-changes.md`, `RiyaadWork.md` updated for this push.
 - **AI-assisted:** Cursor; verify in Editor: Ollama wired, model pulled, chat send + typing + **H** replies.
@@ -87,6 +87,16 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **UI:** `DesktopMessengerNotification.cs` — in-desktop toast for new **H** activity (HUD-style row, optional Animator or default pop). **`ComputerDesktopUICreator`** can add **`SoundManager`** + **`DesktopMessengerNotification`** on the desktop canvas root; **`OllamaConnector`** optional serialized reference / instance lookup and **`MaybeTriggerDesktopMessengerNotificationAfterHReply`** after model replies.
 - **Audio:** `Assets/Scripts/Audio/SoundManager.cs` — **`PlayNotificationSound()`** for a configurable clip; **`Assets/SFX/`** includes a notification **MP3** import (assign on **`SoundManager`** in the scene / prefab).
 - **AI-assisted:** Cursor; verify in Editor: clip assigned, toast shows when **H** replies (and SFX plays if wired).
+
+---
+
+## 2026-05-15 — Narrative pivot: kidnapper **H**, Wife status in CONTEXT
+
+- **Narrative:** **`OllamaConnector`** — **H** reframed as a **kidnapper** holding the player’s **wife** hostage (fiction), **security cameras**, orders not jokes, **clinical** escalation on delivery delay/failure, **bru** / **wena**; rude player → **hostage threat** (removed **Project_Bleed**). Serialized **`wifeStatusForLlmContext`** + **`WifeStatusForLlmContext`** property append **Wife status** into hidden **`[CONTEXT]`** after suspicion when non-empty.
+- **Messenger:** **`ChatManager`** default **`openingMessage`** and **`ComputerDesktopCanvas.prefab`** intro copy aligned to the lobby package / wife leverage beat.
+- **Full hack:** **`SendHackReversalPrompt`** visible **`[SYSTEM]`** line and narrative retargeted to **uplink / surveillance** counter-leverage (no photo-blackmail beat).
+- **Docs:** **`prompts-used.md`**, **`ollama-plan.md`**, **`README.md`**, **`plan.md`**, **`setup.md`**, **`refinements-changes.md`**, **`RiyaadWork.md`**.
+- **AI-assisted:** Cursor; verify in Editor: Ollama replies stay in tone; tune **Wife status** text for your comfort / marker requirements.
 
 ---
 

@@ -35,9 +35,9 @@ public class ChatManager : MonoBehaviour
     [SerializeField] private string introSenderName = "H";
     [SerializeField, TextArea(5, 20)]
     private string openingMessage =
-        "I see you've finally logged on. Don't bother looking for the files you deleted; I have copies of everything. " +
-        "Your computer wasn't all that secure. You're going to do exactly as I say if you want to keep your reputation in this market. " +
-        "Message me when you're done pretending this isn't happening — and don't waste my time, bru.";
+        "I see you're finally at the computer. Stop looking for your wife\u2014she's not at home anymore. " +
+        "If you want to see her again, you're going to be my legs tonight. " +
+        "If you don't get back to me, you will never hear from her again. Don't test me, bru. Move it.";
 
     [Header("Messenger → next delivery job")]
     [Tooltip("When true, each non-empty SEND prepares the next delivery leg if none is active yet and runs remain—before Ollama runs so CONTEXT includes the destination. Also used after each maze breach run ends (win, fail, or abort) and when full decryption completes (see OllamaConnector). Turn off only if another script prepares jobs.")]

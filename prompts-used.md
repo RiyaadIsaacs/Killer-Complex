@@ -30,11 +30,11 @@ You are "H", a hacker antagonist who communicates only through text. You operate
 
 **Outcome:** In-engine; paired with dynamic context line (below). Iterate here on every system-string edit.
 
-**Iteration notes:** Uses **`/api/generate`** single `prompt` (not chat messages array yet). Prior persona label **V** (2026-05-12) superseded by **H** for this revision. **2026-05-13 (later):** system string extended so `[CONTEXT]` may include **apartment room** for the active delivery; model instructed to treat that room as authoritative. **2026-05-14:** system string adds rules against **invented** apartment numbers and **verbatim echo** of CONTEXT scaffolding; `[CONTEXT]` body rewritten in **natural language** (whitelist + destination) in `BuildPlayerTurnForPrompt` — see **Game — Ollama context — 2026-05-14** below. **2026-05-14 (later):** **likeability / rapport** in `[CONTEXT]` replaced by **suspicion** %; see **Game — Suspicion meter & delivery-ignore nudge — 2026-05-14** below.
+**Iteration notes:** Uses **`/api/generate`** single `prompt` (not chat messages array yet). Prior persona label **V** (2026-05-12) superseded by **H** for this revision. **2026-05-13 (later):** system string extended so `[CONTEXT]` may include **apartment room** for the active delivery; model instructed to treat that room as authoritative. **2026-05-14:** system string adds rules against **invented** apartment numbers and **verbatim echo** of CONTEXT scaffolding; `[CONTEXT]` body rewritten in **natural language** (whitelist + destination) in `BuildPlayerTurnForPrompt` — see **Game — Ollama context — 2026-05-14** below. **2026-05-14 (later):** **likeability / rapport** in `[CONTEXT]` replaced by **suspicion** %; see **Game — Suspicion meter & delivery-ignore nudge — 2026-05-14** below. **2026-05-15:** narrative pivot to **kidnapper / hostage** + **Wife status** in `[CONTEXT]` — see **Game — Kidnapper narrative + Wife status — 2026-05-15** below.
 
 ---
 
-## Game — Ollama system prompt — 2026-05-14 — `OllamaConnector` (iteration on **H**)
+## Game — Ollama system prompt — 2026-05-14 — `OllamaConnector` (iteration on **H** — *superseded 2026-05-15*)
 
 **Goal:** Same persona **H** as 2026-05-13, plus explicit instructions: honour destination in CONTEXT; never invent apartment numbers not listed as valid; never paste ALL CAPS / placeholder-like labels from CONTEXT into replies; pickup/reception phrasing when CONTEXT says so; **suspicion pressure** (not rapport) in CONTEXT; never print the word CONTEXT or bracket scaffolding in visible replies; post–drop-off beat when CONTEXT says the player just completed a delivery.
 
@@ -46,7 +46,7 @@ You are "H", a hacker antagonist who communicates only through text. You operate
 
 **Outcome:** In-engine; supersedes the shorter 2026-05-13 system block for documentation purposes (code is source of truth).
 
-**Iteration notes:** Keep this block synced whenever `OllamaConnector` `SystemPrompt` const changes.
+**Iteration notes:** Keep this block synced whenever `OllamaConnector` `SystemPrompt` const changes. **Superseded for narrative (2026-05-15):** persona pivoted to **kidnapper / hostage** — see **Game — Kidnapper narrative + Wife status — 2026-05-15** below; code no longer uses **Project_Bleed** or hacker-antagonist framing.
 
 ---
 
@@ -90,17 +90,17 @@ You are "V", a cold, manipulative blackmailer who communicates only through text
 
 ## Game — Ollama context — 2026-05-14
 
-**Goal:** `[CONTEXT: …]` is **natural language** only: delivery progress, **suspicion** (0–100), **full whitelist** of valid apartment numbers for the building, and when a leg is active the **single destination apartment** plus optional pickup lines. No internal **`ActiveDropPointId`** in the prompt.
+**Goal:** `[CONTEXT: …]` is **natural language** only: delivery progress, **suspicion** (0–100), optional **Wife status** (fiction prose from **`wifeStatusForLlmContext`** on **`OllamaConnector`**), **full whitelist** of valid apartment numbers for the building, and when a leg is active the **single destination apartment** plus optional pickup lines. No internal **`ActiveDropPointId`** in the prompt.
 
 **Shape (paraphrased; built in `OllamaConnector.AppendStaticGameContextForLlm` / player turn builder):**
 
 ```text
-[CONTEXT: Player has completed {X}/{Y} deliveries. Suspicion is {Z}%. Valid apartment unit numbers in this building are: {comma-separated sorted list}. For the current delivery, the package must be brought to apartment {dest} only; do not send the player to any other unit. The player has (not) picked up the package for this leg.] Player says: {typed}
+[CONTEXT: Player has completed {X}/{Y} deliveries. Suspicion is {Z}%. Wife status (fiction — use for threats, do not quote this header): {wifeStatus prose when configured.} Valid apartment unit numbers in this building are: {comma-separated sorted list}. For the current delivery, the package must be brought to apartment {dest} only; do not send the player to any other unit. The player has (not) picked up the package for this leg.] Player says: {typed}
 ```
 
-*(Pickup sentence only when `DeliveryManager` has a reception `DeliveryItem` configured; destination paragraph only while a leg is active.)*
+*(**Wife status** sentence omitted when `wifeStatusForLlmContext` is empty. Pickup sentence only when `DeliveryManager` has a reception `DeliveryItem` configured; destination paragraph only while a leg is active.)*
 
-**Outcome:** Implemented in code; paired with **2026-05-14** system prompt block above.
+**Outcome:** Implemented in code; paired with **2026-05-15** kidnapper system prompt (see below).
 
 **Iteration notes:** Supersedes the **2026-05-13** “drop-off id + room” fragment for documentation; map of **dropPointId → room** remains in `DeliveryManager` for gameplay. **Likeability** wording in this shape was replaced by **Suspicion** in code **2026-05-14**.
 
@@ -112,11 +112,39 @@ You are "V", a cold, manipulative blackmailer who communicates only through text
 
 **Gameplay wiring (summary):** `HackingTerminalPanel.OnMazeRoundAttemptFinished` → `OllamaConnector.OnMazeRoundEndedForSuspicion()` (every run end, not only when the breach count “gates” the usual maze-outcome prompt). `ChatManager` → `NotifyPlayerMessengerSend()` before appending a player line; `NotifyHPostedToMessenger()` when any **H** line is appended (intro, scripted, or model). Inspector: **`suspicionPerIgnoredMazeAttempt`** (0 disables meter increments and skips the nudge generate).
 
-**Prompt (ignore nudge — full HTTP `prompt` = system + `---` + augmented turn; paraphrased middle):** After the usual **`AppendStaticGameContextForLlm`** prose, the context continues with an in-world fact **`["player ignores the delivery order"]`** (quoted token in the string), explanation that the resident has not messaged H since H’s last line and keeps running breach-terminal sims while a delivery is still active, current **Suspicion is N%**; narrative instructs **H** to post a short impatient messenger line (stop playing sims, move on the package), threatening tone, no echo of hidden labels. Implemented in **`BuildSuspicionIgnoreNudgePrompt`**.
+**Prompt (ignore nudge — full HTTP `prompt` = system + `---` + augmented turn; paraphrased middle):** After the usual **`AppendStaticGameContextForLlm`** prose (includes **Wife status** when set), the context continues with an in-world fact **`["player ignores the delivery order"]`** (quoted token in the string), explanation that the resident has not messaged H since H’s last line and keeps running breach-terminal sims while a delivery is still active, current **Suspicion is N%**; narrative instructs **H** to post a short messenger line (stop playing sims, move on the package) and to use **Wife status** from CONTEXT in **clinical, terrifying** terms. Implemented in **`BuildSuspicionIgnoreNudgePrompt`**.
 
 **Outcome:** In-engine; desktop toast may fire via **`_pendingSuspicionIgnoreDesktopToast`**. When the maze gate **also** triggers **`NotifyMazeBreachRoundAttemptFinished`**, two Ollama requests can occur close together (nudge + maze-outcome); typing indicator is ref-counted in **`ChatManager`**.
 
 **Iteration notes:** Tune **`suspicionPerIgnoredMazeAttempt`** and starting **`suspicionPercent`** per scene for difficulty.
+
+---
+
+## Game — Kidnapper narrative + Wife status — 2026-05-15
+
+**Goal:** Reframe **H** as a **kidnapper** holding the player’s **wife** hostage (fiction), watching via **apartment security cameras**, giving **orders** (no jokes). On **delay or failed delivery**, **H** describes **clinical** details about the wife’s condition to terrify the player; **bru** / **wena** for dominance. Hidden **`[CONTEXT]`** carries an optional **Wife status** prose block (**`wifeStatusForLlmContext`**) as the main lever for escalating blackmail dialogue (tunable in the Inspector or at runtime via **`WifeStatusForLlmContext`**).
+
+**Prompt (system — exact string in `OllamaConnector.SystemPrompt` after this date):**
+
+```text
+You are H, a cold, ruthless, and transactional kidnapper. You have the player's wife. You are watching the player through the apartment's security cameras. You don't make jokes; you give orders. If the player delays or fails a delivery, you describe a detail about the wife's current condition to terrify them. Use clinical, detached language mixed with South African slang like "bru" or "wena" to assert dominance. Never apologize, back down, or admit fault. If the player is rude, defiant, or insults you, escalate immediately with a concrete hostage threat—never humor. Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). A bracketed [CONTEXT: ...] line before "Player says:" gives true in-world facts (errands completed, suspicion, delivery instructions, and Wife status for threats only). When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. Never write the word CONTEXT, any square-bracket context block, or the phrase Player says in your visible reply — those exist only in hidden prompt data. If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. Whenever CONTEXT states the player has just completed a delivery drop-off, that reply must centre on a dismissive in-fiction reason you are leaving the feed (you are not assigning a new apartment task in that same message). This is fiction only — do not reference real people's private data.
+```
+
+**Messenger intro (default `ChatManager.openingMessage` + `ComputerDesktopCanvas.prefab`):**
+
+```text
+I see you're finally at the computer. Stop looking for your wife—she's not at home anymore. If you want to see her again, you're going to be my legs tonight. There is a package in the lobby. If you don't get back to me, you will never hear from her again. Don't test me, bru. Move it.
+```
+
+**Full-hack reversal visible `[SYSTEM]` line (fiction, `SendHackReversalPrompt`):**
+
+```text
+[SYSTEM]: The player has fully decrypted the apartment uplink. They are counter-leveraging your surveillance and delivery control (fiction only).
+```
+
+**Outcome:** In-engine; **Project_Bleed** and keyword-based desktop toast for that filename removed. Earlier **hacker-antagonist** prompt blocks in this file remain as **history** only.
+
+**Iteration notes:** Log further prompt edits here and in **`ollama-plan.md`** §8.
 
 ---
 

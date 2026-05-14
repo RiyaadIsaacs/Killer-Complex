@@ -33,7 +33,7 @@
 
 ## 2026-05-13
 
-- **LLM / UI:** `OllamaConnector.cs` — persona **H** (new system prompt: tone, sarcastic SA slang rule, no apologies, **Project_Bleed_v2.docx** escalation); `UpdateChatFeed` sender **`H`**. `ChatManager.cs` — opening intro line on first enable; typing indicator (`ShowTypingIndicator` / `HideTypingIndicator`, optional `TMP_Text` pulse or feed line); defaults **H** for intro + typing copy; `BuildTypingFeedLine` uses `introSenderName`.
+- **LLM / UI:** `OllamaConnector.cs` — persona **H** *(2026-05-13: hacker tone + **Project_Bleed** — later **2026-05-15** kidnapper / hostage pivot; see **`prompts-used.md`**)*; `UpdateChatFeed` sender **`H`**. `ChatManager.cs` — opening intro line on first enable; typing indicator (`ShowTypingIndicator` / `HideTypingIndicator`, optional `TMP_Text` pulse or feed line); defaults **H** for intro + typing copy; `BuildTypingFeedLine` uses `introSenderName`.
 - **Documentation:** `prompts-used.md` (2026-05-13 **H** prompt + archived **V**), `ollama-plan.md` (**H** persona / flow / fallback), `README.md`, `setup.md` (typing + **H**), `plan.md` (persona **H**), `refinements-changes.md`, `RiyaadWork.md` (this entry).
 - **Pushed:** Commit to GitHub with the above files and script changes.
 
@@ -75,6 +75,14 @@
 - **LLM / gameplay:** `OllamaConnector.cs` — **`SuspicionPercent`** (0–100, starts at 0 in scenes), serialized **`suspicionPerIgnoredMazeAttempt`** for tuning; **`[CONTEXT: …]`** now reports **Suspicion is …%** instead of likeability. When a maze breach **run** ends during an **active delivery** and the player has **not** messaged **H** since **H**’s last line, suspicion increases and a dedicated **`BuildSuspicionIgnoreNudgePrompt`** turn is sent (in-world fact **`["player ignores the delivery order"]`**, treat as ignored, impatient follow-up). **`ChatManager`** calls **`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**; **`HackingTerminalPanel`** calls **`OnMazeRoundEndedForSuspicion()`** on every run end.
 - **Documentation:** `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md`, this file; historical **likeability** references in older log lines left annotated where relevant.
 - **Pushed:** Commit to GitHub with C# / scene updates and doc refresh.
+
+---
+
+## 2026-05-15 — Kidnapper narrative + Wife status in LLM context
+
+- **LLM / copy:** `OllamaConnector.cs` — **kidnapper** system prompt (wife hostage, cameras, clinical escalation, **bru**/**wena**); **`wifeStatusForLlmContext`** appended to **`[CONTEXT]`**; **`SendHackReversalPrompt`** retuned to uplink/surveillance fiction. **`ChatManager.cs`** + **`ComputerDesktopCanvas.prefab`** — new opening messenger line (lobby package, wife leverage).
+- **Documentation:** `prompts-used.md`, `ollama-plan.md`, `README.md`, `plan.md`, `setup.md`, `refinements-changes.md`, this file.
+- **Pushed:** Commit to GitHub with doc refresh and narrative-aligned code.
 
 ---
 

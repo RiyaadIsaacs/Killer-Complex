@@ -1,6 +1,6 @@
 # Killer Complex
 
-First-person Unity project (**URP**, **Input System**) for **Game Design 3A — Part 2**: a local **Ollama** LLM drives an in-fiction online persona (**H**, a threatening hacker) who coerces the player through chat, assigns **package deliveries** in a multi-floor complex, and reacts while the player uses a **home computer** (hacking mini-games, waiting for the next job). **Fiction only** — no real personal data is collected; see content note below.
+First-person Unity project (**URP**, **Input System**) for **Game Design 3A — Part 2**: a local **Ollama** LLM drives an in-fiction persona (**H**, a cold transactional kidnapper holding the player’s wife hostage in fiction) who orders the player through chat and **security-camera surveillance**, assigns **package deliveries** in a multi-floor complex, and reacts while the player uses a **home computer** (hacking mini-games, waiting for the next job). **Fiction only** — no real personal data is collected; see content note below.
 
 **Unity version:** **6000.3.15f1** (authoritative: `ProjectSettings/ProjectVersion.txt`)
 
@@ -8,7 +8,7 @@ First-person Unity project (**URP**, **Input System**) for **Game Design 3A — 
 
 ## Content note
 
-This prototype includes **pressure / blackmail / thriller** themes and optional references to **illicit packages** as **ambiguous fiction**. Generated text may be unsettling. The game uses a **local LLM**; players should be aware output is **machine-generated** and may be inconsistent. Not suitable for young children.
+This prototype includes **pressure / coercion / thriller** themes (fiction: **hostage leverage**, surveillance, **package errands** as ambiguous fiction). Generated text may be unsettling. The game uses a **local LLM**; players should be aware output is **machine-generated** and may be inconsistent. Not suitable for young children.
 
 ---
 

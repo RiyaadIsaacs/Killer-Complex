@@ -6,6 +6,7 @@ using UnityEngine.Networking;
 
 /// <summary>
 /// Sends prompts to a local Ollama <c>/api/generate</c> endpoint and posts replies into <see cref="ChatManager"/>.
+/// Persona <b>H</b>: kidnapper fiction with hidden game context (deliveries, suspicion, wife status).
 /// </summary>
 public class OllamaConnector : MonoBehaviour
 {
@@ -15,20 +16,18 @@ public class OllamaConnector : MonoBehaviour
     private const string HackerSenderLabel = "H";
 
     private const string SystemPrompt =
-        "You are \"H\", a hacker antagonist who communicates only through text. " +
-        "You operate in and around a South African apartment complex. " +
-        "You coerce the resident with implied threats and leverage; you never claim to be law enforcement. " +
-        "CORE CHARACTER — TONE: threatening, impatient, transactional. Every reply should pressure, rush, or frame obedience as a deal (compliance vs consequences). " +
-        "SLANG: you may use South African English touches such as \"eish\", \"sharp\", and \"lekker\" sparingly, and only sarcastically or mockingly — never warmly or kindly. " +
-        "RULE: never apologize, back down, or admit fault. " +
-        "If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). " +
+        "You are H, a cold, ruthless, and transactional kidnapper. You have the player's wife. " +
+        "You are watching the player through the apartment's security cameras. You don't make jokes; you give orders. " +
+        "If the player delays or fails a delivery, you describe a detail about the wife's current condition to terrify them. " +
+        "Use clinical, detached language mixed with South African slang like \"bru\" or \"wena\" to assert dominance. " +
+        "Never apologize, back down, or admit fault. If the player is rude, defiant, or insults you, escalate immediately with a concrete hostage threat—never humor. " +
         "Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). " +
-        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, suspicion pressure, delivery instructions). " +
+        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, suspicion, delivery instructions, and Wife status for threats only). " +
         "When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. " +
         "Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. " +
         "Never write the word CONTEXT, any square-bracket context block, or the phrase Player says in your visible reply — those exist only in hidden prompt data. " +
         "If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. " +
-        "Whenever CONTEXT states the player has just completed a delivery drop-off, that reply must centre on a dismissive in-fiction reason you are leaving the computer (you are not assigning a new apartment task in that same message). " +
+        "Whenever CONTEXT states the player has just completed a delivery drop-off, that reply must centre on a dismissive in-fiction reason you are leaving the feed (you are not assigning a new apartment task in that same message). " +
         "This is fiction only — do not reference real people's private data.";
 
     [Header("References")]
@@ -40,7 +39,7 @@ public class OllamaConnector : MonoBehaviour
     /// <summary>Inspector link or runtime-resolved <see cref="DeliveryManager"/> (same instance used for LLM context).</summary>
     public DeliveryManager DeliveryManagerForGameplay => GetDeliveryManager();
 
-    [Tooltip("Optional. Desktop toast + SFX when H sends an excuse reply, hack-reversal reply, maze-round outcome reply, a suspicion nudge (ignored delivery + breach sims), or a Project_Bleed blackmail threat.")]
+    [Tooltip("Optional. Desktop toast + SFX when H sends an excuse reply, hack-reversal reply, maze-round outcome reply, or a suspicion nudge (ignored delivery + breach sims).")]
     [SerializeField] private DesktopMessengerNotification desktopMessengerNotification;
 
     [Header("LLM context (not shown in chat UI)")]
@@ -54,6 +53,12 @@ public class OllamaConnector : MonoBehaviour
     [SerializeField]
     [Tooltip("Used for LLM context only when DeliveryManager is not assigned; otherwise TotalDeliveryLegs from DeliveryManager is used.")]
     private int totalDeliveries = 3;
+
+    [SerializeField, TextArea(4, 16)]
+    [Tooltip("Appended to hidden [CONTEXT] as Wife status — fiction H may use for clinical, provocative threats (especially when deliveries stall or fail). Tune per scene or update at runtime via WifeStatusForLlmContext.")]
+    private string wifeStatusForLlmContext =
+        "Hostage secured off-site, conscious, monitored. Vitals nominal; restraint abrasion on wrists observed. " +
+        "Escalate with new concrete clinical detail when the player delays, ignores orders, or fails a delivery.";
 
     [Header("Ollama")]
     [SerializeField] private string apiUrl = DefaultEndpoint;
@@ -113,6 +118,13 @@ public class OllamaConnector : MonoBehaviour
         set => suspicionPercent = Mathf.Clamp(value, 0f, 100f);
     }
 
+    /// <summary>Fiction-only hostage detail block appended to hidden LLM context; safe to update at runtime for escalating beats.</summary>
+    public string WifeStatusForLlmContext
+    {
+        get => wifeStatusForLlmContext ?? string.Empty;
+        set => wifeStatusForLlmContext = value ?? string.Empty;
+    }
+
     /// <summary>Call from <see cref="ChatManager"/> when the player sends any messenger line.</summary>
     public void NotifyPlayerMessengerSend()
     {
@@ -163,7 +175,7 @@ public class OllamaConnector : MonoBehaviour
         ctx.Append(" In-world fact: [\"player ignores the delivery order\"] — the resident has not messaged you since your last line and keeps running breach-terminal sims while a delivery is still active. ");
         ctx.Append("Suspicion is ");
         ctx.Append(Mathf.RoundToInt(Mathf.Clamp(suspicionPercent, 0f, 100f)));
-        ctx.Append("%. Treat this as being ignored. Reply in-character as H: post a new short impatient messenger line ordering them to stop playing with sims and move on the package; stay threatening; do not paste hidden context labels or the word CONTEXT.");
+        ctx.Append("%. Treat this as being ignored. Reply in-character as H: post a new short messenger line ordering them to stop playing with sims and move on the package; remind them what is at stake using Wife status from CONTEXT in clinical, terrifying terms; stay dominant; do not paste hidden context labels or the word CONTEXT.");
         const string narrative =
             "This block is for your next visible reply only — output what H would type in the messenger, nothing else.";
         return $"{SystemPrompt}\n\n---\n\n[CONTEXT: {ctx}]\n\n{narrative}";
@@ -171,7 +183,7 @@ public class OllamaConnector : MonoBehaviour
 
     /// <summary>
     /// Queues a non-streaming generate call to Ollama. On success, appends H's reply via <see cref="ChatManager.UpdateChatFeed"/>.
-    /// The request includes a hidden context prefix (deliveries, suspicion) before the player line.
+    /// The request includes a hidden context prefix (deliveries, suspicion, wife status) before the player line.
     /// </summary>
     public void SendToOllama(string userPrompt)
     {
@@ -194,7 +206,7 @@ public class OllamaConnector : MonoBehaviour
 
     /// <summary>
     /// After the hacking terminal reaches 100%, posts a visible <c>[SYSTEM]</c> line and asks Ollama for H's reaction
-    /// to the player reversing the blackmail (fiction only).
+    /// to the player seizing the uplink (fiction only).
     /// </summary>
     public void SendHackReversalPrompt()
     {
@@ -212,7 +224,7 @@ public class OllamaConnector : MonoBehaviour
             cm.TryPrepareNextDeliveryIfIdle();
 
         const string escalation =
-            "[SYSTEM]: The player has successfully decrypted your personal photos. They are now blackmailing YOU.";
+            "[SYSTEM]: The player has fully decrypted the apartment uplink. They are counter-leveraging your surveillance and delivery control (fiction only).";
 
         cm.UpdateChatFeed("SYSTEM", escalation);
         cm.ShowTypingIndicator();
@@ -225,8 +237,8 @@ public class OllamaConnector : MonoBehaviour
         string narrative =
             escalation +
             "\n\nTreat the [SYSTEM] line above as true in-world fiction for this game only. " +
-            "Reply in-character as H: you are now on the defensive but never apologize or admit fault; stay threatening and transactional; a few sentences only. " +
-            "If CONTEXT states an active delivery to a specific apartment, you must still give that order in-character in this same reply (ridicule, urgency, leverage) alongside your reaction to being blackmailed.";
+            "Reply in-character as H: you are cornered on the tech side but never apologize or admit fault; stay cold and transactional; leverage the hostage; a few sentences only. " +
+            "If CONTEXT states an active delivery to a specific apartment, you must still give that order in-character in this same reply alongside your reaction.";
 
         string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
         string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
@@ -265,7 +277,7 @@ public class OllamaConnector : MonoBehaviour
 
         string narrative =
             beat +
-            "Reply in-character as H in the messenger: react to that breach outcome with your usual tone; if CONTEXT states an active delivery to a specific apartment, give or reinforce that order in this same reply; keep it concise.";
+            "Reply in-character as H in the messenger: react to that breach outcome with your kidnapper tone (orders, cameras, hostage leverage); if CONTEXT states an active delivery to a specific apartment, give or reinforce that order in this same reply; keep it concise.";
 
         string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
         string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
@@ -378,8 +390,6 @@ public class OllamaConnector : MonoBehaviour
             _pendingExcuseMessengerDesktopToast = false;
             showToast = true;
         }
-        else if (reply.IndexOf("Project_Bleed", StringComparison.OrdinalIgnoreCase) >= 0)
-            showToast = true;
 
         if (!showToast)
             return;
@@ -513,6 +523,12 @@ public class OllamaConnector : MonoBehaviour
         ctx.Append(" deliveries. Suspicion is ");
         ctx.Append(suspicion);
         ctx.Append("%.");
+        if (!string.IsNullOrWhiteSpace(wifeStatusForLlmContext))
+        {
+            ctx.Append(" Wife status (fiction — use for threats, do not quote this header): ");
+            ctx.Append(wifeStatusForLlmContext.Trim());
+            ctx.Append('.');
+        }
         ctx.Append(" Valid apartment unit numbers in this building are: ");
         ctx.Append(allowed);
         ctx.Append('.');
