@@ -60,3 +60,15 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **Docs:** `README.md`, `setup.md`, `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md`, `RiyaadWork.md` updated for this push.
 
 ---
+
+## 2026-05-14 — Hacking maze breach minigame + world **[E]** prompts
+
+- **Scripts touched / added:** `HackingMazeMinigame.cs`, `HackingTerminalPanel.cs`, `ComputerTerminal.cs`, `PlayerController.cs`, `InteractPromptHud.cs`, `InteractPromptResolver.cs`, `Interactable.cs`, `DeliveryManager.cs`, `DeliveryZone.cs`.
+- **Hacking terminal → maze:** **`HackingTerminalPanel`** opens a procedural **maze breach** via **`HackingMazeMinigame`** (added at runtime with **`AddComponent`** on the same object as the panel if missing — not serialized on **`ComputerDesktopCanvas.prefab`** by default). **Hack** starts a run; reaching the **green exit** calls **`ApplyMazeRoundWin()`**, which adds **`mazeWinProgressPercent`** (default **10**) to the decryption slider; at **100%** the existing **`OnHackSuccessful()`** path runs (events, **`OllamaConnector.SendHackReversalPrompt`** when assigned).
+- **Maze rules / difficulty:** **Tier** from current slider / win step (**`GetMazeTier()`**). Maze size grows with tier; **obstacles** (orange, impassable) and **bombs** (red, fail the run with no % gain) scale up. **Loop carving** after the perfect maze adds **alternate routes**; hazards use a **blended placement** (shortest-path vs longer-path cells, **`corridorHazardBias`**) so they sit on competing paths, not one obvious line. **BFS** keeps a valid bomb-free route whenever hazards are kept.
+- **Controls:** **WASD / arrows**, **hold** to repeat steps (**`holdInitialDelay`**, **`holdRepeatInterval`**); **Esc** closes the maze first via **`HackingMazeMinigame.TryConsumeEscape()`** from **`ComputerTerminal`** before exiting the whole computer UI.
+- **Maze UI:** Runtime-built overlay (title, **Controls** section with bullet copy, live status line, grid, **Abort breach**). Panel scaled up for readability (**~960×780** box, larger grid min/preferred heights, higher TMP sizes for title / status / controls / button); maze cell layout fallback and **minimum cell pixel size** increased so tiles stay legible.
+- **World interact prompts:** **`InteractPromptHud`** (auto-added on **`PlayerController`** if absent) — per-frame **`Offer`** + **`LateUpdate`** picks highest priority. **`PlayerController`** shares **`TryGetInteractRay`** with **`TryInteract`** and calls **`InteractPromptResolver.TryResolve`**. **`Interactable`** optional component overrides label + anchor. Built-in labels for computer, door, package, and **`DeliveryZone.TryGetWorldInteractPrompt`** (deliver / wrong apartment / get package first / generic door). **`DeliveryManager`**: **`CanInteractDropPoint`**, **`GetDeliveryDropFailureReason`**, and **`TryCompleteDeliveryAtDropPoint`** aligned for prompts + **`Interact`** drop-off.
+- **AI-assisted:** Cursor; verify in Editor: open hacking app → **Hack** → maze readable, hold-move + hazards, % advances per clear; ray **[E]** prompts near computer / doors / packages / zones; Esc in maze vs Esc closing PC.
+
+---
