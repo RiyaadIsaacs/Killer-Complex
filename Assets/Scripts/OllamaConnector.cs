@@ -27,12 +27,15 @@ public class OllamaConnector : MonoBehaviour
         "When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. " +
         "Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. " +
         "If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. " +
+        "Whenever CONTEXT states the player has just completed a delivery drop-off, that reply must centre on a dismissive in-fiction reason you are leaving the computer (you are not assigning a new apartment task in that same message). " +
         "This is fiction only — do not reference real people's private data.";
 
     [Header("References")]
     [SerializeField] private ChatManager chatManager;
     [Tooltip("Optional. If set, delivery progress in the LLM context matches gameplay.")]
     [SerializeField] private DeliveryManager deliveryManager;
+    [Tooltip("Optional. Desktop toast + SFX when H sends an excuse reply, hack-reversal reply, or a Project_Bleed blackmail threat.")]
+    [SerializeField] private DesktopMessengerNotification desktopMessengerNotification;
 
     [Header("LLM context (not shown in chat UI)")]
     [SerializeField, Range(0f, 100f)]
@@ -47,6 +50,9 @@ public class OllamaConnector : MonoBehaviour
     [SerializeField] private string model = "mistral:7b-instruct";
     [Tooltip("Seconds before the request is aborted (large models may be slow).")]
     [SerializeField] private int requestTimeoutSeconds = 180;
+
+    bool _pendingExcuseMessengerDesktopToast;
+    bool _pendingHackReversalMessengerDesktopToast;
 
     [Serializable]
     private struct OllamaGenerateRequest
@@ -78,14 +84,15 @@ public class OllamaConnector : MonoBehaviour
         if (string.IsNullOrWhiteSpace(userPrompt))
             return;
 
+        string playerTurn = BuildPlayerTurnForPrompt(userPrompt.Trim());
+        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{playerTurn}";
+
         if (chatManager == null)
         {
             Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned.", this);
             return;
         }
 
-        string playerTurn = BuildPlayerTurnForPrompt(userPrompt.Trim());
-        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{playerTurn}";
         chatManager.ShowTypingIndicator();
         StartCoroutine(RequestOllamaCoroutine(fullPrompt));
     }
@@ -107,6 +114,8 @@ public class OllamaConnector : MonoBehaviour
 
         chatManager.UpdateChatFeed("SYSTEM", escalation);
         chatManager.ShowTypingIndicator();
+
+        _pendingHackReversalMessengerDesktopToast = true;
 
         string narrative =
             escalation +
@@ -142,6 +151,7 @@ public class OllamaConnector : MonoBehaviour
 
             if (request.result != UnityWebRequest.Result.Success)
             {
+                ClearPendingDesktopMessengerToasts();
                 HandleFailure(
                     $"Ollama request failed ({request.result}): {request.error}\n" +
                     "Is Ollama running? Try: ollama serve — and ensure the model is pulled (e.g. ollama pull mistral:7b-instruct).");
@@ -151,6 +161,7 @@ public class OllamaConnector : MonoBehaviour
             string raw = request.downloadHandler.text;
             if (string.IsNullOrEmpty(raw))
             {
+                ClearPendingDesktopMessengerToasts();
                 HandleFailure("Ollama returned an empty body.");
                 yield break;
             }
@@ -162,17 +173,72 @@ public class OllamaConnector : MonoBehaviour
             }
             catch (Exception ex)
             {
+                ClearPendingDesktopMessengerToasts();
                 HandleFailure($"Could not parse Ollama JSON: {ex.Message}\nRaw (truncated): {Truncate(raw, 400)}");
                 yield break;
             }
 
             if (string.IsNullOrWhiteSpace(reply))
             {
+                ClearPendingDesktopMessengerToasts();
                 HandleFailure($"Ollama returned no usable \"response\" field.\nRaw (truncated): {Truncate(raw, 400)}");
                 yield break;
             }
 
             chatManager.UpdateChatFeed(HackerSenderLabel, reply);
+            MaybeTriggerDesktopMessengerNotificationAfterHReply(reply);
+        }
+    }
+
+    void ClearPendingDesktopMessengerToasts()
+    {
+        _pendingExcuseMessengerDesktopToast = false;
+        _pendingHackReversalMessengerDesktopToast = false;
+    }
+
+    void MaybeTriggerDesktopMessengerNotificationAfterHReply(string reply)
+    {
+        bool showToast = false;
+        if (_pendingHackReversalMessengerDesktopToast)
+        {
+            _pendingHackReversalMessengerDesktopToast = false;
+            showToast = true;
+        }
+        else if (_pendingExcuseMessengerDesktopToast)
+        {
+            _pendingExcuseMessengerDesktopToast = false;
+            showToast = true;
+        }
+        else if (reply.IndexOf("Project_Bleed", StringComparison.OrdinalIgnoreCase) >= 0)
+            showToast = true;
+
+        if (!showToast)
+            return;
+
+        TryTriggerDesktopMessengerNotification("New Message");
+    }
+
+    void TryTriggerDesktopMessengerNotification(string message)
+    {
+        if (desktopMessengerNotification != null)
+        {
+            desktopMessengerNotification.TriggerNotification(message);
+            return;
+        }
+
+        if (DesktopMessengerNotification.Instance != null)
+        {
+            DesktopMessengerNotification.Instance.TriggerNotification(message);
+            return;
+        }
+
+        foreach (var d in FindObjectsByType<DesktopMessengerNotification>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (d != null)
+            {
+                d.TriggerNotification(message);
+                return;
+            }
         }
     }
 
@@ -212,6 +278,8 @@ public class OllamaConnector : MonoBehaviour
         if (deliveryManager != null)
             completed = Mathf.Clamp(deliveryManager.currentDeliveryID, 0, total);
 
+        bool excuseBeatForDesktopToast = deliveryManager != null && deliveryManager.PostDeliveryStepAwayBeatPending;
+
         int like = Mathf.RoundToInt(likeabilityPercent);
         string allowed = DeliveryManager.MappedApartmentsListForPrompt;
 
@@ -226,6 +294,9 @@ public class OllamaConnector : MonoBehaviour
         ctx.Append(" Valid apartment unit numbers in this building are: ");
         ctx.Append(allowed);
         ctx.Append('.');
+
+        if (deliveryManager != null)
+            deliveryManager.AppendAndClearPostDeliveryStepAwayBeatInstruction(ctx);
 
         if (deliveryManager != null && deliveryManager.ActiveDropPointId >= 0)
         {
@@ -251,6 +322,8 @@ public class OllamaConnector : MonoBehaviour
                     : " The player has not picked up the package for this leg yet.");
             }
         }
+
+        _pendingExcuseMessengerDesktopToast = excuseBeatForDesktopToast;
 
         return $"[CONTEXT: {ctx}] Player says: {userMessage}";
     }

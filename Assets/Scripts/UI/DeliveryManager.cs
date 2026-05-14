@@ -80,6 +80,34 @@ public class DeliveryManager : MonoBehaviour
 
     private readonly HashSet<int> _registeredDropPointIds = new HashSet<int>();
 
+    bool _postDeliveryStepAwayBeatPending;
+
+    /// <summary>True before the next messenger turn consumes the one-shot "H steps away" LLM beat (see <see cref="AppendAndClearPostDeliveryStepAwayBeatInstruction"/>).</summary>
+    public bool PostDeliveryStepAwayBeatPending => _postDeliveryStepAwayBeatPending;
+
+    /// <summary>
+    /// When set, the next <see cref="OllamaConnector"/> prompt should instruct H to give a dismissive away-from-keyboard excuse; then clears the flag.
+    /// </summary>
+    public void AppendAndClearPostDeliveryStepAwayBeatInstruction(System.Text.StringBuilder ctx)
+    {
+        if (!_postDeliveryStepAwayBeatPending)
+            return;
+
+        _postDeliveryStepAwayBeatPending = false;
+        ctx.Append(" The player has just completed a delivery drop-off. ");
+        ctx.Append("In this reply H must give a short dismissive excuse for stepping away from the computer ");
+        ctx.Append("(e.g. checking on the package, taking a call, dealing with building security) — tone brusque, treating the player as an irritation. ");
+        ctx.Append("You may use casual South African brush-off lines such as \"wait a bit\" or \"I'm coming now\" as impatient texture, not warmth. ");
+        ctx.Append("This is the in-fiction lull when the player has time alone at their machine; ");
+        ctx.Append("do not assign a new apartment delivery or new task numbers in this reply. ");
+    }
+
+    /// <summary>Clears the one-shot beat without sending it to the LLM (e.g. no <see cref="OllamaConnector"/> in scene).</summary>
+    public void AbandonPostDeliveryStepAwayBeat()
+    {
+        _postDeliveryStepAwayBeatPending = false;
+    }
+
     void OnValidate()
     {
         totalDeliveryLegs = Mathf.Max(1, totalDeliveryLegs);
@@ -212,6 +240,7 @@ public class DeliveryManager : MonoBehaviour
         int completedId = currentDeliveryID;
         currentDeliveryID++;
         OnDeliveryCompleted?.Invoke(completedId);
+        _postDeliveryStepAwayBeatPending = true;
 
         if (currentDeliveryID >= TotalDeliveryLegs)
         {

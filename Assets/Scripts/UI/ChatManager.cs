@@ -179,10 +179,19 @@ public class ChatManager : MonoBehaviour
         chatInputField.text = string.Empty;
         chatInputField.ActivateInputField();
 
-        MaybePrepareDeliveryWhenMessengerSendIfIdle();
+        var dm = ResolveDeliveryManager();
+        bool deferPrepareNextLeg = dm != null && dm.PostDeliveryStepAwayBeatPending;
+
+        if (!deferPrepareNextLeg)
+            MaybePrepareDeliveryWhenMessengerSendIfIdle();
 
         if (ollamaConnector != null)
             ollamaConnector.SendToOllama(text);
+        else if (deferPrepareNextLeg && dm != null)
+            dm.AbandonPostDeliveryStepAwayBeat();
+
+        if (deferPrepareNextLeg)
+            MaybePrepareDeliveryWhenMessengerSendIfIdle();
     }
 
     void MaybePrepareDeliveryWhenMessengerSendIfIdle()

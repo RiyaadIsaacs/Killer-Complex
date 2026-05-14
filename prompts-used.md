@@ -159,6 +159,18 @@ Ollama as online persona blackmailing with fictional personal info; designates a
 
 ---
 
+## Cursor — 2026-05-14 — Hacking maze controls layout
+
+**Goal:** Stop clipping of maze **Controls** / **How to play** when squeezed under the grid; show them **to the left** of the hacking terminal, outside the terminal frame.
+
+**Prompt (condensed user request):** Maze gameplay is fine but controls and instructions are cut off at the bottom; place controls on the **left**, next to the hacking terminal; keep maze area sized for the terminal.
+
+**Outcome:** Implemented in `HackingMazeMinigame` — external **`_controlsDockRoot`** under the terminal panel parent, **`LayoutControlsDock`**, **`CreateControlsSection(..., dockOutsideTerminal: true)`**, reduced **`MazeChromeVerticalReserve`**, dock teardown in **`HideMazeUi`** / **`OnDestroy`**.
+
+**Iteration notes:** No change to **Ollama** system or `[CONTEXT]` templates this session.
+
+---
+
 ## Template — copy for new rows
 
 ### YYYY-MM-DD — Game Ollama — 

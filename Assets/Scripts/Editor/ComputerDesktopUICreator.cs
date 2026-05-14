@@ -1,5 +1,6 @@
 ﻿using TMPro;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -85,6 +86,8 @@ public static class ComputerDesktopUICreator
         so.FindProperty("shutdownComputerButton").objectReferenceValue = shutdownBtn;
         so.ApplyModifiedProperties();
 
+        EnsureMessengerToastOnDesktopRoot(root, sprite, tmpFont);
+
         Selection.activeGameObject = root;
 
         if (!AssetDatabase.IsValidFolder("Assets/Prefabs"))
@@ -142,7 +145,7 @@ public static class ComputerDesktopUICreator
         es.AddComponent<InputSystemUIInputModule>();
     }
 
-    static Sprite CreateWhiteSprite()
+    public static Sprite CreateWhiteSprite()
     {
         const int size = 64;
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -338,6 +341,169 @@ public static class ComputerDesktopUICreator
         }
 
         return panel;
+    }
+
+    /// <summary>
+    /// HUD-style messenger toast row + <see cref="SoundManager"/> + <see cref="DesktopMessengerNotification"/> on the desktop canvas root.
+    /// </summary>
+    public static void EnsureMessengerToastOnDesktopRoot(GameObject root, Sprite sprite, TMP_FontAsset tmpFont)
+    {
+        if (root == null || tmpFont == null)
+            return;
+
+        if (root.GetComponent<AudioSource>() == null)
+            root.AddComponent<AudioSource>();
+        if (root.GetComponent<SoundManager>() == null)
+            root.AddComponent<SoundManager>();
+
+        var notify = root.GetComponent<DesktopMessengerNotification>();
+        if (notify == null)
+            notify = root.AddComponent<DesktopMessengerNotification>();
+
+        Transform existing = root.transform.Find("DesktopMessengerToastRow");
+        GameObject row = existing != null ? existing.gameObject : CreateDesktopMessengerToastRow(root.transform, sprite, tmpFont);
+
+        row.SetActive(false);
+
+        var tmp = row.GetComponentInChildren<TextMeshProUGUI>(true);
+        var cg = row.GetComponent<CanvasGroup>();
+        if (cg == null)
+            cg = row.AddComponent<CanvasGroup>();
+
+        var nso = new SerializedObject(notify);
+        nso.FindProperty("toastMessageText").objectReferenceValue = tmp;
+        nso.FindProperty("toastRowRoot").objectReferenceValue = row;
+        nso.FindProperty("toastCanvasGroup").objectReferenceValue = cg;
+        nso.FindProperty("toastRowRect").objectReferenceValue = row.GetComponent<RectTransform>();
+        nso.FindProperty("soundManager").objectReferenceValue = root.GetComponent<SoundManager>();
+        nso.ApplyModifiedProperties();
+    }
+
+    static GameObject CreateDesktopMessengerToastRow(Transform parent, Sprite sprite, TMP_FontAsset tmpFont)
+    {
+        var row = new GameObject("DesktopMessengerToastRow", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+        Undo.RegisterCreatedObjectUndo(row, "Create DesktopMessengerToastRow");
+        row.transform.SetParent(parent, false);
+        var rt = row.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 1f);
+        rt.anchorMax = new Vector2(0.5f, 1f);
+        rt.pivot = new Vector2(0.5f, 1f);
+        rt.anchoredPosition = new Vector2(0f, -88f);
+        rt.sizeDelta = new Vector2(420f, 44f);
+
+        var img = row.GetComponent<Image>();
+        img.sprite = sprite;
+        img.type = Image.Type.Simple;
+        img.color = new Color32(44, 62, 80, 230);
+
+        var cg = row.GetComponent<CanvasGroup>();
+        cg.alpha = 1f;
+        cg.interactable = false;
+        cg.blocksRaycasts = false;
+
+        var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        Undo.RegisterCreatedObjectUndo(textGo, "Create DesktopMessengerToast text");
+        textGo.transform.SetParent(row.transform, false);
+        StretchFull(textGo.GetComponent<RectTransform>());
+        var t = textGo.GetComponent<TextMeshProUGUI>();
+        t.font = tmpFont;
+        t.fontSize = 18;
+        t.fontStyle = FontStyles.Bold;
+        t.alignment = TextAlignmentOptions.Left;
+        t.color = Color.white;
+        t.text = "New Message";
+        t.margin = new Vector4(14f, 4f, 14f, 4f);
+        t.enableWordWrapping = true;
+        t.overflowMode = TextOverflowModes.Ellipsis;
+
+        return row;
+    }
+
+    [MenuItem("GameObject/Computer Desktop Canvas/Add Messenger Toast + Sound", false, 11)]
+    public static void AddMessengerToastToSelectedDesktop()
+    {
+        var selected = Selection.activeGameObject;
+        if (selected == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Add Messenger Toast",
+                "Select the Computer Desktop Canvas root (or a child under it) in the Hierarchy.",
+                "OK");
+            return;
+        }
+
+        var desktopUi = selected.GetComponentInParent<ComputerDesktopUI>();
+        var rootGo = desktopUi != null ? desktopUi.gameObject : selected;
+        if (rootGo.GetComponent<Canvas>() == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Add Messenger Toast",
+                "The selected object must be part of a UI Canvas that has ComputerDesktopUI on the root.",
+                "OK");
+            return;
+        }
+
+        var tmpFont = TMP_Settings.defaultFontAsset;
+        if (tmpFont == null)
+        {
+            Debug.LogError("TMP default font missing. Import TMP Essential Resources first.");
+            return;
+        }
+
+        Undo.RegisterCompleteObjectUndo(rootGo, "Add Messenger Toast + Sound");
+        var sprite = CreateWhiteSprite();
+        EnsureMessengerToastOnDesktopRoot(rootGo, sprite, tmpFont);
+
+        EditorUtility.SetDirty(rootGo);
+        if (rootGo.scene.IsValid())
+            EditorSceneManager.MarkSceneDirty(rootGo.scene);
+
+        Debug.Log(
+            $"Messenger toast + SoundManager on '{rootGo.name}'. Assign notification AudioClip on SoundManager; optionally assign DesktopMessengerNotification on OllamaConnector.");
+    }
+
+    const string ComputerDesktopCanvasPrefabPath = "Assets/Prefabs/ComputerDesktopCanvas.prefab";
+
+    /// <summary>
+    /// One-click: opens the desktop prefab, runs <see cref="EnsureMessengerToastOnDesktopRoot"/>, saves. No Hierarchy selection.
+    /// </summary>
+    [MenuItem("Tools/Killer-Complex/Patch ComputerDesktopCanvas prefab (Messenger Toast + Sound)")]
+    public static void PatchComputerDesktopCanvasPrefabAsset()
+    {
+        if (!System.IO.File.Exists(ComputerDesktopCanvasPrefabPath))
+        {
+            EditorUtility.DisplayDialog(
+                "Patch ComputerDesktopCanvas",
+                $"Prefab not found at:\n{ComputerDesktopCanvasPrefabPath}",
+                "OK");
+            return;
+        }
+
+        var tmpFont = TMP_Settings.defaultFontAsset;
+        if (tmpFont == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Patch ComputerDesktopCanvas",
+                "TMP default font missing. Use Window > TextMeshPro > Import TMP Essential Resources, then run again.",
+                "OK");
+            return;
+        }
+
+        var root = PrefabUtility.LoadPrefabContents(ComputerDesktopCanvasPrefabPath);
+        try
+        {
+            EnsureMessengerToastOnDesktopRoot(root, CreateWhiteSprite(), tmpFont);
+            EditorUtility.SetDirty(root);
+        }
+        finally
+        {
+            PrefabUtility.SaveAsPrefabAsset(root, ComputerDesktopCanvasPrefabPath);
+            PrefabUtility.UnloadPrefabContents(root);
+        }
+
+        AssetDatabase.Refresh();
+        Debug.Log(
+            $"Patched {ComputerDesktopCanvasPrefabPath}. Assign notification AudioClip on SoundManager; optionally wire OllamaConnector.desktopMessengerNotification.");
     }
 }
 

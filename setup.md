@@ -32,6 +32,12 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 
 ---
 
+## 2b. Hacking maze (UI)
+
+- The **maze breach** minigame (`Assets/Scripts/UI/HackingMazeMinigame.cs`) draws a runtime overlay for the grid and status. **Keyboard instructions** (WASD / arrows, hold-to-repeat, Esc) and **how to play** appear in a **dock to the left** of the hacking terminal panel, not under the maze, so text stays readable at typical desktop resolutions.
+
+---
+
 ## 3. Unity ↔ Ollama
 
 - **Script:** `Assets/Scripts/OllamaConnector.cs` — `UnityWebRequest` **POST** to **`http://localhost:11434/api/generate`** (override in the Inspector on the component). JSON body: `model`, `prompt`, `stream: false`. Default model field: **`mistral:7b-instruct`** (change to match what you pulled).

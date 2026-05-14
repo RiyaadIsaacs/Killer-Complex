@@ -19,6 +19,11 @@ public class HackingMazeMinigame : MonoBehaviour
     const float MazeBoxHeight = 780f;
     const float GridMinHeight = 440f;
     const float GridPreferredHeight = 560f;
+    const float MazeHostMargin = 8f;
+    /// <summary>Vertical space reserved in <see cref="MazeBox"/> for title, hint, and abort row (instructions live in <see cref="_controlsDockRoot"/>).</summary>
+    const float MazeChromeVerticalReserve = 230f;
+    const float ControlsDockWidth = 280f;
+    const float ControlsDockGap = 10f;
 
     static readonly Vector2Int[] CardinalDirs =
     {
@@ -27,6 +32,10 @@ public class HackingMazeMinigame : MonoBehaviour
 
     [SerializeField, Range(MinDim, MaxDim)] private int mazeColumns = 15;
     [SerializeField, Range(MinDim, MaxDim)] private int mazeRows = 13;
+
+    [Header("Layout")]
+    [Tooltip("If set, the maze dimmer + dialog are parented here (expected: console Viewport under the Hack button). If empty, uses ConsoleScrollView/Viewport under this panel.")]
+    [SerializeField] private RectTransform mazeHostOverride;
 
     [Header("Movement (hold keys)")]
     [Tooltip("After first step, seconds before auto-repeat starts.")]
@@ -50,6 +59,8 @@ public class HackingMazeMinigame : MonoBehaviour
 
     private HackingTerminalPanel _host;
     private GameObject _overlayRoot;
+    private GameObject _controlsDockRoot;
+    private RectTransform _terminalPanelRt;
     private RectTransform _boxRt;
     private LayoutElement _gridLayoutElement;
     private RectTransform _gridRt;
@@ -98,7 +109,10 @@ public class HackingMazeMinigame : MonoBehaviour
 
         EnsureUiBuilt();
         ApplyMazeChromeLayout();
+        LayoutControlsDock();
+        _controlsDockRoot?.SetActive(true);
         _overlayRoot.transform.SetAsLastSibling();
+        _controlsDockRoot?.transform.SetAsLastSibling();
         _overlayRoot.SetActive(true);
         s_ActiveOverlay = this;
         _won = false;
@@ -128,13 +142,67 @@ public class HackingMazeMinigame : MonoBehaviour
 
     void ApplyMazeChromeLayout()
     {
-        if (_boxRt != null)
-            _boxRt.sizeDelta = new Vector2(MazeBoxWidth, MazeBoxHeight);
+        if (_boxRt == null || _overlayRoot == null)
+            return;
+
+        var host = _overlayRoot.transform.parent as RectTransform;
+        if (host == null)
+            return;
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(host);
+        for (var p = host.parent as RectTransform; p != null; p = p.parent as RectTransform)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(p);
+
+        var aw = Mathf.Max(48f, host.rect.width - MazeHostMargin * 2f);
+        var ah = Mathf.Max(48f, host.rect.height - MazeHostMargin * 2f);
+        var boxW = Mathf.Min(MazeBoxWidth, aw);
+        var boxH = Mathf.Min(MazeBoxHeight, ah);
+
+        _boxRt.anchorMin = new Vector2(0.5f, 0.5f);
+        _boxRt.anchorMax = new Vector2(0.5f, 0.5f);
+        _boxRt.pivot = new Vector2(0.5f, 0.5f);
+        _boxRt.anchoredPosition = Vector2.zero;
+        _boxRt.sizeDelta = new Vector2(boxW, boxH);
+
         if (_gridLayoutElement != null)
         {
-            _gridLayoutElement.minHeight = GridMinHeight;
-            _gridLayoutElement.preferredHeight = GridPreferredHeight;
+            var gridCap = Mathf.Max(120f, boxH - MazeChromeVerticalReserve);
+            _gridLayoutElement.minHeight = Mathf.Min(GridMinHeight, gridCap * 0.98f);
+            _gridLayoutElement.preferredHeight = Mathf.Min(GridPreferredHeight, gridCap);
         }
+
+        LayoutControlsDock();
+    }
+
+    void LayoutControlsDock()
+    {
+        if (_controlsDockRoot == null || _terminalPanelRt == null)
+            return;
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(_terminalPanelRt);
+
+        var pr = _terminalPanelRt.rect;
+        var dockRt = _controlsDockRoot.GetComponent<RectTransform>();
+        dockRt.anchorMin = new Vector2(0.5f, 0.5f);
+        dockRt.anchorMax = new Vector2(0.5f, 0.5f);
+        dockRt.pivot = new Vector2(1f, 0.5f);
+        dockRt.sizeDelta = new Vector2(ControlsDockWidth, Mathf.Max(160f, pr.height - 36f));
+        dockRt.anchoredPosition = new Vector2(-pr.width * 0.5f - ControlsDockGap, 0f);
+    }
+
+    RectTransform GetMazeHostRect()
+    {
+        if (mazeHostOverride != null)
+            return mazeHostOverride;
+
+        var viewport = transform.Find("ConsoleScrollView/Viewport") as RectTransform;
+        if (viewport != null)
+            return viewport;
+
+        var scroll = transform.Find("ConsoleScrollView") as RectTransform;
+        return scroll != null ? scroll : GetComponent<RectTransform>();
     }
 
     static int ToOddClamped(int v)
@@ -160,11 +228,18 @@ public class HackingMazeMinigame : MonoBehaviour
 
     public void CloseWithoutSuccess()
     {
-        if (_overlayRoot != null)
-            _overlayRoot.SetActive(false);
+        HideMazeUi();
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
         _host?.AppendConsoleLine("> Breach sim aborted.");
+    }
+
+    void HideMazeUi()
+    {
+        if (_overlayRoot != null)
+            _overlayRoot.SetActive(false);
+        if (_controlsDockRoot != null)
+            _controlsDockRoot.SetActive(false);
     }
 
     private void Update()
@@ -270,8 +345,7 @@ public class HackingMazeMinigame : MonoBehaviour
     {
         _runEnded = true;
         _host.AppendConsoleLine("> CORRUPTED SECTOR — packet lost. Breach attempt failed (no progress).");
-        if (_overlayRoot != null)
-            _overlayRoot.SetActive(false);
+        HideMazeUi();
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
     }
@@ -280,8 +354,7 @@ public class HackingMazeMinigame : MonoBehaviour
     {
         _won = true;
         _host.AppendConsoleLine("> Uplink node reached — segment cleared.");
-        if (_overlayRoot != null)
-            _overlayRoot.SetActive(false);
+        HideMazeUi();
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
         _host.ApplyMazeRoundWin();
@@ -298,11 +371,28 @@ public class HackingMazeMinigame : MonoBehaviour
             new Vector2(0.5f, 0.5f),
             100f);
 
-        var panelRt = GetComponent<RectTransform>();
+        var font = TMP_Settings.defaultFontAsset;
+
+        _terminalPanelRt = transform.parent as RectTransform;
+        if (_terminalPanelRt != null)
+        {
+            _controlsDockRoot = new GameObject("MazeControlsDock", typeof(RectTransform), typeof(Image));
+            var dockRt = _controlsDockRoot.GetComponent<RectTransform>();
+            dockRt.SetParent(_terminalPanelRt, false);
+            var dk = _controlsDockRoot.GetComponent<Image>();
+            dk.sprite = _pixelSprite;
+            dk.type = Image.Type.Simple;
+            dk.color = new Color32(22, 32, 45, 248);
+            dk.raycastTarget = true;
+            CreateControlsSection(_controlsDockRoot.transform, font, dockOutsideTerminal: true);
+            _controlsDockRoot.SetActive(false);
+        }
+
+        var hostRt = GetMazeHostRect();
 
         _overlayRoot = new GameObject("MazeMinigameOverlay", typeof(RectTransform), typeof(Image));
         var overlayRt = _overlayRoot.GetComponent<RectTransform>();
-        overlayRt.SetParent(panelRt, false);
+        overlayRt.SetParent(hostRt, false);
         StretchFull(overlayRt);
         var dim = _overlayRoot.GetComponent<Image>();
         dim.sprite = _pixelSprite;
@@ -331,7 +421,6 @@ public class HackingMazeMinigame : MonoBehaviour
         v.childForceExpandWidth = true;
         v.childForceExpandHeight = false;
 
-        var font = TMP_Settings.defaultFontAsset;
         var titleGo = new GameObject("MazeTitle", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
         titleGo.transform.SetParent(box.transform, false);
         titleGo.GetComponent<LayoutElement>().preferredHeight = 40f;
@@ -343,11 +432,6 @@ public class HackingMazeMinigame : MonoBehaviour
         titleTmp.alignment = TextAlignmentOptions.Center;
         titleTmp.color = new Color32(220, 230, 240, 255);
         titleTmp.text = "Packet routing maze";
-
-        CreateControlsSection(box.transform, font);
-
-        _hintLabel = CreateTmpLine(box.transform, font, 26f, string.Empty);
-        _hintLabel.gameObject.GetComponent<LayoutElement>().preferredHeight = 52f;
 
         var gridGo = new GameObject("MazeGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement));
         gridGo.transform.SetParent(box.transform, false);
@@ -362,6 +446,9 @@ public class HackingMazeMinigame : MonoBehaviour
         _gridLayout.childAlignment = TextAnchor.UpperLeft;
         _gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
 
+        _hintLabel = CreateTmpLine(box.transform, font, 26f, string.Empty);
+        _hintLabel.gameObject.GetComponent<LayoutElement>().preferredHeight = 52f;
+
         var btnRow = new GameObject("MazeButtonRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
         btnRow.transform.SetParent(box.transform, false);
         btnRow.GetComponent<LayoutElement>().preferredHeight = 56f;
@@ -374,17 +461,25 @@ public class HackingMazeMinigame : MonoBehaviour
 
         CreatePushButton(btnRow.transform, "Abort breach", CloseWithoutSuccess);
 
+        ApplyMazeChromeLayout();
         _overlayRoot.SetActive(false);
     }
 
-    void CreateControlsSection(Transform boxParent, TMP_FontAsset font)
+    void CreateControlsSection(Transform boxParent, TMP_FontAsset font, bool dockOutsideTerminal = false)
     {
         var wrap = new GameObject("ControlsSection", typeof(RectTransform), typeof(Image), typeof(LayoutElement), typeof(VerticalLayoutGroup));
         wrap.transform.SetParent(boxParent, false);
         var wrapLe = wrap.GetComponent<LayoutElement>();
-        wrapLe.preferredHeight = 168f;
-        wrapLe.minHeight = 148f;
-        wrapLe.flexibleHeight = 0f;
+        if (dockOutsideTerminal)
+        {
+            Object.Destroy(wrapLe);
+        }
+        else
+        {
+            wrapLe.preferredHeight = 168f;
+            wrapLe.minHeight = 148f;
+            wrapLe.flexibleHeight = 0f;
+        }
 
         var wrapImg = wrap.GetComponent<Image>();
         wrapImg.sprite = _pixelSprite;
@@ -398,7 +493,7 @@ public class HackingMazeMinigame : MonoBehaviour
         v.childControlWidth = true;
         v.childControlHeight = true;
         v.childForceExpandWidth = true;
-        v.childForceExpandHeight = false;
+        v.childForceExpandHeight = dockOutsideTerminal;
 
         var titleGo = new GameObject("ControlsTitle", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
         titleGo.transform.SetParent(wrap.transform, false);
@@ -406,7 +501,7 @@ public class HackingMazeMinigame : MonoBehaviour
         var titleTmp = titleGo.GetComponent<TextMeshProUGUI>();
         if (font != null)
             titleTmp.font = font;
-        titleTmp.fontSize = 22;
+        titleTmp.fontSize = dockOutsideTerminal ? 20 : 22;
         titleTmp.fontStyle = FontStyles.Bold;
         titleTmp.alignment = TextAlignmentOptions.TopLeft;
         titleTmp.color = new Color32(210, 220, 235, 255);
@@ -415,12 +510,23 @@ public class HackingMazeMinigame : MonoBehaviour
 
         var bodyGo = new GameObject("ControlsBody", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
         bodyGo.transform.SetParent(wrap.transform, false);
-        bodyGo.GetComponent<LayoutElement>().preferredHeight = 118f;
-        bodyGo.GetComponent<LayoutElement>().flexibleHeight = 1f;
+        var bodyLe = bodyGo.GetComponent<LayoutElement>();
+        if (dockOutsideTerminal)
+        {
+            bodyLe.minHeight = 80f;
+            bodyLe.preferredHeight = 120f;
+            bodyLe.flexibleHeight = 1f;
+        }
+        else
+        {
+            bodyLe.preferredHeight = 118f;
+            bodyLe.flexibleHeight = 1f;
+        }
+
         var bodyTmp = bodyGo.GetComponent<TextMeshProUGUI>();
         if (font != null)
             bodyTmp.font = font;
-        bodyTmp.fontSize = 19;
+        bodyTmp.fontSize = dockOutsideTerminal ? 17 : 19;
         bodyTmp.alignment = TextAlignmentOptions.TopLeft;
         bodyTmp.color = new Color32(175, 198, 218, 255);
         bodyTmp.enableWordWrapping = true;
@@ -431,6 +537,9 @@ public class HackingMazeMinigame : MonoBehaviour
             "• Orange: blocked relay (cannot pass)\n" +
             "• Red: corrupted sector — stepping fails this run (no decryption %)\n" +
             "• Esc or Abort breach: leave maze without progress";
+
+        if (dockOutsideTerminal)
+            StretchFull(wrap.GetComponent<RectTransform>());
     }
 
     private static TMP_Text CreateTmpLine(Transform parent, TMP_FontAsset font, float fontSize, string text)
@@ -922,5 +1031,7 @@ public class HackingMazeMinigame : MonoBehaviour
             s_ActiveOverlay = null;
         if (_pixelSprite != null)
             Destroy(_pixelSprite);
+        if (_controlsDockRoot != null)
+            Destroy(_controlsDockRoot);
     }
 }

@@ -55,6 +55,14 @@
 
 ---
 
+## 2026-05-14 (later) — Hacking maze controls dock + docs sync
+
+- **UI:** `HackingMazeMinigame.cs` — **controls / instructions** moved to a **left dock** outside the terminal viewport; **`LayoutControlsDock`**, **`HideMazeUi`**, **`OnDestroy`** cleanup for **`_controlsDockRoot`**; layout tweaks for expanded body text in the dock.
+- **Documentation:** `refinements-changes.md` (new subsection), `README.md` (getting started note), `setup.md` (**§2b**), `prompts-used.md` (Cursor session row), this file.
+- **Git:** Pulled **`origin/main`** (partner **`refinements-changes.md`** update) before committing and pushing with the rest of the session’s tracked changes.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*
