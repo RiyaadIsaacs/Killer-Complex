@@ -19,13 +19,38 @@ public class HackingTerminalPanel : MonoBehaviour
     [SerializeField, Range(1f, 40f)] private float hackProgressPercentPerClick = 8f;
     [Tooltip("Decryption slider increase for each maze completed without hitting a bomb.")]
     [SerializeField, Range(1f, 50f)] private float mazeWinProgressPercent = 10f;
+    [Tooltip("If unset, the first OllamaConnector in loaded scenes is used at runtime (so maze rounds can still message H).")]
     [SerializeField] private OllamaConnector ollamaConnector;
+
+    [Header("Maze → H / next job")]
+    [Tooltip("Finished maze runs (win, fail, or abort) required before Ollama is called for breach banter and the next idle delivery is prepared. Full decryption to 100% on a win bypasses this count.")]
+    [SerializeField, Min(1)]
+    private int mazeBreachesBeforeMessengerJob = 2;
 
     [Header("Events")]
     [SerializeField] private UnityEvent onHackSuccessful;
 
     private bool _hackComplete;
     private HackingMazeMinigame _mazeMinigame;
+    OllamaConnector _runtimeResolvedOllamaConnector;
+    int _completedMazeBreachesSinceLastMessenger;
+
+    OllamaConnector GetOllamaConnector()
+    {
+        if (ollamaConnector != null)
+            return ollamaConnector;
+        if (_runtimeResolvedOllamaConnector == null)
+            _runtimeResolvedOllamaConnector = FindFirstObjectByType<OllamaConnector>(FindObjectsInactive.Include);
+        return _runtimeResolvedOllamaConnector;
+    }
+
+    DeliveryManager ResolveDeliveryManager()
+    {
+        var oc = GetOllamaConnector();
+        if (oc != null && oc.DeliveryManagerForGameplay != null)
+            return oc.DeliveryManagerForGameplay;
+        return FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
+    }
 
     private void Awake()
     {
@@ -54,6 +79,11 @@ public class HackingTerminalPanel : MonoBehaviour
     {
         if (hackButton != null)
             hackButton.onClick.RemoveListener(OnHackClicked);
+    }
+
+    void OnValidate()
+    {
+        mazeBreachesBeforeMessengerJob = Mathf.Max(1, mazeBreachesBeforeMessengerJob);
     }
 
     private void OnHackClicked()
@@ -135,9 +165,7 @@ public class HackingTerminalPanel : MonoBehaviour
         consoleOutput.ForceMeshUpdate();
     }
 
-    /// <summary>
-    /// Called when decryption reaches 100%. Invokes <see cref="onHackSuccessful"/> and sends the reversal beat to Ollama.
-    /// </summary>
+    /// <summary>Called when decryption reaches 100%. Invokes <see cref="onHackSuccessful"/> and sends the reversal beat to Ollama.</summary>
     public void OnHackSuccessful()
     {
         if (_hackComplete)
@@ -156,9 +184,70 @@ public class HackingTerminalPanel : MonoBehaviour
 
         onHackSuccessful?.Invoke();
 
-        if (ollamaConnector != null)
-            ollamaConnector.SendHackReversalPrompt();
+        var oc = GetOllamaConnector();
+        if (oc != null)
+            oc.SendHackReversalPrompt();
         else
-            Debug.LogWarning($"{nameof(HackingTerminalPanel)}: Assign OllamaConnector to push the reversal prompt.", this);
+            Debug.LogWarning(
+                $"{nameof(HackingTerminalPanel)}: Assign OllamaConnector (or add one to the scene) to push the reversal prompt.",
+                this);
+    }
+
+    /// <summary>
+    /// Invoked when a maze <b>run</b> ends (win, bomb, or abort). Requires <see cref="mazeBreachesBeforeMessengerJob"/> finished runs
+    /// before calling Ollama / preparing the next idle delivery, except when this win immediately completes decryption (100% — reversal only).
+    /// </summary>
+    public void OnMazeRoundAttemptFinished(bool roundReachedGoal)
+    {
+        if (_hackComplete)
+            return;
+
+        GetOllamaConnector()?.OnMazeRoundEndedForSuspicion();
+
+        bool skipMazeOllamaBecauseReversalNext = false;
+        if (roundReachedGoal && decryptionSlider != null)
+        {
+            float next = Mathf.Min(100f, decryptionSlider.value + mazeWinProgressPercent);
+            skipMazeOllamaBecauseReversalNext = next >= 100f;
+        }
+
+        if (skipMazeOllamaBecauseReversalNext)
+        {
+            _completedMazeBreachesSinceLastMessenger = 0;
+            InvokeMazeNotify(roundReachedGoal, true);
+            return;
+        }
+
+        int need = Mathf.Max(1, mazeBreachesBeforeMessengerJob);
+        _completedMazeBreachesSinceLastMessenger++;
+        if (_completedMazeBreachesSinceLastMessenger < need)
+        {
+            int remaining = need - _completedMazeBreachesSinceLastMessenger;
+            AppendConsoleLine(
+                remaining == 1
+                    ? "> Uplink: one more breach sim run required before H is messaged."
+                    : $"> Uplink: {remaining} more breach sim runs required before H is messaged.");
+            return;
+        }
+
+        _completedMazeBreachesSinceLastMessenger = 0;
+        InvokeMazeNotify(roundReachedGoal, false);
+    }
+
+    void InvokeMazeNotify(bool roundReachedGoal, bool skipMazeOllamaBecauseReversalNext)
+    {
+        var oc = GetOllamaConnector();
+        if (oc != null)
+            oc.NotifyMazeBreachRoundAttemptFinished(roundReachedGoal, skipMazeOllamaBecauseReversalNext);
+        else
+        {
+            Debug.LogWarning(
+                $"{nameof(HackingTerminalPanel)}: No OllamaConnector in scene — maze rounds cannot message H. Add OllamaConnector or assign the reference on this panel.",
+                this);
+            var dm = ResolveDeliveryManager();
+            bool deferPrepareNextLeg = dm != null && dm.PostDeliveryStepAwayBeatPending;
+            if (!deferPrepareNextLeg)
+                UnityEngine.Object.FindFirstObjectByType<ChatManager>()?.TryPrepareNextDeliveryIfIdle();
+        }
     }
 }

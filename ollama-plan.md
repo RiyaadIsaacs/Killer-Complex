@@ -54,11 +54,17 @@ OllamaConnector
   → fullPrompt = systemPrompt + separator + player turn
   → POST /api/generate { model, prompt, stream: false }
   → parse JSON "response" → ChatManager.UpdateChatFeed("H", reply)
+
+HackingTerminalPanel (maze run ends: win / fail / abort)
+  → OllamaConnector.OnMazeRoundEndedForSuspicion()
+       (if active delivery + player silent since H’s last line → bump SuspicionPercent, optional ignore-nudge generate)
+  → (when breach count reaches gate) OllamaConnector.NotifyMazeBreachRoundAttemptFinished(...)
 ```
 
 - **History:** Each request is **stateless** for now (no prior turns in `prompt`). Sliding-window or chat API migration should be documented here when added.
 - **Structured output:** Not required for the current generate path; assistant text is plain prose. If you add JSON mission fields later, document parse + **fallback** here.
-- **Context sources today:** Optional **`DeliveryManager`** → completed count = `currentDeliveryID` clamped to **`TotalDeliveryLegs`** (Inspector, default **3**). While a delivery leg is active: **`CurrentLegDestinationApartment`**, a comma-separated **whitelist of valid apartment numbers** from the project map (e.g. **201–208**, **301–308** — see `TryGetApartmentRoomForDropPoint`), and optional **pickup state** when a **`DeliveryItem`** is configured. The internal **`ActiveDropPointId`** is **not** sent to the model (avoids “apartment 6” style confusion). **`LikeabilityPercent`** (0–100, default **50**) on `OllamaConnector`; other scripts can set `LikeabilityPercent` at runtime.
+- **Context sources today:** Optional **`DeliveryManager`** → completed count = `currentDeliveryID` clamped to **`TotalDeliveryLegs`** (Inspector, default **3**). While a delivery leg is active: **`CurrentLegDestinationApartment`**, a comma-separated **whitelist of valid apartment numbers** from the project map (e.g. **201–208**, **301–308** — see `TryGetApartmentRoomForDropPoint`), and optional **pickup state** when a **`DeliveryItem`** is configured. The internal **`ActiveDropPointId`** is **not** sent to the model (avoids “apartment 6” style confusion). **`SuspicionPercent`** (0–100, scenes default **0**) on **`OllamaConnector`**; serialized **`suspicionPerIgnoredMazeAttempt`** adds suspicion per qualifying maze run (see below). Other scripts may read or set **`SuspicionPercent`** at runtime.
+- **Suspicion / ignore nudge:** After each maze breach **run** ends, **`HackingTerminalPanel`** calls **`OnMazeRoundEndedForSuspicion()`**. If a delivery leg is active, **`suspicionPerIgnoredMazeAttempt` > 0**, and the player has **not** sent a messenger line since **H**’s last post (**`ChatManager`** notifies via **`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**), suspicion increases (capped at 100) and a **second** generate path runs: **`BuildSuspicionIgnoreNudgePrompt`** includes the token **`["player ignores the delivery order"]`** and asks **H** for another impatient line (stop breach sims, move on the package). This is independent of the existing **`NotifyMazeBreachRoundAttemptFinished`** call when the breach counter “gates” the usual maze-outcome reply; both can fire on the same run end.
 
 ---
 
@@ -67,7 +73,7 @@ OllamaConnector
 - **System prompt:** Hardcoded in `OllamaConnector` — persona **H** (hacker antagonist: threatening, impatient, transactional; sarcastic SA slang only; never apologize; rude player → threaten leak of **Project_Bleed_v2.docx**), South African complex setting, concise replies, fiction-only / no real PII, instruction to treat **`[CONTEXT: …]`** before **`Player says:`** as true in-world state. Also: use only apartment numbers named in CONTEXT; do not invent units; do not echo technical/placeholder wording from CONTEXT in replies.
 - **User-side of prompt (single string after system + `---`):**  
   `[CONTEXT: …] Player says: {player message}`  
-  The bracketed block is built in **plain prose** (delivery progress, likeability, valid apartments list, current destination when a leg is active, pickup lines). It is **not** shown in the messenger UI; it exists only in the HTTP `prompt` field.
+  The bracketed block is built in **plain prose** (delivery progress, **suspicion** percentage, valid apartments list, current destination when a leg is active, pickup lines). It is **not** shown in the messenger UI; it exists only in the HTTP `prompt` field.
 - **Delivery timing:** Default is **not** to prepare the first leg on scene start (`DeliveryManager.prepareFirstDeliveryAfterSceneTick` off). **`ChatManager`** calls **`PrepareNextDeliveryFromAi`** on **each** player SEND while **no leg is active** and **`currentDeliveryID < TotalDeliveryLegs`** (`prepareDeliveryOnMessengerSendWhenIdle`, default on) — so the **LLM turn** follows the messenger line that **starts** the job (context includes the new destination). Optional one-frame deferred first leg remains available via **`prepareFirstDeliveryAfterSceneTick`** on `DeliveryManager`. **`DeliveryCompletionChatNotifier`** may still append a scripted **H** line after a completion; it does **not** roll the next job.
 - **Future:** Mission phase, pickup site, hacking flags — extend `BuildPlayerTurnForPrompt` or a dedicated context builder and log changes in **`prompts-used.md`**.
 - **Safety / failures:** On network or parse failure, `OllamaConnector` logs to Console and appends a **fallback** `[H]` line in the feed (see code).
@@ -99,5 +105,6 @@ OllamaConnector
 |------|--------|
 | 2026-05-11 | Initial skeleton for POE submission structure |
 | 2026-05-11 | Team docs added (`plan.md`, `rules.md`, `setup.md`, `refinements-changes.md`, `prompts-used.md`, `RiyaadWork.md`); `README.md` expanded with doc index |
-| 2026-05-12 | **`OllamaConnector`** + **`ChatManager`** hook; **`POST /api/generate`**; hidden **`[CONTEXT: …] Player says:`** prefix (deliveries + likeability); docs (`README`, `setup`, §4–5 here) aligned |
+| 2026-05-12 | **`OllamaConnector`** + **`ChatManager`** hook; **`POST /api/generate`**; hidden **`[CONTEXT: …] Player says:`** prefix (deliveries + rapport / later **suspicion**); docs (`README`, `setup`, §4–5 here) aligned |
+| 2026-05-14 | **Suspicion meter** — **`SuspicionPercent`**, **`suspicionPerIgnoredMazeAttempt`**; **`[CONTEXT]`** reports **Suspicion is …%** (replaces likeability); maze-end **`OnMazeRoundEndedForSuspicion`** + **`BuildSuspicionIgnoreNudgePrompt`** with **`["player ignores the delivery order"]`**; **`ChatManager`** notifies connector on player send and **H** posts; **`prompts-used.md`** + this changelog updated |
 | 2026-05-14 | **Context** — prose whitelist + destination apartment only (no internal drop id in prompt); **delivery pacing** — next leg from **`ChatManager`** messenger send when idle; **`TotalDeliveryLegs`**; **`DeliveryZone`** interact + HUD toasts; **`DeliveryCompletionChatNotifier`** chat-only |

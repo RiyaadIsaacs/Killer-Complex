@@ -27,7 +27,7 @@
 - **Player / interaction:** `PlayerController` — interact ray debug, `SendMessageUpwards("Interact")`, `Interact` action behaviour aligned with Input System SendMessages + `InputValue`; package `com.unity.textmeshpro` in `Packages/manifest.json`.
 - **World / UI scripts:** `InteractDoor` (hinge + optional animator disable), `ComputerTerminal` (disable player, show canvas, Escape), `ComputerDesktopUI` + Editor builders for overlay desktop, `ChatManager`, `DeliveryManager`, `MessengerChatUIBuilder`, `DeliveryPanelUIBuilder`; prefab `Assets/Prefabs/ComputerDesktopCanvas.prefab` (regenerate via **GameObject → Computer Desktop Canvas** after TMP essentials import).
 - **Docs pushed with code:** Updated `RiyaadWork.md`, `prompts-used.md`, `setup.md`, `README.md`, `refinements-changes.md` to match repo state.
-- **Ollama + context (same day, follow-up):** `OllamaConnector.cs` — local **`/api/generate`**, system prompt for **V**, hidden **`[CONTEXT: …] Player says:`** line (delivery progress from optional `DeliveryManager`, likeability %); `ChatManager` optional reference to trigger sends; team docs (`ollama-plan.md`, `setup.md`, `README.md`, `refinements-changes.md`, `prompts-used.md`) updated and pushed to GitHub.
+- **Ollama + context (same day, follow-up):** `OllamaConnector.cs` — local **`/api/generate`**, system prompt for **V**, hidden **`[CONTEXT: …] Player says:`** line (delivery progress from optional `DeliveryManager`; rapport was later replaced by a **suspicion** meter — see **2026-05-14 — Suspicion meter** below); `ChatManager` optional reference to trigger sends; team docs (`ollama-plan.md`, `setup.md`, `README.md`, `refinements-changes.md`, `prompts-used.md`) updated and pushed to GitHub.
 
 ---
 
@@ -67,6 +67,14 @@
 
 - **Added:** `DesktopMessengerNotification.cs`, `SoundManager.cs`, `Assets/SFX/` notification clip + meta; **`refinements-changes.md`** entry for this feature.
 - **Pushed:** Commit to GitHub (previously untracked assets now tracked).
+
+---
+
+## 2026-05-14 — Suspicion meter (replaces likeability)
+
+- **LLM / gameplay:** `OllamaConnector.cs` — **`SuspicionPercent`** (0–100, starts at 0 in scenes), serialized **`suspicionPerIgnoredMazeAttempt`** for tuning; **`[CONTEXT: …]`** now reports **Suspicion is …%** instead of likeability. When a maze breach **run** ends during an **active delivery** and the player has **not** messaged **H** since **H**’s last line, suspicion increases and a dedicated **`BuildSuspicionIgnoreNudgePrompt`** turn is sent (in-world fact **`["player ignores the delivery order"]`**, treat as ignored, impatient follow-up). **`ChatManager`** calls **`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**; **`HackingTerminalPanel`** calls **`OnMazeRoundEndedForSuspicion()`** on every run end.
+- **Documentation:** `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md`, this file; historical **likeability** references in older log lines left annotated where relevant.
+- **Pushed:** Commit to GitHub with C# / scene updates and doc refresh.
 
 ---
 

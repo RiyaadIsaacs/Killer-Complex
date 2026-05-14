@@ -23,7 +23,7 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 
 ## 2026-05-12 (later) — Ollama context + docs push
 
-- **LLM:** New **`OllamaConnector`** (`POST` **`/api/generate`**, default model field `mistral:7b-instruct`). Each player message builds a prompt turn: **`[CONTEXT: Player has completed X/Y deliveries. Likeability is Z%.] Player says: …`** (context not duplicated in visible chat). Optional **`DeliveryManager`** link; **`LikeabilityPercent`** for future rapport systems.
+- **LLM:** New **`OllamaConnector`** (`POST` **`/api/generate`**, default model field `mistral:7b-instruct`). Each player message builds a prompt turn with a hidden **`[CONTEXT: …] Player says: …`** prefix (context not duplicated in visible chat). Optional **`DeliveryManager`** link. *(Original shipped field was **likeability** %; superseded **2026-05-14** by a **suspicion** meter — see entry **“Suspicion meter (replaces likeability)”** below.)*
 - **UI wiring:** **`ChatManager`** optional serialized **`OllamaConnector`** — on send, calls **`SendToOllama`** after appending the player line.
 - **Docs / compliance:** `ollama-plan.md` (data flow §4, prompt §5, changelog), `setup.md` §3, `README.md` (getting started + stack), `prompts-used.md` (exact system + context template), `RiyaadWork.md` — updated before push per `rules.md`.
 - **AI-assisted:** Cursor authored C# + markdown; verify in Editor: references assigned, Ollama running, model pulled.
@@ -87,5 +87,15 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **UI:** `DesktopMessengerNotification.cs` — in-desktop toast for new **H** activity (HUD-style row, optional Animator or default pop). **`ComputerDesktopUICreator`** can add **`SoundManager`** + **`DesktopMessengerNotification`** on the desktop canvas root; **`OllamaConnector`** optional serialized reference / instance lookup and **`MaybeTriggerDesktopMessengerNotificationAfterHReply`** after model replies.
 - **Audio:** `Assets/Scripts/Audio/SoundManager.cs` — **`PlayNotificationSound()`** for a configurable clip; **`Assets/SFX/`** includes a notification **MP3** import (assign on **`SoundManager`** in the scene / prefab).
 - **AI-assisted:** Cursor; verify in Editor: clip assigned, toast shows when **H** replies (and SFX plays if wired).
+
+---
+
+## 2026-05-14 — Suspicion meter (replaces likeability)
+
+- **LLM / design:** **`OllamaConnector`** — **`SuspicionPercent`** (0–100, Inspector default 0 in scenes) replaces **`likeabilityPercent`**; hidden context says **“Suspicion is …%.”** Serialized **`suspicionPerIgnoredMazeAttempt`** scales how much suspicion rises per qualifying maze run (0 disables meter moves and skip nudges).
+- **Trigger:** Each maze breach **run** end (**`HackingTerminalPanel.OnMazeRoundAttemptFinished`**) calls **`OnMazeRoundEndedForSuspicion()`** while a delivery leg is active and the player has **not** sent a messenger line since **H**’s last post; then a dedicated generate call uses **`BuildSuspicionIgnoreNudgePrompt`** (includes **`["player ignores the delivery order"]`**) so **H** sends another impatient in-character line. **`ChatManager`** notifies the connector on player send and on **H** feed lines (**`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**).
+- **Desktop toast:** **`OllamaConnector`** may queue **`_pendingSuspicionIgnoreDesktopToast`** alongside other H-reply toasts.
+- **Docs:** `ollama-plan.md`, `prompts-used.md`, `RiyaadWork.md`, `refinements-changes.md` (this entry).
+- **AI-assisted:** Cursor; verify in Editor: maze runs during an active delivery without replying to **H** raise suspicion and produce a follow-up **H** line when Ollama is running.
 
 ---

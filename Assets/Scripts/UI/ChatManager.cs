@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -39,7 +40,7 @@ public class ChatManager : MonoBehaviour
         "Message me when you're done pretending this isn't happening — and don't waste my time, bru.";
 
     [Header("Messenger → next delivery job")]
-    [Tooltip("When true, each non-empty SEND prepares the next delivery leg if none is active yet and runs remain—before Ollama runs so CONTEXT includes the destination. Turn off only if another script prepares jobs.")]
+    [Tooltip("When true, each non-empty SEND prepares the next delivery leg if none is active yet and runs remain—before Ollama runs so CONTEXT includes the destination. Also used after each maze breach run ends (win, fail, or abort) and when full decryption completes (see OllamaConnector). Turn off only if another script prepares jobs.")]
     [SerializeField, FormerlySerializedAs("prepareFirstDeliveryOnFirstPlayerMessage")]
     private bool prepareDeliveryOnMessengerSendWhenIdle = true;
 
@@ -163,7 +164,20 @@ public class ChatManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(response))
             return;
 
-        AppendLine(FormatLine(senderName, response.Trim()));
+        var line = FormatLine(senderName, response.Trim());
+        if (IsHSender(senderName))
+            line += "\n";
+        AppendLine(line);
+        if (IsHSender(senderName) && ollamaConnector != null)
+            ollamaConnector.NotifyHPostedToMessenger();
+    }
+
+    /// <summary>True for messenger lines from <b>H</b> so we can add a blank line after each reply for readability.</summary>
+    static bool IsHSender(string senderName)
+    {
+        if (string.IsNullOrWhiteSpace(senderName))
+            return false;
+        return string.Equals(senderName.Trim(), "H", StringComparison.OrdinalIgnoreCase);
     }
 
     private void TrySendPlayerMessage()
@@ -174,6 +188,9 @@ public class ChatManager : MonoBehaviour
         string text = chatInputField.text.Trim();
         if (string.IsNullOrEmpty(text))
             return;
+
+        if (ollamaConnector != null)
+            ollamaConnector.NotifyPlayerMessengerSend();
 
         AppendLine(FormatLine(PlayerLabel, text));
         chatInputField.text = string.Empty;
@@ -206,12 +223,23 @@ public class ChatManager : MonoBehaviour
         dm.PrepareNextDeliveryFromAi();
     }
 
+    /// <summary>
+    /// Rolls the next delivery when no leg is active and runs remain — same rules as messenger SEND
+    /// (<see cref="prepareDeliveryOnMessengerSendWhenIdle"/>). Called from <see cref="OllamaConnector.NotifyMazeBreachRoundAttemptFinished"/>
+    /// after each maze run (win, fail, or abort) and from <see cref="OllamaConnector.SendHackReversalPrompt"/> at full decryption,
+    /// so <b>H</b> can mention the new job in the same reply as the hack-reversal beat when applicable.
+    /// </summary>
+    public void TryPrepareNextDeliveryIfIdle()
+    {
+        MaybePrepareDeliveryWhenMessengerSendIfIdle();
+    }
+
     DeliveryManager ResolveDeliveryManager()
     {
         if (deliveryManager != null)
             return deliveryManager;
         if (_cachedDeliveryManager == null)
-            _cachedDeliveryManager = Object.FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
+            _cachedDeliveryManager = UnityEngine.Object.FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
         return _cachedDeliveryManager;
     }
 

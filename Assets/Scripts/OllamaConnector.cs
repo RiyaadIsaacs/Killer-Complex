@@ -23,24 +23,34 @@ public class OllamaConnector : MonoBehaviour
         "RULE: never apologize, back down, or admit fault. " +
         "If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). " +
         "Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). " +
-        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, rapport, delivery instructions). " +
+        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, suspicion pressure, delivery instructions). " +
         "When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. " +
         "Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. " +
+        "Never write the word CONTEXT, any square-bracket context block, or the phrase Player says in your visible reply — those exist only in hidden prompt data. " +
         "If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. " +
         "Whenever CONTEXT states the player has just completed a delivery drop-off, that reply must centre on a dismissive in-fiction reason you are leaving the computer (you are not assigning a new apartment task in that same message). " +
         "This is fiction only — do not reference real people's private data.";
 
     [Header("References")]
+    [Tooltip("If unset, the first ChatManager in loaded scenes is used at runtime.")]
     [SerializeField] private ChatManager chatManager;
-    [Tooltip("Optional. If set, delivery progress in the LLM context matches gameplay.")]
+    [Tooltip("Optional. If set, delivery progress in the LLM context matches gameplay. If unset, the first DeliveryManager in loaded scenes is used at runtime (required for post-delivery \"H steps away\" beats).")]
     [SerializeField] private DeliveryManager deliveryManager;
-    [Tooltip("Optional. Desktop toast + SFX when H sends an excuse reply, hack-reversal reply, or a Project_Bleed blackmail threat.")]
+
+    /// <summary>Inspector link or runtime-resolved <see cref="DeliveryManager"/> (same instance used for LLM context).</summary>
+    public DeliveryManager DeliveryManagerForGameplay => GetDeliveryManager();
+
+    [Tooltip("Optional. Desktop toast + SFX when H sends an excuse reply, hack-reversal reply, maze-round outcome reply, a suspicion nudge (ignored delivery + breach sims), or a Project_Bleed blackmail threat.")]
     [SerializeField] private DesktopMessengerNotification desktopMessengerNotification;
 
     [Header("LLM context (not shown in chat UI)")]
     [SerializeField, Range(0f, 100f)]
-    [Tooltip("0–100. Other scripts can update at runtime via LikeabilityPercent.")]
-    private float likeabilityPercent = 50f;
+    [Tooltip("0–100. Rises when the player runs breach sims during an active delivery without messaging H since H's last line; exposed as SuspicionPercent.")]
+    private float suspicionPercent;
+
+    [SerializeField, Min(0f)]
+    [Tooltip("How much suspicion (0–100) increases per maze run (win, fail, or abort) while a delivery leg is active and the player has not messaged H since H's last line. Set 0 to disable meter moves (nudges also skip).")]
+    private float suspicionPerIgnoredMazeAttempt = 12f;
     [SerializeField]
     [Tooltip("Used for LLM context only when DeliveryManager is not assigned; otherwise TotalDeliveryLegs from DeliveryManager is used.")]
     private int totalDeliveries = 3;
@@ -53,6 +63,34 @@ public class OllamaConnector : MonoBehaviour
 
     bool _pendingExcuseMessengerDesktopToast;
     bool _pendingHackReversalMessengerDesktopToast;
+    bool _pendingMazeRoundOutcomeDesktopToast;
+    bool _pendingSuspicionIgnoreDesktopToast;
+
+    /// <summary>True after H posts to the feed until the player sends a messenger line (for ignored-delivery maze suspicion).</summary>
+    bool _awaitingPlayerMessengerReplyAfterH;
+
+    ChatManager _runtimeResolvedChatManager;
+    DeliveryManager _runtimeResolvedDeliveryManager;
+
+    /// <summary>Inspector reference, else first <see cref="ChatManager"/> in loaded scenes (including inactive).</summary>
+    ChatManager GetChatManager()
+    {
+        if (chatManager != null)
+            return chatManager;
+        if (_runtimeResolvedChatManager == null)
+            _runtimeResolvedChatManager = FindFirstObjectByType<ChatManager>(FindObjectsInactive.Include);
+        return _runtimeResolvedChatManager;
+    }
+
+    /// <summary>Inspector reference, else first <see cref="DeliveryManager"/> in loaded scenes (including inactive).</summary>
+    DeliveryManager GetDeliveryManager()
+    {
+        if (deliveryManager != null)
+            return deliveryManager;
+        if (_runtimeResolvedDeliveryManager == null)
+            _runtimeResolvedDeliveryManager = FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
+        return _runtimeResolvedDeliveryManager;
+    }
 
     [Serializable]
     private struct OllamaGenerateRequest
@@ -68,16 +106,72 @@ public class OllamaConnector : MonoBehaviour
         public string response;
     }
 
-    /// <summary>Likeability 0–100 shown in the hidden <c>[CONTEXT: …]</c> block sent to Ollama.</summary>
-    public float LikeabilityPercent
+    /// <summary>Suspicion 0–100; rises when the player runs maze breach attempts during an active delivery without messaging H since H's last line.</summary>
+    public float SuspicionPercent
     {
-        get => likeabilityPercent;
-        set => likeabilityPercent = Mathf.Clamp(value, 0f, 100f);
+        get => suspicionPercent;
+        set => suspicionPercent = Mathf.Clamp(value, 0f, 100f);
+    }
+
+    /// <summary>Call from <see cref="ChatManager"/> when the player sends any messenger line.</summary>
+    public void NotifyPlayerMessengerSend()
+    {
+        _awaitingPlayerMessengerReplyAfterH = false;
+    }
+
+    /// <summary>Call from <see cref="ChatManager"/> when H posts to the feed (intro, scripted, or model).</summary>
+    public void NotifyHPostedToMessenger()
+    {
+        _awaitingPlayerMessengerReplyAfterH = true;
+    }
+
+    /// <summary>
+    /// Called from <see cref="HackingTerminalPanel"/> when any maze run ends. If a delivery is active and the player has not replied to H since H last spoke,
+    /// increases suspicion and may prompt H to nudge the player about ignoring the job.
+    /// </summary>
+    public void OnMazeRoundEndedForSuspicion()
+    {
+        var dm = GetDeliveryManager();
+        if (dm == null || dm.ActiveDropPointId < 0)
+            return;
+        if (!_awaitingPlayerMessengerReplyAfterH)
+            return;
+
+        float delta = Mathf.Max(0f, suspicionPerIgnoredMazeAttempt);
+        if (delta <= 0f)
+            return;
+
+        suspicionPercent = Mathf.Min(100f, suspicionPercent + delta);
+
+        var cm = GetChatManager();
+        if (cm == null)
+        {
+            Debug.LogWarning($"{nameof(OllamaConnector)}: Cannot send suspicion nudge — no ChatManager.", this);
+            return;
+        }
+
+        string fullPrompt = BuildSuspicionIgnoreNudgePrompt();
+        cm.ShowTypingIndicator();
+        _pendingSuspicionIgnoreDesktopToast = true;
+        StartCoroutine(RequestOllamaCoroutine(fullPrompt));
+    }
+
+    string BuildSuspicionIgnoreNudgePrompt()
+    {
+        var ctx = new StringBuilder(384);
+        AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: false);
+        ctx.Append(" In-world fact: [\"player ignores the delivery order\"] — the resident has not messaged you since your last line and keeps running breach-terminal sims while a delivery is still active. ");
+        ctx.Append("Suspicion is ");
+        ctx.Append(Mathf.RoundToInt(Mathf.Clamp(suspicionPercent, 0f, 100f)));
+        ctx.Append("%. Treat this as being ignored. Reply in-character as H: post a new short impatient messenger line ordering them to stop playing with sims and move on the package; stay threatening; do not paste hidden context labels or the word CONTEXT.");
+        const string narrative =
+            "This block is for your next visible reply only — output what H would type in the messenger, nothing else.";
+        return $"{SystemPrompt}\n\n---\n\n[CONTEXT: {ctx}]\n\n{narrative}";
     }
 
     /// <summary>
     /// Queues a non-streaming generate call to Ollama. On success, appends H's reply via <see cref="ChatManager.UpdateChatFeed"/>.
-    /// The request includes a hidden context prefix (deliveries, likeability) before the player line.
+    /// The request includes a hidden context prefix (deliveries, suspicion) before the player line.
     /// </summary>
     public void SendToOllama(string userPrompt)
     {
@@ -87,13 +181,14 @@ public class OllamaConnector : MonoBehaviour
         string playerTurn = BuildPlayerTurnForPrompt(userPrompt.Trim());
         string fullPrompt = $"{SystemPrompt}\n\n---\n\n{playerTurn}";
 
-        if (chatManager == null)
+        var cm = GetChatManager();
+        if (cm == null)
         {
-            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned.", this);
+            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned and none was found in loaded scenes.", this);
             return;
         }
 
-        chatManager.ShowTypingIndicator();
+        cm.ShowTypingIndicator();
         StartCoroutine(RequestOllamaCoroutine(fullPrompt));
     }
 
@@ -103,31 +198,92 @@ public class OllamaConnector : MonoBehaviour
     /// </summary>
     public void SendHackReversalPrompt()
     {
-        if (chatManager == null)
+        var cm = GetChatManager();
+        if (cm == null)
         {
-            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned.", this);
+            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned and none was found in loaded scenes.", this);
             return;
         }
+
+        // Same deferral as messenger SEND: do not roll the next job while the "H stepped away" beat is still pending.
+        var dmDefer = GetDeliveryManager();
+        bool deferPrepareNextLeg = dmDefer != null && dmDefer.PostDeliveryStepAwayBeatPending;
+        if (!deferPrepareNextLeg)
+            cm.TryPrepareNextDeliveryIfIdle();
 
         const string escalation =
             "[SYSTEM]: The player has successfully decrypted your personal photos. They are now blackmailing YOU.";
 
-        chatManager.UpdateChatFeed("SYSTEM", escalation);
-        chatManager.ShowTypingIndicator();
+        cm.UpdateChatFeed("SYSTEM", escalation);
+        cm.ShowTypingIndicator();
 
         _pendingHackReversalMessengerDesktopToast = true;
+
+        var ctx = new StringBuilder(384);
+        AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: false);
 
         string narrative =
             escalation +
             "\n\nTreat the [SYSTEM] line above as true in-world fiction for this game only. " +
-            "Reply in-character as H: you are now on the defensive but never apologize or admit fault; stay threatening and transactional; a few sentences only.";
+            "Reply in-character as H: you are now on the defensive but never apologize or admit fault; stay threatening and transactional; a few sentences only. " +
+            "If CONTEXT states an active delivery to a specific apartment, you must still give that order in-character in this same reply (ridicule, urgency, leverage) alongside your reaction to being blackmailed.";
 
-        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{narrative}";
+        string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
+        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
+        StartCoroutine(RequestOllamaCoroutine(fullPrompt));
+    }
+
+    /// <summary>
+    /// Called when a maze breach <b>run</b> ends (goal, bomb, or abort). Rolls the next delivery when idle (same rules as messenger),
+    /// then (unless <paramref name="skipOllamaBecauseFullHackReversalWillFire"/> is true) asks Ollama for H to react and task the player if CONTEXT has an active delivery.
+    /// </summary>
+    public void NotifyMazeBreachRoundAttemptFinished(bool roundReachedGoal, bool skipOllamaBecauseFullHackReversalWillFire)
+    {
+        var cm = GetChatManager();
+        if (cm == null)
+        {
+            Debug.LogWarning(
+                $"{nameof(OllamaConnector)}: Cannot notify maze outcome — no ChatManager (assign on this component or add one to the scene).",
+                this);
+            return;
+        }
+
+        var dmDefer = GetDeliveryManager();
+        bool deferPrepareNextLeg = dmDefer != null && dmDefer.PostDeliveryStepAwayBeatPending;
+        if (!deferPrepareNextLeg)
+            cm.TryPrepareNextDeliveryIfIdle();
+
+        if (skipOllamaBecauseFullHackReversalWillFire)
+            return;
+
+        var ctx = new StringBuilder(384);
+        AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: false);
+
+        string beat = roundReachedGoal
+            ? "The player just finished a breach attempt successfully: they reached the uplink node on your terminal without tripping a trap. "
+            : "The player's breach attempt just ended in failure (they hit a trap / corrupted sector, or aborted the sim). ";
+
+        string narrative =
+            beat +
+            "Reply in-character as H in the messenger: react to that breach outcome with your usual tone; if CONTEXT states an active delivery to a specific apartment, give or reinforce that order in this same reply; keep it concise.";
+
+        string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
+        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
+
+        cm.ShowTypingIndicator();
+        _pendingMazeRoundOutcomeDesktopToast = true;
         StartCoroutine(RequestOllamaCoroutine(fullPrompt));
     }
 
     private IEnumerator RequestOllamaCoroutine(string fullPrompt)
     {
+        var cm = GetChatManager();
+        if (cm == null)
+        {
+            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager missing mid-request; aborting Ollama call.", this);
+            yield break;
+        }
+
         var payload = new OllamaGenerateRequest
         {
             model = model,
@@ -147,7 +303,7 @@ public class OllamaConnector : MonoBehaviour
 
             yield return request.SendWebRequest();
 
-            chatManager.HideTypingIndicator();
+            cm.HideTypingIndicator();
 
             if (request.result != UnityWebRequest.Result.Success)
             {
@@ -185,8 +341,9 @@ public class OllamaConnector : MonoBehaviour
                 yield break;
             }
 
-            chatManager.UpdateChatFeed(HackerSenderLabel, reply);
-            MaybeTriggerDesktopMessengerNotificationAfterHReply(reply);
+            string cleaned = StripEchoedContextFromModelReply(reply);
+            cm.UpdateChatFeed(HackerSenderLabel, cleaned);
+            MaybeTriggerDesktopMessengerNotificationAfterHReply(cleaned);
         }
     }
 
@@ -194,6 +351,8 @@ public class OllamaConnector : MonoBehaviour
     {
         _pendingExcuseMessengerDesktopToast = false;
         _pendingHackReversalMessengerDesktopToast = false;
+        _pendingMazeRoundOutcomeDesktopToast = false;
+        _pendingSuspicionIgnoreDesktopToast = false;
     }
 
     void MaybeTriggerDesktopMessengerNotificationAfterHReply(string reply)
@@ -202,6 +361,16 @@ public class OllamaConnector : MonoBehaviour
         if (_pendingHackReversalMessengerDesktopToast)
         {
             _pendingHackReversalMessengerDesktopToast = false;
+            showToast = true;
+        }
+        else if (_pendingSuspicionIgnoreDesktopToast)
+        {
+            _pendingSuspicionIgnoreDesktopToast = false;
+            showToast = true;
+        }
+        else if (_pendingMazeRoundOutcomeDesktopToast)
+        {
+            _pendingMazeRoundOutcomeDesktopToast = false;
             showToast = true;
         }
         else if (_pendingExcuseMessengerDesktopToast)
@@ -245,8 +414,9 @@ public class OllamaConnector : MonoBehaviour
     private void HandleFailure(string message)
     {
         Debug.LogError($"{nameof(OllamaConnector)}: {message}", this);
-        if (chatManager != null)
-            chatManager.UpdateChatFeed(HackerSenderLabel, "[Could not reach Ollama or parse the reply. Check the Console and that the server is running.]");
+        var cm = GetChatManager();
+        if (cm != null)
+            cm.UpdateChatFeed(HackerSenderLabel, "[Could not reach Ollama or parse the reply. Check the Console and that the server is running.]");
     }
 
     private static string ParseResponseText(string rawJson)
@@ -265,43 +435,95 @@ public class OllamaConnector : MonoBehaviour
         return s.Substring(0, maxLen) + "…";
     }
 
+    /// <summary>Removes hidden-prompt fragments models sometimes echo into visible chat (e.g. <c>[CONTEXT …]</c>).</summary>
+    static string StripEchoedContextFromModelReply(string reply)
+    {
+        if (string.IsNullOrWhiteSpace(reply))
+            return reply;
+        var original = reply.Trim();
+        var t = original;
+        for (var n = 0; n < 24; n++)
+        {
+            int i = t.IndexOf("[CONTEXT", StringComparison.OrdinalIgnoreCase);
+            if (i < 0)
+                break;
+            int close = t.IndexOf(']', i);
+            if (close < 0)
+            {
+                t = t[..i].TrimEnd();
+                break;
+            }
+            t = (t[..i] + t[(close + 1)..]).Trim();
+        }
+
+        const string playerSays = "Player says:";
+        for (var n = 0; n < 8; n++)
+        {
+            int ps = t.IndexOf(playerSays, StringComparison.OrdinalIgnoreCase);
+            if (ps < 0)
+                break;
+            int end = ps + playerSays.Length;
+            while (end < t.Length && char.IsWhiteSpace(t[end]))
+                end++;
+            t = (t[..ps] + t[end..]).Trim();
+        }
+
+        while (t.Contains("  "))
+            t = t.Replace("  ", " ");
+        return string.IsNullOrWhiteSpace(t) ? original : t.Trim();
+    }
+
     /// <summary>
     /// Text appended to the system prompt only — not the visible chat line.
     /// Format: <c>[CONTEXT: …] Player says: …</c>
     /// </summary>
     private string BuildPlayerTurnForPrompt(string userMessage)
     {
-        int completed = 0;
-        int total = deliveryManager != null
-            ? deliveryManager.TotalDeliveryLegs
-            : Mathf.Max(1, totalDeliveries);
-        if (deliveryManager != null)
-            completed = Mathf.Clamp(deliveryManager.currentDeliveryID, 0, total);
-
-        bool excuseBeatForDesktopToast = deliveryManager != null && deliveryManager.PostDeliveryStepAwayBeatPending;
-
-        int like = Mathf.RoundToInt(likeabilityPercent);
-        string allowed = DeliveryManager.MappedApartmentsListForPrompt;
+        var dm = GetDeliveryManager();
+        bool excuseBeatForDesktopToast = dm != null && dm.PostDeliveryStepAwayBeatPending;
 
         var ctx = new StringBuilder(384);
+        AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: true);
+
+        _pendingExcuseMessengerDesktopToast = excuseBeatForDesktopToast;
+
+        return $"[CONTEXT: {ctx}] Player says: {userMessage}";
+    }
+
+    /// <summary>
+    /// Writes the hidden delivery / apartment facts block (optionally including the one-shot post-drop-off "H steps away" instruction).
+    /// </summary>
+    void AppendStaticGameContextForLlm(StringBuilder ctx, bool includePostDeliveryAwayBeatInstruction)
+    {
+        var dm = GetDeliveryManager();
+        int completed = 0;
+        int total = dm != null
+            ? dm.TotalDeliveryLegs
+            : Mathf.Max(1, totalDeliveries);
+        if (dm != null)
+            completed = Mathf.Clamp(dm.currentDeliveryID, 0, total);
+
+        int suspicion = Mathf.RoundToInt(Mathf.Clamp(suspicionPercent, 0f, 100f));
+        string allowed = DeliveryManager.MappedApartmentsListForPrompt;
+
         ctx.Append("Player has completed ");
         ctx.Append(completed);
         ctx.Append('/');
         ctx.Append(total);
-        ctx.Append(" deliveries. Likeability is ");
-        ctx.Append(like);
+        ctx.Append(" deliveries. Suspicion is ");
+        ctx.Append(suspicion);
         ctx.Append("%.");
         ctx.Append(" Valid apartment unit numbers in this building are: ");
         ctx.Append(allowed);
         ctx.Append('.');
 
-        if (deliveryManager != null)
-            deliveryManager.AppendAndClearPostDeliveryStepAwayBeatInstruction(ctx);
+        if (includePostDeliveryAwayBeatInstruction && dm != null)
+            dm.AppendAndClearPostDeliveryStepAwayBeatInstruction(ctx);
 
-        if (deliveryManager != null && deliveryManager.ActiveDropPointId >= 0)
+        if (dm != null && dm.ActiveDropPointId >= 0)
         {
-            int dest = deliveryManager.CurrentLegDestinationApartment;
-            if (dest < 0 && deliveryManager.TryGetApartmentRoomForActiveDrop(out int mapped))
+            int dest = dm.CurrentLegDestinationApartment;
+            if (dest < 0 && dm.TryGetApartmentRoomForActiveDrop(out int mapped))
                 dest = mapped;
 
             if (dest >= 0)
@@ -315,16 +537,12 @@ public class OllamaConnector : MonoBehaviour
                 ctx.Append(" A delivery is active but no destination apartment is assigned in data; do not invent a room number.");
             }
 
-            if (deliveryManager.RequiresPhysicalPickup)
+            if (dm.RequiresPhysicalPickup)
             {
-                ctx.Append(deliveryManager.HasPickedUpCurrentPackage
+                ctx.Append(dm.HasPickedUpCurrentPackage
                     ? " The player has picked up the package for this leg."
                     : " The player has not picked up the package for this leg yet.");
             }
         }
-
-        _pendingExcuseMessengerDesktopToast = excuseBeatForDesktopToast;
-
-        return $"[CONTEXT: {ctx}] Player says: {userMessage}";
     }
 }

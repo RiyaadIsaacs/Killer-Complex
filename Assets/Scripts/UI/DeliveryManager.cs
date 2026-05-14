@@ -144,7 +144,8 @@ public class DeliveryManager : MonoBehaviour
 
     /// <summary>
     /// Rolls the next drop-off and shows the reception package when <see cref="ActiveDropPointId"/> is idle.
-    /// After a completed drop-off, the next call is expected from <see cref="ChatManager"/> when the player sends a messenger line (unless <see cref="prepareFirstDeliveryAfterSceneTick"/> prepared the very first leg).
+    /// After a completed drop-off, the next call is normally from <see cref="ChatManager"/> on messenger SEND or from
+    /// <see cref="OllamaConnector.SendHackReversalPrompt"/> after a full hack when idle (unless <see cref="prepareFirstDeliveryAfterSceneTick"/> prepared the very first leg).
     /// </summary>
     public void PrepareNextDeliveryFromAi()
     {

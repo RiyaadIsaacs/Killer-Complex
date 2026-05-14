@@ -228,6 +228,9 @@ public class HackingMazeMinigame : MonoBehaviour
 
     public void CloseWithoutSuccess()
     {
+        if (_host != null && _walkable != null && !_won && !_runEnded)
+            _host.OnMazeRoundAttemptFinished(false);
+
         HideMazeUi();
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
@@ -344,7 +347,8 @@ public class HackingMazeMinigame : MonoBehaviour
     private void OnHitBomb()
     {
         _runEnded = true;
-        _host.AppendConsoleLine("> CORRUPTED SECTOR — packet lost. Breach attempt failed (no progress).");
+        _host?.AppendConsoleLine("> CORRUPTED SECTOR — packet lost. Breach attempt failed (no progress).");
+        _host?.OnMazeRoundAttemptFinished(false);
         HideMazeUi();
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
@@ -353,11 +357,12 @@ public class HackingMazeMinigame : MonoBehaviour
     private void OnReachedGoal()
     {
         _won = true;
-        _host.AppendConsoleLine("> Uplink node reached — segment cleared.");
+        _host?.AppendConsoleLine("> Uplink node reached — segment cleared.");
+        _host?.OnMazeRoundAttemptFinished(true);
         HideMazeUi();
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
-        _host.ApplyMazeRoundWin();
+        _host?.ApplyMazeRoundWin();
     }
 
     private void EnsureUiBuilt()

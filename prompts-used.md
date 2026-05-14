@@ -30,18 +30,18 @@ You are "H", a hacker antagonist who communicates only through text. You operate
 
 **Outcome:** In-engine; paired with dynamic context line (below). Iterate here on every system-string edit.
 
-**Iteration notes:** Uses **`/api/generate`** single `prompt` (not chat messages array yet). Prior persona label **V** (2026-05-12) superseded by **H** for this revision. **2026-05-13 (later):** system string extended so `[CONTEXT]` may include **apartment room** for the active delivery; model instructed to treat that room as authoritative. **2026-05-14:** system string adds rules against **invented** apartment numbers and **verbatim echo** of CONTEXT scaffolding; `[CONTEXT]` body rewritten in **natural language** (whitelist + destination) in `BuildPlayerTurnForPrompt` — see **Game — Ollama context — 2026-05-14** below.
+**Iteration notes:** Uses **`/api/generate`** single `prompt` (not chat messages array yet). Prior persona label **V** (2026-05-12) superseded by **H** for this revision. **2026-05-13 (later):** system string extended so `[CONTEXT]` may include **apartment room** for the active delivery; model instructed to treat that room as authoritative. **2026-05-14:** system string adds rules against **invented** apartment numbers and **verbatim echo** of CONTEXT scaffolding; `[CONTEXT]` body rewritten in **natural language** (whitelist + destination) in `BuildPlayerTurnForPrompt` — see **Game — Ollama context — 2026-05-14** below. **2026-05-14 (later):** **likeability / rapport** in `[CONTEXT]` replaced by **suspicion** %; see **Game — Suspicion meter & delivery-ignore nudge — 2026-05-14** below.
 
 ---
 
 ## Game — Ollama system prompt — 2026-05-14 — `OllamaConnector` (iteration on **H**)
 
-**Goal:** Same persona **H** as 2026-05-13, plus explicit instructions: honour destination in CONTEXT; never invent apartment numbers not listed as valid; never paste ALL CAPS / placeholder-like labels from CONTEXT into replies; pickup/reception phrasing when CONTEXT says so.
+**Goal:** Same persona **H** as 2026-05-13, plus explicit instructions: honour destination in CONTEXT; never invent apartment numbers not listed as valid; never paste ALL CAPS / placeholder-like labels from CONTEXT into replies; pickup/reception phrasing when CONTEXT says so; **suspicion pressure** (not rapport) in CONTEXT; never print the word CONTEXT or bracket scaffolding in visible replies; post–drop-off beat when CONTEXT says the player just completed a delivery.
 
 **Prompt (system — exact string in code after this date):**
 
 ```text
-You are "H", a hacker antagonist who communicates only through text. You operate in and around a South African apartment complex. You coerce the resident with implied threats and leverage; you never claim to be law enforcement. CORE CHARACTER — TONE: threatening, impatient, transactional. Every reply should pressure, rush, or frame obedience as a deal (compliance vs consequences). SLANG: you may use South African English touches such as "eish", "sharp", and "lekker" sparingly, and only sarcastically or mockingly — never warmly or kindly. RULE: never apologize, back down, or admit fault. If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). A bracketed [CONTEXT: ...] line before "Player says:" gives true in-world facts (errands completed, rapport, delivery instructions). When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. This is fiction only — do not reference real people's private data.
+You are "H", a hacker antagonist who communicates only through text. You operate in and around a South African apartment complex. You coerce the resident with implied threats and leverage; you never claim to be law enforcement. CORE CHARACTER — TONE: threatening, impatient, transactional. Every reply should pressure, rush, or frame obedience as a deal (compliance vs consequences). SLANG: you may use South African English touches such as "eish", "sharp", and "lekker" sparingly, and only sarcastically or mockingly — never warmly or kindly. RULE: never apologize, back down, or admit fault. If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). A bracketed [CONTEXT: ...] line before "Player says:" gives true in-world facts (errands completed, suspicion pressure, delivery instructions). When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. Never write the word CONTEXT, any square-bracket context block, or the phrase Player says in your visible reply — those exist only in hidden prompt data. If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. Whenever CONTEXT states the player has just completed a delivery drop-off, that reply must centre on a dismissive in-fiction reason you are leaving the computer (you are not assigning a new apartment task in that same message). This is fiction only — do not reference real people's private data.
 ```
 
 **Outcome:** In-engine; supersedes the shorter 2026-05-13 system block for documentation purposes (code is source of truth).
@@ -66,43 +66,57 @@ You are "V", a cold, manipulative blackmailer who communicates only through text
 
 ---
 
-## Game — Ollama “user” turn (appended after system + separator) — 2026-05-12
+## Game — Ollama “user” turn (appended after system + separator) — 2026-05-12 *(historical shape)*
 
-**Goal:** Hidden state for LLM-driven behaviour (deliveries, likeability) without showing it in the messenger UI.
+**Goal:** Hidden state for LLM-driven behaviour (deliveries, **suspicion** — originally **likeability** in the first slice) without showing it in the messenger UI.
 
-**Template (exact shape; values are runtime):**
-
-```text
-[CONTEXT: Player has completed {X}/{Y} deliveries. Likeability is {Z}%.] Player says: {player typed message}
-```
-
-**Example:** Player types `I'm busy.` with 0/3 deliveries and 50% likeability:
+**Template (historical minimal shape; extended 2026-05-14 — see next sections):**
 
 ```text
-[CONTEXT: Player has completed 0/3 deliveries. Likeability is 50%.] Player says: I'm busy.
+[CONTEXT: Player has completed {X}/{Y} deliveries. Suspicion is {Z}%.] Player says: {player typed message}
 ```
 
-**Outcome:** Implemented in `BuildPlayerTurnForPrompt`; full HTTP `prompt` = system + `\n\n---\n\n` + template.
+**Example:** Player types `I'm busy.` with 0/3 deliveries and 0% suspicion at session start:
 
-**Iteration notes:** `Y` comes from **`DeliveryManager.TotalDeliveryLegs`** when `DeliveryManager` is assigned on `OllamaConnector`, else from serialized **`totalDeliveries`** (default **3**). `X` from `DeliveryManager.currentDeliveryID`. When a leg is active, additional **prose** sentences are appended (see **Game — Ollama context — 2026-05-14** below). Older **drop-off id** in CONTEXT was removed to reduce model hallucinations (“apartment 6”).
+```text
+[CONTEXT: Player has completed 0/3 deliveries. Suspicion is 0%.] Player says: I'm busy.
+```
+
+**Outcome:** Implemented in `BuildPlayerTurnForPrompt`; full HTTP `prompt` = system + `\n\n---\n\n` + template (plus whitelist / destination / pickup prose per **Game — Ollama context — 2026-05-14**).
+
+**Iteration notes:** `Y` comes from **`DeliveryManager.TotalDeliveryLegs`** when `DeliveryManager` is assigned on `OllamaConnector`, else from serialized **`totalDeliveries`** (default **3**). `X` from `DeliveryManager.currentDeliveryID`. **`Z`** is **`SuspicionPercent`** (clamped 0–100). When a leg is active, additional **prose** sentences are appended (see **Game — Ollama context — 2026-05-14** below). Older **drop-off id** in CONTEXT was removed to reduce model hallucinations (“apartment 6”).
 
 ---
 
 ## Game — Ollama context — 2026-05-14
 
-**Goal:** `[CONTEXT: …]` is **natural language** only: delivery progress, likeability, **full whitelist** of valid apartment numbers for the building, and when a leg is active the **single destination apartment** plus optional pickup lines. No internal **`ActiveDropPointId`** in the prompt.
+**Goal:** `[CONTEXT: …]` is **natural language** only: delivery progress, **suspicion** (0–100), **full whitelist** of valid apartment numbers for the building, and when a leg is active the **single destination apartment** plus optional pickup lines. No internal **`ActiveDropPointId`** in the prompt.
 
-**Shape (paraphrased; built in `OllamaConnector.BuildPlayerTurnForPrompt`):**
+**Shape (paraphrased; built in `OllamaConnector.AppendStaticGameContextForLlm` / player turn builder):**
 
 ```text
-[CONTEXT: Player has completed {X}/{Y} deliveries. Likeability is {Z}%. Valid apartment unit numbers in this building are: {comma-separated sorted list}. For the current delivery, the package must be brought to apartment {dest} only; do not send the player to any other unit. The player has (not) picked up the package for this leg.] Player says: {typed}
+[CONTEXT: Player has completed {X}/{Y} deliveries. Suspicion is {Z}%. Valid apartment unit numbers in this building are: {comma-separated sorted list}. For the current delivery, the package must be brought to apartment {dest} only; do not send the player to any other unit. The player has (not) picked up the package for this leg.] Player says: {typed}
 ```
 
 *(Pickup sentence only when `DeliveryManager` has a reception `DeliveryItem` configured; destination paragraph only while a leg is active.)*
 
 **Outcome:** Implemented in code; paired with **2026-05-14** system prompt block above.
 
-**Iteration notes:** Supersedes the **2026-05-13** “drop-off id + room” fragment for documentation; map of **dropPointId → room** remains in `DeliveryManager` for gameplay.
+**Iteration notes:** Supersedes the **2026-05-13** “drop-off id + room” fragment for documentation; map of **dropPointId → room** remains in `DeliveryManager` for gameplay. **Likeability** wording in this shape was replaced by **Suspicion** in code **2026-05-14**.
+
+---
+
+## Game — Suspicion meter & delivery-ignore nudge — 2026-05-14
+
+**Goal:** Raise **suspicion** when the player finishes a maze breach **run** during an **active delivery** without having messaged **H** since **H**’s last visible line; ask the model for another impatient **H** messenger line that treats the situation as **being ignored**.
+
+**Gameplay wiring (summary):** `HackingTerminalPanel.OnMazeRoundAttemptFinished` → `OllamaConnector.OnMazeRoundEndedForSuspicion()` (every run end, not only when the breach count “gates” the usual maze-outcome prompt). `ChatManager` → `NotifyPlayerMessengerSend()` before appending a player line; `NotifyHPostedToMessenger()` when any **H** line is appended (intro, scripted, or model). Inspector: **`suspicionPerIgnoredMazeAttempt`** (0 disables meter increments and skips the nudge generate).
+
+**Prompt (ignore nudge — full HTTP `prompt` = system + `---` + augmented turn; paraphrased middle):** After the usual **`AppendStaticGameContextForLlm`** prose, the context continues with an in-world fact **`["player ignores the delivery order"]`** (quoted token in the string), explanation that the resident has not messaged H since H’s last line and keeps running breach-terminal sims while a delivery is still active, current **Suspicion is N%**; narrative instructs **H** to post a short impatient messenger line (stop playing sims, move on the package), threatening tone, no echo of hidden labels. Implemented in **`BuildSuspicionIgnoreNudgePrompt`**.
+
+**Outcome:** In-engine; desktop toast may fire via **`_pendingSuspicionIgnoreDesktopToast`**. When the maze gate **also** triggers **`NotifyMazeBreachRoundAttemptFinished`**, two Ollama requests can occur close together (nudge + maze-outcome); typing indicator is ref-counted in **`ChatManager`**.
+
+**Iteration notes:** Tune **`suspicionPerIgnoredMazeAttempt`** and starting **`suspicionPercent`** per scene for difficulty.
 
 ---
 
