@@ -81,3 +81,11 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify in Editor: start maze → instructions readable on the **left** of the terminal; maze grid not squashed by footer text.
 
 ---
+
+## 2026-05-14 — Desktop messenger toast + notification SFX
+
+- **UI:** `DesktopMessengerNotification.cs` — in-desktop toast for new **H** activity (HUD-style row, optional Animator or default pop). **`ComputerDesktopUICreator`** can add **`SoundManager`** + **`DesktopMessengerNotification`** on the desktop canvas root; **`OllamaConnector`** optional serialized reference / instance lookup and **`MaybeTriggerDesktopMessengerNotificationAfterHReply`** after model replies.
+- **Audio:** `Assets/Scripts/Audio/SoundManager.cs` — **`PlayNotificationSound()`** for a configurable clip; **`Assets/SFX/`** includes a notification **MP3** import (assign on **`SoundManager`** in the scene / prefab).
+- **AI-assisted:** Cursor; verify in Editor: clip assigned, toast shows when **H** replies (and SFX plays if wired).
+
+---

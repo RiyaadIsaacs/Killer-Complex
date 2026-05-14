@@ -63,6 +63,13 @@
 
 ---
 
+## 2026-05-14 (audio / messenger toast)
+
+- **Added:** `DesktopMessengerNotification.cs`, `SoundManager.cs`, `Assets/SFX/` notification clip + meta; **`refinements-changes.md`** entry for this feature.
+- **Pushed:** Commit to GitHub (previously untracked assets now tracked).
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*
