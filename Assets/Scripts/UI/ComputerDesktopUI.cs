@@ -48,6 +48,8 @@ public class ComputerDesktopUI : MonoBehaviour
 
         if (shutdownComputerButton != null)
             shutdownComputerButton.onClick.AddListener(OnShutdownComputerClicked);
+
+        SetHackingTerminalIconAvailable(false);
     }
 
     // Configures the canvas for canvas text.
@@ -91,6 +93,8 @@ public class ComputerDesktopUI : MonoBehaviour
 
     public void OpenHackingTerminalPanel()
     {
+        if (hackingTerminalIconButton == null || !hackingTerminalIconButton.gameObject.activeSelf || !hackingTerminalIconButton.interactable)
+            return;
         if (hackingTerminalPanel != null)
             hackingTerminalPanel.SetActive(true);
     }
@@ -106,6 +110,37 @@ public class ComputerDesktopUI : MonoBehaviour
 
     [Obsolete("Use " + nameof(CloseHackingTerminalPanel) + " instead.")]
     public void CloseDeliveriesPanel() => CloseHackingTerminalPanel();
+
+    /// <summary>
+    /// Called when the player sits at the PC. The hacking icon is hidden until <see cref="NotifyRemoteAccessEstablished"/> runs
+    /// (after H's post-delivery "step away" Ollama line plus <c>Remote access established</c>).
+    /// </summary>
+    public void OnComputerSessionOpened()
+    {
+        CloseHackingTerminalPanel();
+        SetHackingTerminalIconAvailable(false);
+    }
+
+    /// <summary>Called when the player leaves the PC; locks hacking again for the next session.</summary>
+    public void OnComputerSessionClosed()
+    {
+        CloseHackingTerminalPanel();
+        SetHackingTerminalIconAvailable(false);
+    }
+
+    /// <summary>Shows and enables the hacking terminal icon after H's break / step-away reply (see <c>OllamaConnector</c>).</summary>
+    public void NotifyRemoteAccessEstablished()
+    {
+        SetHackingTerminalIconAvailable(true);
+    }
+
+    void SetHackingTerminalIconAvailable(bool available)
+    {
+        if (hackingTerminalIconButton == null)
+            return;
+        hackingTerminalIconButton.gameObject.SetActive(available);
+        hackingTerminalIconButton.interactable = available;
+    }
 
     private void OnShutdownComputerClicked()
     {

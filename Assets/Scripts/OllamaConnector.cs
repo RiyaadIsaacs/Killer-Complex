@@ -33,13 +33,15 @@ public class OllamaConnector : MonoBehaviour
     [Header("References")]
     [Tooltip("If unset, the first ChatManager in loaded scenes is used at runtime.")]
     [SerializeField] private ChatManager chatManager;
+    [Tooltip("Optional. Enables the hacking terminal icon after H's post-delivery step-away Ollama reply. If unset, resolved from ChatManager's parent or first ComputerDesktopUI in loaded scenes.")]
+    [SerializeField] private ComputerDesktopUI computerDesktopUi;
     [Tooltip("Optional. If set, delivery progress in the LLM context matches gameplay. If unset, the first DeliveryManager in loaded scenes is used at runtime (required for post-delivery \"H steps away\" beats).")]
     [SerializeField] private DeliveryManager deliveryManager;
 
     /// <summary>Inspector link or runtime-resolved <see cref="DeliveryManager"/> (same instance used for LLM context).</summary>
     public DeliveryManager DeliveryManagerForGameplay => GetDeliveryManager();
 
-    [Tooltip("Optional. Desktop toast + SFX when H sends an excuse reply, hack-reversal reply, maze-round outcome reply, or a suspicion nudge (ignored delivery + breach sims).")]
+    [Tooltip("Optional. Desktop toast + SFX when H sends an excuse reply, hack-reversal reply, or maze-round outcome reply.")]
     [SerializeField] private DesktopMessengerNotification desktopMessengerNotification;
 
     [Header("LLM context (not shown in chat UI)")]
@@ -48,7 +50,7 @@ public class OllamaConnector : MonoBehaviour
     private float suspicionPercent;
 
     [SerializeField, Min(0f)]
-    [Tooltip("How much suspicion (0–100) increases per maze run (win, fail, or abort) while a delivery leg is active and the player has not messaged H since H's last line. Set 0 to disable meter moves (nudges also skip).")]
+    [Tooltip("How much suspicion (0–100) increases when a gated breach sim ends while a delivery leg is active and the player has not messaged H since H's last line; folded into the single maze-outcome Ollama reply (no second request). Set 0 to disable.")]
     private float suspicionPerIgnoredMazeAttempt = 12f;
     [SerializeField]
     [Tooltip("Used for LLM context only when DeliveryManager is not assigned; otherwise TotalDeliveryLegs from DeliveryManager is used.")]
@@ -69,7 +71,6 @@ public class OllamaConnector : MonoBehaviour
     bool _pendingExcuseMessengerDesktopToast;
     bool _pendingHackReversalMessengerDesktopToast;
     bool _pendingMazeRoundOutcomeDesktopToast;
-    bool _pendingSuspicionIgnoreDesktopToast;
 
     /// <summary>True after H posts to the feed until the player sends a messenger line (for ignored-delivery maze suspicion).</summary>
     bool _awaitingPlayerMessengerReplyAfterH;
@@ -97,6 +98,19 @@ public class OllamaConnector : MonoBehaviour
         return _runtimeResolvedDeliveryManager;
     }
 
+    /// <summary>Optional desktop UI for enabling the hacking icon after the post-delivery away beat.</summary>
+    ComputerDesktopUI ResolveComputerDesktopUi()
+    {
+        if (computerDesktopUi != null)
+            return computerDesktopUi;
+        var cm = GetChatManager();
+        if (cm != null)
+            computerDesktopUi = cm.GetComponentInParent<ComputerDesktopUI>();
+        if (computerDesktopUi == null)
+            computerDesktopUi = FindFirstObjectByType<ComputerDesktopUI>(FindObjectsInactive.Include);
+        return computerDesktopUi;
+    }
+
     [Serializable]
     private struct OllamaGenerateRequest
     {
@@ -111,7 +125,7 @@ public class OllamaConnector : MonoBehaviour
         public string response;
     }
 
-    /// <summary>Suspicion 0–100; rises when the player runs maze breach attempts during an active delivery without messaging H since H's last line.</summary>
+    /// <summary>Suspicion 0–100; rises when gated breach sims end during an active delivery without messaging H since H's last line (merged into the maze-outcome prompt).</summary>
     public float SuspicionPercent
     {
         get => suspicionPercent;
@@ -138,47 +152,23 @@ public class OllamaConnector : MonoBehaviour
     }
 
     /// <summary>
-    /// Called from <see cref="HackingTerminalPanel"/> when any maze run ends. If a delivery is active and the player has not replied to H since H last spoke,
-    /// increases suspicion and may prompt H to nudge the player about ignoring the job.
+    /// Increments <see cref="SuspicionPercent"/> when a gated breach sim ends during an active delivery and the player has not messaged H since H's last line.
+    /// Does not call Ollama; the ignore-delivery beat is merged into <see cref="NotifyMazeBreachRoundAttemptFinished"/> when this returns true.
     /// </summary>
-    public void OnMazeRoundEndedForSuspicion()
+    public bool ApplySuspicionIncrementForIgnoredMazeAttempt()
     {
         var dm = GetDeliveryManager();
         if (dm == null || dm.ActiveDropPointId < 0)
-            return;
+            return false;
         if (!_awaitingPlayerMessengerReplyAfterH)
-            return;
+            return false;
 
         float delta = Mathf.Max(0f, suspicionPerIgnoredMazeAttempt);
         if (delta <= 0f)
-            return;
+            return false;
 
         suspicionPercent = Mathf.Min(100f, suspicionPercent + delta);
-
-        var cm = GetChatManager();
-        if (cm == null)
-        {
-            Debug.LogWarning($"{nameof(OllamaConnector)}: Cannot send suspicion nudge — no ChatManager.", this);
-            return;
-        }
-
-        string fullPrompt = BuildSuspicionIgnoreNudgePrompt();
-        cm.ShowTypingIndicator();
-        _pendingSuspicionIgnoreDesktopToast = true;
-        StartCoroutine(RequestOllamaCoroutine(fullPrompt));
-    }
-
-    string BuildSuspicionIgnoreNudgePrompt()
-    {
-        var ctx = new StringBuilder(384);
-        AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: false);
-        ctx.Append(" In-world fact: [\"player ignores the delivery order\"] — the resident has not messaged you since your last line and keeps running breach-terminal sims while a delivery is still active. ");
-        ctx.Append("Suspicion is ");
-        ctx.Append(Mathf.RoundToInt(Mathf.Clamp(suspicionPercent, 0f, 100f)));
-        ctx.Append("%. Treat this as being ignored. Reply in-character as H: post a new short messenger line ordering them to stop playing with sims and move on the package; remind them what is at stake using Wife status from CONTEXT in clinical, terrifying terms; stay dominant; do not paste hidden context labels or the word CONTEXT.");
-        const string narrative =
-            "This block is for your next visible reply only — output what H would type in the messenger, nothing else.";
-        return $"{SystemPrompt}\n\n---\n\n[CONTEXT: {ctx}]\n\n{narrative}";
+        return true;
     }
 
     /// <summary>
@@ -246,10 +236,11 @@ public class OllamaConnector : MonoBehaviour
     }
 
     /// <summary>
-    /// Called when a maze breach <b>run</b> ends (goal, bomb, or abort). Rolls the next delivery when idle (same rules as messenger),
-    /// then (unless <paramref name="skipOllamaBecauseFullHackReversalWillFire"/> is true) asks Ollama for H to react and task the player if CONTEXT has an active delivery.
+    /// Called when a maze breach <b>run</b> ends (after the breach-count gate). Rolls the next delivery when idle (same rules as messenger),
+    /// then (unless <paramref name="skipOllamaBecauseFullHackReversalWillFire"/> is true) asks Ollama for a single H reply. When <paramref name="mergeIgnoreDeliveryOrderIntoMazeReply"/> is true,
+    /// suspicion was just incremented for an ignored active delivery; CONTEXT includes that beat so H can address breach outcome and pressure in one message.
     /// </summary>
-    public void NotifyMazeBreachRoundAttemptFinished(bool roundReachedGoal, bool skipOllamaBecauseFullHackReversalWillFire)
+    public void NotifyMazeBreachRoundAttemptFinished(bool roundReachedGoal, bool skipOllamaBecauseFullHackReversalWillFire, bool mergeIgnoreDeliveryOrderIntoMazeReply = false)
     {
         var cm = GetChatManager();
         if (cm == null)
@@ -271,6 +262,12 @@ public class OllamaConnector : MonoBehaviour
         var ctx = new StringBuilder(384);
         AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: false);
 
+        if (mergeIgnoreDeliveryOrderIntoMazeReply)
+        {
+            ctx.Append(" In-world fact: [\"player ignores the delivery order\"] — the resident has not messaged you since your last line and keeps running breach-terminal sims while a delivery is still active. ");
+            ctx.Append("Suspicion has increased (see \"Suspicion is\" in CONTEXT); treat this as being ignored as well as the breach outcome below. ");
+        }
+
         string beat = roundReachedGoal
             ? "The player just finished a breach attempt successfully: they reached the uplink node on your terminal without tripping a trap. "
             : "The player's breach attempt just ended in failure (they hit a trap / corrupted sector, or aborted the sim). ";
@@ -278,6 +275,9 @@ public class OllamaConnector : MonoBehaviour
         string narrative =
             beat +
             "Reply in-character as H in the messenger: react to that breach outcome with your kidnapper tone (orders, cameras, hostage leverage); if CONTEXT states an active delivery to a specific apartment, give or reinforce that order in this same reply; keep it concise.";
+        if (mergeIgnoreDeliveryOrderIntoMazeReply)
+            narrative +=
+                " If CONTEXT includes the ignore-delivery fact, merge that pressure (stop wasting time on sims, move on the package, Wife status leverage) into this same single coherent message — do not write two separate beats.";
 
         string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
         string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
@@ -354,8 +354,14 @@ public class OllamaConnector : MonoBehaviour
             }
 
             string cleaned = StripEchoedContextFromModelReply(reply);
+            bool postDeliveryAwayBeatReply = _pendingExcuseMessengerDesktopToast;
+            if (postDeliveryAwayBeatReply)
+                cleaned = cleaned.TrimEnd() + "\n\nRemote access established";
+
             cm.UpdateChatFeed(HackerSenderLabel, cleaned);
             MaybeTriggerDesktopMessengerNotificationAfterHReply(cleaned);
+            if (postDeliveryAwayBeatReply)
+                ResolveComputerDesktopUi()?.NotifyRemoteAccessEstablished();
         }
     }
 
@@ -364,7 +370,6 @@ public class OllamaConnector : MonoBehaviour
         _pendingExcuseMessengerDesktopToast = false;
         _pendingHackReversalMessengerDesktopToast = false;
         _pendingMazeRoundOutcomeDesktopToast = false;
-        _pendingSuspicionIgnoreDesktopToast = false;
     }
 
     void MaybeTriggerDesktopMessengerNotificationAfterHReply(string reply)
@@ -373,11 +378,6 @@ public class OllamaConnector : MonoBehaviour
         if (_pendingHackReversalMessengerDesktopToast)
         {
             _pendingHackReversalMessengerDesktopToast = false;
-            showToast = true;
-        }
-        else if (_pendingSuspicionIgnoreDesktopToast)
-        {
-            _pendingSuspicionIgnoreDesktopToast = false;
             showToast = true;
         }
         else if (_pendingMazeRoundOutcomeDesktopToast)

@@ -106,15 +106,15 @@ You are "V", a cold, manipulative blackmailer who communicates only through text
 
 ---
 
-## Game — Suspicion meter & delivery-ignore nudge — 2026-05-14
+## Game — Suspicion meter & merged maze reply — 2026-05-14 *(behaviour tightened 2026-05-16)*
 
-**Goal:** Raise **suspicion** when the player finishes a maze breach **run** during an **active delivery** without having messaged **H** since **H**’s last visible line; ask the model for another impatient **H** messenger line that treats the situation as **being ignored**.
+**Goal:** Raise **suspicion** when the player finishes a **gated** maze breach batch during an **active delivery** without having messaged **H** since **H**’s last visible line; fold ignore-delivery pressure into the **same** Ollama turn as the breach-outcome reply (**one** **H** message, **one** HTTP call).
 
-**Gameplay wiring (summary):** `HackingTerminalPanel.OnMazeRoundAttemptFinished` → `OllamaConnector.OnMazeRoundEndedForSuspicion()` (every run end, not only when the breach count “gates” the usual maze-outcome prompt). `ChatManager` → `NotifyPlayerMessengerSend()` before appending a player line; `NotifyHPostedToMessenger()` when any **H** line is appended (intro, scripted, or model). Inspector: **`suspicionPerIgnoredMazeAttempt`** (0 disables meter increments and skips the nudge generate).
+**Gameplay wiring (summary):** After the breach-count gate, **`HackingTerminalPanel`** calls **`ApplySuspicionIncrementForIgnoredMazeAttempt()`** (meter only, no HTTP), then **`NotifyMazeBreachRoundAttemptFinished(..., mergeIgnoreDeliveryOrderIntoMazeReply)`** so a **single** Ollama generate carries breach outcome plus optional ignore-delivery / suspicion prose in **`[CONTEXT]`**. `ChatManager` → **`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**. Inspector: **`suspicionPerIgnoredMazeAttempt`** (0 skips increment and merge hints).
 
-**Prompt (ignore nudge — full HTTP `prompt` = system + `---` + augmented turn; paraphrased middle):** After the usual **`AppendStaticGameContextForLlm`** prose (includes **Wife status** when set), the context continues with an in-world fact **`["player ignores the delivery order"]`** (quoted token in the string), explanation that the resident has not messaged H since H’s last line and keeps running breach-terminal sims while a delivery is still active, current **Suspicion is N%**; narrative instructs **H** to post a short messenger line (stop playing sims, move on the package) and to use **Wife status** from CONTEXT in **clinical, terrifying** terms. Implemented in **`BuildSuspicionIgnoreNudgePrompt`**.
+**Prompt (merged into maze-outcome — single HTTP `prompt` = system + `---` + `[CONTEXT]` + narrative):** When **`ApplySuspicionIncrementForIgnoredMazeAttempt`** returns true, **`NotifyMazeBreachRoundAttemptFinished`** appends the same **`["player ignores the delivery order"]`** prose and narrative instructions to fold ignore-pressure into the breach-outcome reply (one coherent **H** message). Implemented in **`OllamaConnector.NotifyMazeBreachRoundAttemptFinished`** (no separate **`BuildSuspicionIgnoreNudgePrompt`** call).
 
-**Outcome:** In-engine; desktop toast may fire via **`_pendingSuspicionIgnoreDesktopToast`**. When the maze gate **also** triggers **`NotifyMazeBreachRoundAttemptFinished`**, two Ollama requests can occur close together (nudge + maze-outcome); typing indicator is ref-counted in **`ChatManager`**.
+**Outcome:** In-engine; desktop toast uses the maze-outcome pending flag. **One** Ollama request per gated breach batch (suspicion increment is folded into the maze prompt when applicable).
 
 **Iteration notes:** Tune **`suspicionPerIgnoredMazeAttempt`** and starting **`suspicionPercent`** per scene for difficulty.
 

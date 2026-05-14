@@ -102,10 +102,10 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 
 ## 2026-05-14 — Suspicion meter (replaces likeability)
 
-- **LLM / design:** **`OllamaConnector`** — **`SuspicionPercent`** (0–100, Inspector default 0 in scenes) replaces **`likeabilityPercent`**; hidden context says **“Suspicion is …%.”** Serialized **`suspicionPerIgnoredMazeAttempt`** scales how much suspicion rises per qualifying maze run (0 disables meter moves and skip nudges).
-- **Trigger:** Each maze breach **run** end (**`HackingTerminalPanel.OnMazeRoundAttemptFinished`**) calls **`OnMazeRoundEndedForSuspicion()`** while a delivery leg is active and the player has **not** sent a messenger line since **H**’s last post; then a dedicated generate call uses **`BuildSuspicionIgnoreNudgePrompt`** (includes **`["player ignores the delivery order"]`**) so **H** sends another impatient in-character line. **`ChatManager`** notifies the connector on player send and on **H** feed lines (**`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**).
-- **Desktop toast:** **`OllamaConnector`** may queue **`_pendingSuspicionIgnoreDesktopToast`** alongside other H-reply toasts.
+- **LLM / design:** **`OllamaConnector`** — **`SuspicionPercent`** (0–100, Inspector default 0 in scenes) replaces **`likeabilityPercent`**; hidden context says **“Suspicion is …%.”** Serialized **`suspicionPerIgnoredMazeAttempt`** scales how much suspicion rises when the ignore-delivery maze beat applies (0 disables increment and merge hints).
+- **Trigger (initial ship):** After the **breach-count gate**, **`ApplySuspicionIncrementForIgnoredMazeAttempt()`** then **`NotifyMazeBreachRoundAttemptFinished(..., mergeIgnoreDeliveryOrderIntoMazeReply)`** — **one** generate; **`ChatManager`** **`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**. *(Earlier doc text described a separate **`BuildSuspicionIgnoreNudgePrompt`** coroutine — removed **2026-05-16**.)*
+- **Desktop toast:** Maze replies use **`_pendingMazeRoundOutcomeDesktopToast`** only (suspicion-specific toast flag removed).
 - **Docs:** `ollama-plan.md`, `prompts-used.md`, `RiyaadWork.md`, `refinements-changes.md` (this entry).
-- **AI-assisted:** Cursor; verify in Editor: maze runs during an active delivery without replying to **H** raise suspicion and produce a follow-up **H** line when Ollama is running.
+- **AI-assisted:** Cursor; verify in Editor: after **N** gated breach runs (**`mazeBreachesBeforeMessengerJob`**), one **H** line; suspicion rises when delivery ignored.
 
 ---

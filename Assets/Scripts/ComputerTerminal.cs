@@ -61,6 +61,9 @@ public class ComputerTerminal : MonoBehaviour
 
         player.enabled = false;
         computerScreenRoot.SetActive(true);
+
+        var desktopUi = computerScreenRoot.GetComponentInChildren<ComputerDesktopUI>(true);
+        desktopUi?.OnComputerSessionOpened();
     }
 
     public void CloseTerminal()
@@ -69,6 +72,12 @@ public class ComputerTerminal : MonoBehaviour
             return;
 
         isOpen = false;
+
+        if (computerScreenRoot != null && computerScreenRoot.activeSelf)
+        {
+            var desktopUi = computerScreenRoot.GetComponentInChildren<ComputerDesktopUI>(true);
+            desktopUi?.OnComputerSessionClosed();
+        }
 
         if (computerScreenRoot != null)
             computerScreenRoot.SetActive(false);

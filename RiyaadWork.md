@@ -72,7 +72,7 @@
 
 ## 2026-05-14 — Suspicion meter (replaces likeability)
 
-- **LLM / gameplay:** `OllamaConnector.cs` — **`SuspicionPercent`** (0–100, starts at 0 in scenes), serialized **`suspicionPerIgnoredMazeAttempt`** for tuning; **`[CONTEXT: …]`** now reports **Suspicion is …%** instead of likeability. When a maze breach **run** ends during an **active delivery** and the player has **not** messaged **H** since **H**’s last line, suspicion increases and a dedicated **`BuildSuspicionIgnoreNudgePrompt`** turn is sent (in-world fact **`["player ignores the delivery order"]`**, treat as ignored, impatient follow-up). **`ChatManager`** calls **`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**; **`HackingTerminalPanel`** calls **`OnMazeRoundEndedForSuspicion()`** on every run end.
+- **LLM / gameplay:** `OllamaConnector.cs` — **`SuspicionPercent`** (0–100, starts at 0 in scenes), serialized **`suspicionPerIgnoredMazeAttempt`**; **`[CONTEXT: …]`** reports **Suspicion is …%** instead of likeability. *(Initial implementation used a separate suspicion **`/api/generate`**; **2026-05-16** merged ignore-delivery into **`NotifyMazeBreachRoundAttemptFinished`** — see entry below.)* **`ChatManager`** calls **`NotifyPlayerMessengerSend`** / **`NotifyHPostedToMessenger`**; after the breach-count gate, **`ApplySuspicionIncrementForIgnoredMazeAttempt`** + **`NotifyMazeBreachRoundAttemptFinished(..., mergeIgnore…)`**.
 - **Documentation:** `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md`, this file; historical **likeability** references in older log lines left annotated where relevant.
 - **Pushed:** Commit to GitHub with C# / scene updates and doc refresh.
 
@@ -83,6 +83,16 @@
 - **LLM / copy:** `OllamaConnector.cs` — **kidnapper** system prompt (wife hostage, cameras, clinical escalation, **bru**/**wena**); **`wifeStatusForLlmContext`** appended to **`[CONTEXT]`**; **`SendHackReversalPrompt`** retuned to uplink/surveillance fiction. **`ChatManager.cs`** + **`ComputerDesktopCanvas.prefab`** — new opening messenger line (lobby package, wife leverage).
 - **Documentation:** `prompts-used.md`, `ollama-plan.md`, `README.md`, `plan.md`, `setup.md`, `refinements-changes.md`, this file.
 - **Pushed:** Commit to GitHub with doc refresh and narrative-aligned code.
+
+---
+
+## 2026-05-16 — Merged maze suspicion + hacking icon gate
+
+- **LLM:** **`OllamaConnector`** — removed second **`/api/generate`** for ignore-delivery; **`ApplySuspicionIncrementForIgnoredMazeAttempt()`** bumps **`SuspicionPercent`** then **`NotifyMazeBreachRoundAttemptFinished(..., mergeIgnoreDeliveryOrderIntoMazeReply)`** folds **`["player ignores the delivery order"]`** into the maze-outcome prompt. **`_pendingSuspicionIgnoreDesktopToast`** / **`BuildSuspicionIgnoreNudgePrompt`** removed.
+- **Maze gate:** **`HackingTerminalPanel`** — **`mazeBreachesBeforeMessengerJob`** minimum **2**; **`RunMazeRoundOllamaHooks`** applies suspicion then single notify. Prefab **`mazeBreachesBeforeMessengerJob: 2`**.
+- **Desktop UI:** **`ComputerDesktopUI`** — hacking dock icon **hidden** until **`NotifyRemoteAccessEstablished`** (after post–drop-off reply + **`Remote access established`** line); **`ComputerTerminal`** **`OnComputerSessionOpened` / `OnComputerSessionClosed`**.
+- **Docs:** **`setup.md`**, **`ollama-plan.md`** §8, **`prompts-used.md`** (suspicion section goal), **`refinements-changes.md`** (this entry + **2026-05-14** bullet refresh), **`RiyaadWork.md`**.
+- **AI-assisted:** Cursor; verify in Editor: second gated breach → **one** **H** message; icon appears only after remote-access line; leaving PC hides icon.
 
 ---
 

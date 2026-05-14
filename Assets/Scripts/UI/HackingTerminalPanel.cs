@@ -23,8 +23,8 @@ public class HackingTerminalPanel : MonoBehaviour
     [SerializeField] private OllamaConnector ollamaConnector;
 
     [Header("Maze → H / next job")]
-    [Tooltip("Finished maze runs (win, fail, or abort) required before Ollama is called for breach banter and the next idle delivery is prepared. Full decryption to 100% on a win bypasses this count.")]
-    [SerializeField, Min(1)]
+    [Tooltip("Finished maze runs (win, fail, or abort) required before Ollama is called for breach banter, suspicion nudge, and the next idle delivery is prepared. Full decryption to 100% on a win bypasses this count. Minimum 2 so the first breach run never contacts the LLM alone.")]
+    [SerializeField, Min(2)]
     private int mazeBreachesBeforeMessengerJob = 2;
 
     [Header("Events")]
@@ -83,7 +83,7 @@ public class HackingTerminalPanel : MonoBehaviour
 
     void OnValidate()
     {
-        mazeBreachesBeforeMessengerJob = Mathf.Max(1, mazeBreachesBeforeMessengerJob);
+        mazeBreachesBeforeMessengerJob = Mathf.Max(2, mazeBreachesBeforeMessengerJob);
     }
 
     private void OnHackClicked()
@@ -202,8 +202,6 @@ public class HackingTerminalPanel : MonoBehaviour
         if (_hackComplete)
             return;
 
-        GetOllamaConnector()?.OnMazeRoundEndedForSuspicion();
-
         bool skipMazeOllamaBecauseReversalNext = false;
         if (roundReachedGoal && decryptionSlider != null)
         {
@@ -214,11 +212,11 @@ public class HackingTerminalPanel : MonoBehaviour
         if (skipMazeOllamaBecauseReversalNext)
         {
             _completedMazeBreachesSinceLastMessenger = 0;
-            InvokeMazeNotify(roundReachedGoal, true);
+            RunMazeRoundOllamaHooks(roundReachedGoal, true);
             return;
         }
 
-        int need = Mathf.Max(1, mazeBreachesBeforeMessengerJob);
+        int need = Mathf.Max(2, mazeBreachesBeforeMessengerJob);
         _completedMazeBreachesSinceLastMessenger++;
         if (_completedMazeBreachesSinceLastMessenger < need)
         {
@@ -231,14 +229,24 @@ public class HackingTerminalPanel : MonoBehaviour
         }
 
         _completedMazeBreachesSinceLastMessenger = 0;
-        InvokeMazeNotify(roundReachedGoal, false);
+        RunMazeRoundOllamaHooks(roundReachedGoal, false);
     }
 
-    void InvokeMazeNotify(bool roundReachedGoal, bool skipMazeOllamaBecauseReversalNext)
+    /// <summary>
+    /// Applies suspicion increment when applicable, then a single maze-outcome Ollama call (ignore-delivery beat merged into that prompt when the increment ran).
+    /// </summary>
+    void RunMazeRoundOllamaHooks(bool roundReachedGoal, bool skipMazeOllamaBecauseReversalNext)
+    {
+        var oc = GetOllamaConnector();
+        bool mergeIgnoreBeat = oc != null && oc.ApplySuspicionIncrementForIgnoredMazeAttempt();
+        InvokeMazeNotify(roundReachedGoal, skipMazeOllamaBecauseReversalNext, mergeIgnoreBeat);
+    }
+
+    void InvokeMazeNotify(bool roundReachedGoal, bool skipMazeOllamaBecauseReversalNext, bool mergeIgnoreDeliveryOrderIntoMazeReply)
     {
         var oc = GetOllamaConnector();
         if (oc != null)
-            oc.NotifyMazeBreachRoundAttemptFinished(roundReachedGoal, skipMazeOllamaBecauseReversalNext);
+            oc.NotifyMazeBreachRoundAttemptFinished(roundReachedGoal, skipMazeOllamaBecauseReversalNext, mergeIgnoreDeliveryOrderIntoMazeReply);
         else
         {
             Debug.LogWarning(

@@ -1494,6 +1494,7 @@ MonoBehaviour:
   consoleOutput: {fileID: 3439152542706822861}
   hackProgressPercentPerClick: 8
   mazeWinProgressPercent: 10
+  mazeBreachesBeforeMessengerJob: 2
   ollamaConnector: {fileID: 0}
   onHackSuccessful:
     m_PersistentCalls:
