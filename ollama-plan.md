@@ -58,6 +58,10 @@ OllamaConnector
 HackingTerminalPanel (maze run ends: win / fail / abort, after breach-count gate)
   → OllamaConnector.ApplySuspicionIncrementForIgnoredMazeAttempt()  (meter only when delivery ignored)
   → OllamaConnector.NotifyMazeBreachRoundAttemptFinished(..., mergeIgnore: …)  (single /api/generate)
+
+OllamaConnector (player SEND after final delivery + post-drop “step away” beat pending)
+  → TryBuildBadEndingPlayerTurn: hidden [SYSTEM] trap line + [CONTEXT] + Player says (no dismissive-away instruction)
+  → POST /api/generate → H reply; BadEndingOrchestrator.StartBadEnding() (door close, knocks, desktop lock)
 ```
 
 - **History:** Each request is **stateless** for now (no prior turns in `prompt`). Sliding-window or chat API migration should be documented here when added.
@@ -109,3 +113,4 @@ HackingTerminalPanel (maze run ends: win / fail / abort, after breach-count gate
 | 2026-05-14 | **Context** — prose whitelist + destination apartment only (no internal drop id in prompt); **delivery pacing** — next leg from **`ChatManager`** messenger send when idle; **`TotalDeliveryLegs`**; **`DeliveryZone`** interact + HUD toasts; **`DeliveryCompletionChatNotifier`** chat-only |
 | 2026-05-15 | **Narrative pivot** — **H** reframed as **kidnapper** (wife hostage, cameras); **`wifeStatusForLlmContext`** / **Wife status** in `[CONTEXT]`; messenger **intro** + prefab copy updated; full-hack **`[SYSTEM]`** beat retargeted to **uplink / surveillance** (no photo blackmail); **Project_Bleed** removed from prompt + docs; **`prompts-used.md`**, **`README`**, **`plan`**, **`setup`**, **`refinements-changes`**, **`RiyaadWork`** updated |
 | 2026-05-16 | **Merged maze suspicion + hacking icon gate** — **`ApplySuspicionIncrementForIgnoredMazeAttempt`** + **`NotifyMazeBreachRoundAttemptFinished(..., mergeIgnore…)`** (one `/api/generate`); **`mazeBreachesBeforeMessengerJob`** ≥ **2**; **`ComputerDesktopUI`** hides HACKING until **`NotifyRemoteAccessEstablished`**; **`ComputerTerminal`** session open/close; docs (`setup`, §4/§8 here, `prompts-used`, `refinements-changes`, `RiyaadWork`) |
+| 2026-05-28 | **Bad ending** — after **`currentDeliveryID >= TotalDeliveryLegs`** and post-drop beat, messenger **`TryBuildBadEndingPlayerTurn`** (hidden **`[SYSTEM]`** trap); **`BadEndingOrchestrator`**, **`InteractDoor`** (my apartment door + knocks), **`SoundManager`** (world knocks + **`PlayOneShotNonSpatial`** gunshot), **`BadEndingCanvasCreator`** prefab menu; **`setup.md`**, **`prompts-used.md`**, **`refinements-changes`**, **`RiyaadWork`**, **`README`** |

@@ -148,6 +148,24 @@ I see you're finally at the computer. Stop looking for your wife—she's not at 
 
 ---
 
+## Game — Bad ending trap (hidden `[SYSTEM]`) — 2026-05-28
+
+**Goal:** When **all** configured delivery legs are done and the one-shot post-drop “H steps away” beat is still pending, the **next** messenger send must **not** ask for the dismissive-away excuse. Instead, **one** Ollama generate uses a hidden **`[SYSTEM]`** line (not duplicated as a visible messenger **`[SYSTEM]`** row) so **H** leads the player into the **final trap** (eerie calm; last package at **Room 204** fiction).
+
+**Prompt block (exact string constant `BadEndingHiddenSystemBeat` in `OllamaConnector.cs`):**
+
+```text
+[SYSTEM]: The player has finished all jobs. You are now leading them to the final trap. Tell them there is one last package outside their own door (Room 204) and then they can see their wife. Be extremely eerie and calm.
+```
+
+**Shape:** `systemPrompt + --- + [CONTEXT: …] + {BadEndingHiddenSystemBeat} + narrative instructions + Player says: {player line}` — implemented in **`OllamaConnector.TryBuildBadEndingPlayerTurn`**. Reply stripping removes echoed **`[SYSTEM`…** lines from visible chat when models leak them.
+
+**Outcome:** In-engine; no **`Remote access established`** suffix for this reply; desktop enters bad-ending mode via **`BadEndingOrchestrator.StartBadEnding()`**.
+
+**Iteration notes:** Tune trap copy only in code (or extract to serialized string later) and log changes here + **`ollama-plan.md`** §8.
+
+---
+
 ## Game — Ollama context extension — 2026-05-13 *(superseded by 2026-05-14 for prompt shape)*
 
 **Goal:** Hidden prompt tells **H** the **drop-off id**, mapped **apartment room** (201–208 for ids 0–6), and whether the player has **physically picked up** the reception package when that gate is enabled.

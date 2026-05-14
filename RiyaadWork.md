@@ -96,6 +96,16 @@
 
 ---
 
+## 2026-05-28 — Bad ending, spatial knocks, canvas + audio
+
+- **LLM / gameplay:** **`OllamaConnector.TryBuildBadEndingPlayerTurn`** — hidden **`[SYSTEM]`** final-trap prompt after all **`TotalDeliveryLegs`** complete; **`BadEndingOrchestrator`**, **`InteractDoor`** (marked apartment door close + knock bursts + repeat), **`RevealBadEndingCanvas`** gunshot (**`SoundManager.PlayOneShotNonSpatial`**).
+- **Audio:** **`SoundManager`** — **`PlayOneShotWorld`** (3D knocks at door), **`PlayOneShotNonSpatial`** (UI/cutscene stinger), optional **door knock** fallback clip.
+- **Editor / assets:** **`BadEndingCanvasCreator`** menu item for **`BadEndingCanvas`** prefab (user assigns SFX clips under **`Assets/SFX`**).
+- **Documentation:** **`setup.md`** §3b, **`ollama-plan.md`**, **`prompts-used.md`**, **`refinements-changes.md`**, **`README.md`**, this file.
+- **Pushed:** Commit to GitHub with code + doc refresh.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

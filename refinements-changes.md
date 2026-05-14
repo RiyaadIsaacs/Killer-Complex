@@ -109,3 +109,13 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify in Editor: after **N** gated breach runs (**`mazeBreachesBeforeMessengerJob`**), one **H** line; suspicion rises when delivery ignored.
 
 ---
+
+## 2026-05-28 — Bad ending sequence, door audio, canvas prefab
+
+- **LLM / gameplay:** **`OllamaConnector`** — **`TryBuildBadEndingPlayerTurn`** when **`PostDeliveryStepAwayBeatPending`** and **`currentDeliveryID >= TotalDeliveryLegs`**; hidden **`[SYSTEM]`** trap beat (**Room 204** package fiction); **`InteractDoor.CloseMarkedApartmentDoorsForBadEnding`** + **`BadEndingOrchestrator.StartBadEnding()`** (or door-only path if orchestrator missing). No **`Remote access established`** on this reply; beat consumed after successful generate.
+- **World / UI:** **`BadEndingOrchestrator`** — knock **repeat** interval (default **8 s**), **`RevealBadEndingCanvas()`** + gunshot; **`InteractDoor`** — **my apartment door**, **3D** knock sequence, **`SoundManager.PlayOneShotWorld`** / **`PlayOneShotNonSpatial`**; extended **`SoundManager`** (door knock fallback, static one-shots).
+- **Editor:** **`BadEndingCanvasCreator`** — **Tools → Killer-Complex → Create Bad Ending Canvas Prefab** → **`Assets/Prefabs/BadEndingCanvas.prefab`**.
+- **Docs:** **`setup.md`** §3b, **`ollama-plan.md`** §4 + §8, **`prompts-used.md`** (bad-ending **`[SYSTEM]`** block), **`README.md`**, **`RiyaadWork.md`**, this file.
+- **AI-assisted:** Cursor; verify in Editor: assign knock + gunshot clips, orchestrator + canvas, **My apartment door** on the unit **`InteractDoor`**.
+
+---

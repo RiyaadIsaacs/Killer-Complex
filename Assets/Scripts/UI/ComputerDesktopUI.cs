@@ -24,8 +24,10 @@ public class ComputerDesktopUI : MonoBehaviour
     [Header("Leave computer")]
     [Tooltip("Top-corner control that closes open panels and exits the computer (same as Escape).")]
     [SerializeField] private Button shutdownComputerButton;
-    [Tooltip("If unset, a ComputerTerminal is searched in parents (works when the canvas is under the desk object).")]
+    [Tooltip("If unset, the first ComputerTerminal is searched in parents (works when the canvas is under the desk object).")]
     [SerializeField] private ComputerTerminal computerTerminal;
+
+    bool _badEndingDesktopMode;
 
     private void Awake()
     {
@@ -81,6 +83,8 @@ public class ComputerDesktopUI : MonoBehaviour
 
     public void OpenMessengerPanel()
     {
+        if (_badEndingDesktopMode)
+            return;
         if (messengerPanel != null)
             messengerPanel.SetActive(true);
     }
@@ -117,6 +121,14 @@ public class ComputerDesktopUI : MonoBehaviour
     /// </summary>
     public void OnComputerSessionOpened()
     {
+        if (_badEndingDesktopMode)
+        {
+            CloseHackingTerminalPanel();
+            CloseMessengerPanel();
+            ApplyBadEndingDesktopLayout();
+            return;
+        }
+
         CloseHackingTerminalPanel();
         SetHackingTerminalIconAvailable(false);
     }
@@ -131,7 +143,41 @@ public class ComputerDesktopUI : MonoBehaviour
     /// <summary>Shows and enables the hacking terminal icon after H's break / step-away reply (see <c>OllamaConnector</c>).</summary>
     public void NotifyRemoteAccessEstablished()
     {
+        if (_badEndingDesktopMode)
+            return;
         SetHackingTerminalIconAvailable(true);
+    }
+
+    /// <summary>
+    /// After the final delivery trap message is sent: hide messenger and hacking; only the shutdown control stays available.
+    /// </summary>
+    public void EnterBadEndingComputerMode()
+    {
+        _badEndingDesktopMode = true;
+        CloseHackingTerminalPanel();
+        CloseMessengerPanel();
+        ApplyBadEndingDesktopLayout();
+    }
+
+    void ApplyBadEndingDesktopLayout()
+    {
+        if (messengerIconButton != null)
+        {
+            messengerIconButton.gameObject.SetActive(false);
+            messengerIconButton.interactable = false;
+        }
+
+        if (hackingTerminalIconButton != null)
+        {
+            hackingTerminalIconButton.gameObject.SetActive(false);
+            hackingTerminalIconButton.interactable = false;
+        }
+
+        if (shutdownComputerButton != null)
+        {
+            shutdownComputerButton.gameObject.SetActive(true);
+            shutdownComputerButton.interactable = true;
+        }
     }
 
     void SetHackingTerminalIconAvailable(bool available)

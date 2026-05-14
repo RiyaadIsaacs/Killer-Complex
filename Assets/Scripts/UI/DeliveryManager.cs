@@ -78,6 +78,12 @@ public class DeliveryManager : MonoBehaviour
     /// <summary>Configured number of delivery legs (minimum 1).</summary>
     public int TotalDeliveryLegs => Mathf.Max(1, totalDeliveryLegs);
 
+    /// <summary>True after the last configured delivery leg is completed (<c>currentDeliveryID</c> is at the quota). Normal completion never advances past this without a code change.</summary>
+    public bool FinishedAllConfiguredDeliveryLegs => currentDeliveryID >= TotalDeliveryLegs;
+
+    /// <summary>Strictly greater than <see cref="TotalDeliveryLegs"/>; unused in the default completion path (quota caps at <see cref="FinishedAllConfiguredDeliveryLegs"/>).</summary>
+    public bool CurrentDeliveryIdStrictlyGreaterThanMaxLegs => currentDeliveryID > TotalDeliveryLegs;
+
     private readonly HashSet<int> _registeredDropPointIds = new HashSet<int>();
 
     bool _postDeliveryStepAwayBeatPending;
@@ -104,6 +110,12 @@ public class DeliveryManager : MonoBehaviour
 
     /// <summary>Clears the one-shot beat without sending it to the LLM (e.g. no <see cref="OllamaConnector"/> in scene).</summary>
     public void AbandonPostDeliveryStepAwayBeat()
+    {
+        _postDeliveryStepAwayBeatPending = false;
+    }
+
+    /// <summary>Clears the post-drop beat so the next messenger send does not ask for the dismissive-away line (bad-ending Ollama path).</summary>
+    public void ConsumePostDeliveryBeatForBadEnding()
     {
         _postDeliveryStepAwayBeatPending = false;
     }

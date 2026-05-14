@@ -48,6 +48,15 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 
 ---
 
+## 3b. Bad ending (quota finished) + door + audio
+
+- **Flow:** After the **last** delivery leg, the next messenger send uses a hidden **`[SYSTEM]`** trap prompt in **`OllamaConnector.TryBuildBadEndingPlayerTurn`** (not posted as a separate visible `[SYSTEM]` line). **`BadEndingOrchestrator`** (scene object) runs **`StartBadEnding()`**: closes **`InteractDoor`** instances with **My apartment door** checked, starts **3D** knock bursts (**`SoundManager.PlayOneShotWorld`**) with optional **repeat every N seconds**, locks **`ComputerDesktopUI`** to **shutdown only**. **`Interact`** on that door opens it and shows the bad-end canvas; **`RevealBadEndingCanvas()`** plays a **non-spatial** gunshot via **`SoundManager.PlayOneShotNonSpatial`** when configured.
+- **`BadEndingOrchestrator`:** Assign **bad ending canvas root** (inactive overlay). Inspector: **gunshot** clip for canvas reveal; **knock repeat interval** / toggle. **`OllamaConnector`** may assign **`BadEndingOrchestrator`** explicitly; otherwise it is resolved at runtime when present.
+- **`InteractDoor`:** Exactly one apartment unit should have **My apartment door** + knock clip (or rely on **`SoundManager`** **Door knock** fallback). **`SoundManager`** (e.g. on desktop canvas): **notification** clip (2D), optional **door knock** clip (fallback for knocks), **`PlayOneShotNonSpatial`** used by the orchestrator for the gunshot.
+- **Prefab:** **Tools → Killer-Complex → Create Bad Ending Canvas Prefab** writes **`Assets/Prefabs/BadEndingCanvas.prefab`** (black full-screen + **Bad Ending** TMP). Drag the instance into the scene and wire it to the orchestrator.
+
+---
+
 ## 4. Controls (current prototype)
 
 | Action | Binding |

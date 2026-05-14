@@ -15,6 +15,11 @@ public class OllamaConnector : MonoBehaviour
     /// <summary>Shown in the messenger UI as <c>[H]: …</c> for model replies.</summary>
     private const string HackerSenderLabel = "H";
 
+    private const string BadEndingHiddenSystemBeat =
+        "[SYSTEM]: The player has finished all jobs. You are now leading them to the final trap. " +
+        "Tell them there is one last package outside their own door (Room 204) and then they can see their wife. " +
+        "Be extremely eerie and calm.";
+
     private const string SystemPrompt =
         "You are H, a cold, ruthless, and transactional kidnapper. You have the player's wife. " +
         "You are watching the player through the apartment's security cameras. You don't make jokes; you give orders. " +
@@ -68,9 +73,14 @@ public class OllamaConnector : MonoBehaviour
     [Tooltip("Seconds before the request is aborted (large models may be slow).")]
     [SerializeField] private int requestTimeoutSeconds = 180;
 
+    [Tooltip("Optional. If set, closes the apartment door and locks the desktop when the bad-ending Ollama request is sent.")]
+    [SerializeField] private BadEndingOrchestrator badEndingOrchestrator;
+
     bool _pendingExcuseMessengerDesktopToast;
     bool _pendingHackReversalMessengerDesktopToast;
     bool _pendingMazeRoundOutcomeDesktopToast;
+    bool _pendingBadEndingFinalOllama;
+    bool _badEndingOllamaInFlight;
 
     /// <summary>True after H posts to the feed until the player sends a messenger line (for ignored-delivery maze suspicion).</summary>
     bool _awaitingPlayerMessengerReplyAfterH;
@@ -109,6 +119,14 @@ public class OllamaConnector : MonoBehaviour
         if (computerDesktopUi == null)
             computerDesktopUi = FindFirstObjectByType<ComputerDesktopUI>(FindObjectsInactive.Include);
         return computerDesktopUi;
+    }
+
+    BadEndingOrchestrator ResolveBadEndingOrchestrator()
+    {
+        if (badEndingOrchestrator != null)
+            return badEndingOrchestrator;
+        badEndingOrchestrator = FindFirstObjectByType<BadEndingOrchestrator>(FindObjectsInactive.Include);
+        return badEndingOrchestrator;
     }
 
     [Serializable]
@@ -180,13 +198,46 @@ public class OllamaConnector : MonoBehaviour
         if (string.IsNullOrWhiteSpace(userPrompt))
             return;
 
-        string playerTurn = BuildPlayerTurnForPrompt(userPrompt.Trim());
+        string trimmed = userPrompt.Trim();
+
+        string playerTurn;
+        if (TryBuildBadEndingPlayerTurn(trimmed, out playerTurn))
+        {
+            if (_badEndingOllamaInFlight)
+            {
+                Debug.LogWarning($"{nameof(OllamaConnector)}: Bad-ending Ollama request already in flight; ignoring duplicate send.", this);
+                return;
+            }
+
+            _badEndingOllamaInFlight = true;
+            var badEndingOrch = ResolveBadEndingOrchestrator();
+            if (badEndingOrch != null)
+                badEndingOrch.StartBadEnding();
+            else
+            {
+                InteractDoor.CloseMarkedApartmentDoorsForBadEnding();
+                InteractDoor.BeginBadEndingApartmentKnocks();
+                Debug.LogWarning(
+                    $"{nameof(OllamaConnector)} on {name}: No {nameof(BadEndingOrchestrator)} in the scene — apartment doors were closed if marked, but add an orchestrator for shutdown-only desktop UI and the bad-end canvas on door interact.",
+                    this);
+            }
+
+            _pendingBadEndingFinalOllama = true;
+        }
+        else
+            playerTurn = BuildPlayerTurnForPrompt(trimmed);
+
         string fullPrompt = $"{SystemPrompt}\n\n---\n\n{playerTurn}";
 
         var cm = GetChatManager();
         if (cm == null)
         {
             Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned and none was found in loaded scenes.", this);
+            if (_pendingBadEndingFinalOllama)
+            {
+                _pendingBadEndingFinalOllama = false;
+                _badEndingOllamaInFlight = false;
+            }
             return;
         }
 
@@ -289,10 +340,20 @@ public class OllamaConnector : MonoBehaviour
 
     private IEnumerator RequestOllamaCoroutine(string fullPrompt)
     {
+        bool releaseBadEndingInFlight = _badEndingOllamaInFlight && _pendingBadEndingFinalOllama;
+
+        void EndBadEndingFlightIfNeeded()
+        {
+            if (!releaseBadEndingInFlight)
+                return;
+            _badEndingOllamaInFlight = false;
+        }
+
         var cm = GetChatManager();
         if (cm == null)
         {
             Debug.LogError($"{nameof(OllamaConnector)}: ChatManager missing mid-request; aborting Ollama call.", this);
+            EndBadEndingFlightIfNeeded();
             yield break;
         }
 
@@ -320,6 +381,7 @@ public class OllamaConnector : MonoBehaviour
             if (request.result != UnityWebRequest.Result.Success)
             {
                 ClearPendingDesktopMessengerToasts();
+                EndBadEndingFlightIfNeeded();
                 HandleFailure(
                     $"Ollama request failed ({request.result}): {request.error}\n" +
                     "Is Ollama running? Try: ollama serve — and ensure the model is pulled (e.g. ollama pull mistral:7b-instruct).");
@@ -330,6 +392,7 @@ public class OllamaConnector : MonoBehaviour
             if (string.IsNullOrEmpty(raw))
             {
                 ClearPendingDesktopMessengerToasts();
+                EndBadEndingFlightIfNeeded();
                 HandleFailure("Ollama returned an empty body.");
                 yield break;
             }
@@ -342,6 +405,7 @@ public class OllamaConnector : MonoBehaviour
             catch (Exception ex)
             {
                 ClearPendingDesktopMessengerToasts();
+                EndBadEndingFlightIfNeeded();
                 HandleFailure($"Could not parse Ollama JSON: {ex.Message}\nRaw (truncated): {Truncate(raw, 400)}");
                 yield break;
             }
@@ -349,12 +413,20 @@ public class OllamaConnector : MonoBehaviour
             if (string.IsNullOrWhiteSpace(reply))
             {
                 ClearPendingDesktopMessengerToasts();
+                EndBadEndingFlightIfNeeded();
                 HandleFailure($"Ollama returned no usable \"response\" field.\nRaw (truncated): {Truncate(raw, 400)}");
                 yield break;
             }
 
             string cleaned = StripEchoedContextFromModelReply(reply);
-            bool postDeliveryAwayBeatReply = _pendingExcuseMessengerDesktopToast;
+            bool badEndingReply = _pendingBadEndingFinalOllama;
+            if (badEndingReply)
+                _pendingBadEndingFinalOllama = false;
+
+            if (badEndingReply)
+                GetDeliveryManager()?.ConsumePostDeliveryBeatForBadEnding();
+
+            bool postDeliveryAwayBeatReply = _pendingExcuseMessengerDesktopToast && !badEndingReply;
             if (postDeliveryAwayBeatReply)
                 cleaned = cleaned.TrimEnd() + "\n\nRemote access established";
 
@@ -362,6 +434,8 @@ public class OllamaConnector : MonoBehaviour
             MaybeTriggerDesktopMessengerNotificationAfterHReply(cleaned);
             if (postDeliveryAwayBeatReply)
                 ResolveComputerDesktopUi()?.NotifyRemoteAccessEstablished();
+
+            EndBadEndingFlightIfNeeded();
         }
     }
 
@@ -370,6 +444,8 @@ public class OllamaConnector : MonoBehaviour
         _pendingExcuseMessengerDesktopToast = false;
         _pendingHackReversalMessengerDesktopToast = false;
         _pendingMazeRoundOutcomeDesktopToast = false;
+        _pendingBadEndingFinalOllama = false;
+        _badEndingOllamaInFlight = false;
     }
 
     void MaybeTriggerDesktopMessengerNotificationAfterHReply(string reply)
@@ -466,6 +542,23 @@ public class OllamaConnector : MonoBehaviour
             t = (t[..i] + t[(close + 1)..]).Trim();
         }
 
+        for (var n = 0; n < 8; n++)
+        {
+            int i = t.IndexOf("[SYSTEM", StringComparison.OrdinalIgnoreCase);
+            if (i < 0)
+                break;
+            int end = t.IndexOfAny(new[] { '\n', '\r' }, i);
+            if (end < 0)
+            {
+                t = t[..i].TrimEnd();
+                break;
+            }
+
+            while (end < t.Length && (t[end] == '\n' || t[end] == '\r'))
+                end++;
+            t = (t[..i] + t[end..]).Trim();
+        }
+
         const string playerSays = "Player says:";
         for (var n = 0; n < 8; n++)
         {
@@ -481,6 +574,25 @@ public class OllamaConnector : MonoBehaviour
         while (t.Contains("  "))
             t = t.Replace("  ", " ");
         return string.IsNullOrWhiteSpace(t) ? original : t.Trim();
+    }
+
+    /// <summary>Builds the hidden trap prompt after all delivery legs are done (consumes the post-drop beat).</summary>
+    bool TryBuildBadEndingPlayerTurn(string userMessage, out string playerTurn)
+    {
+        playerTurn = null;
+        var dm = GetDeliveryManager();
+        if (dm == null || !dm.PostDeliveryStepAwayBeatPending || dm.currentDeliveryID < dm.TotalDeliveryLegs)
+            return false;
+
+        var ctx = new StringBuilder(384);
+        AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: false);
+
+        playerTurn =
+            $"[CONTEXT: {ctx}]\n\n{BadEndingHiddenSystemBeat}\n\n" +
+            "Treat the [SYSTEM] line above as true in-world fiction for this game only. " +
+            "Reply in-character as H in the messenger only (no meta narration): follow that beat in an eerie, calm tone; a few sentences.\n\n" +
+            $"Player says: {userMessage}";
+        return true;
     }
 
     /// <summary>
