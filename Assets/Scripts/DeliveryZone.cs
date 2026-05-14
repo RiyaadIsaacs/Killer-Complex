@@ -78,6 +78,17 @@ public class DeliveryZone : MonoBehaviour
         if (!_playerInside || deliveryManager == null)
             return;
 
+        if (deliveryManager.CanInteractDropPoint(dropPointId))
+        {
+            var hud = InteractPromptHud.Instance;
+            if (hud != null)
+            {
+                var c = GetComponent<Collider>();
+                var pos = c != null ? c.bounds.center : transform.position + Vector3.up * 0.5f;
+                hud.Offer("[E] Deliver package", pos, 5);
+            }
+        }
+
         if (Keyboard.current == null || !Keyboard.current.eKey.wasPressedThisFrame)
             return;
 

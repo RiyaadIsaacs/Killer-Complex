@@ -6,7 +6,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Procedural maze breach sim: difficulty scales with <see cref="HackingTerminalPanel.GetMazeTier"/>.
-/// Hazards prefer cells on shortest routes so you must detour. Hold movement keys to slide along corridors.
+/// The base carve is a perfect maze, then extra passages add <b>loops</b> so several viable routes exist; hazards are
+/// blended between shortest-path and longer-path cells so they do not paint a single obvious line. Hold keys to move.
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class HackingMazeMinigame : MonoBehaviour
@@ -14,10 +15,10 @@ public class HackingMazeMinigame : MonoBehaviour
     const int MinDim = 7;
     const int MaxDim = 25;
 
-    const float MazeBoxWidth = 680f;
-    const float MazeBoxHeight = 560f;
-    const float GridMinHeight = 320f;
-    const float GridPreferredHeight = 420f;
+    const float MazeBoxWidth = 960f;
+    const float MazeBoxHeight = 780f;
+    const float GridMinHeight = 440f;
+    const float GridPreferredHeight = 560f;
 
     static readonly Vector2Int[] CardinalDirs =
     {
@@ -32,6 +33,12 @@ public class HackingMazeMinigame : MonoBehaviour
     [SerializeField, Range(0.05f, 0.5f)] private float holdInitialDelay = 0.14f;
     [Tooltip("Seconds between steps while a direction key is held.")]
     [SerializeField, Range(0.03f, 0.3f)] private float holdRepeatInterval = 0.07f;
+
+    [Header("Maze topology (loops & hazards)")]
+    [Tooltip("Fraction of interior wall cells opened after the perfect maze to create alternate routes (higher = more branches).")]
+    [SerializeField, Range(0.04f, 0.28f)] private float loopCarveDensity = 0.11f;
+    [Tooltip("When placing bombs/blocks, chance to pick a shortest-route cell vs a longer-route cell (lower = less obvious 'line' toward the goal).")]
+    [SerializeField, Range(0.15f, 0.75f)] private float corridorHazardBias = 0.38f;
 
     [Header("Colours")]
     [SerializeField] private Color32 wallColor = new(25, 35, 50, 255);
@@ -108,6 +115,7 @@ public class HackingMazeMinigame : MonoBehaviour
         var bombCount = ComputeBombCount(tier);
 
         GenerateMaze();
+        CarveRandomLoopPassages();
         PlaceHazards(obstacleCount, bombCount);
 
         BuildOrResizeCellGrid();
@@ -115,7 +123,7 @@ public class HackingMazeMinigame : MonoBehaviour
         UpdateHint(tier, obstacleCount, bombCount);
 
         _host.AppendConsoleLine(
-            $"> Breach sim tier {tier}: {_cols}×{_rows} — {obstacleCount} static blocks, {bombCount} corrupted cells (step = wipe). Hold WASD / arrows.");
+            $"> Breach sim tier {tier}: {_cols}×{_rows} branched maze — {obstacleCount} blocks, {bombCount} bombs (hold WASD / arrows).");
     }
 
     void ApplyMazeChromeLayout()
@@ -315,8 +323,8 @@ public class HackingMazeMinigame : MonoBehaviour
         boxBg.color = new Color32(30, 40, 55, 250);
 
         var v = box.GetComponent<VerticalLayoutGroup>();
-        v.padding = new RectOffset(12, 12, 12, 12);
-        v.spacing = 8f;
+        v.padding = new RectOffset(18, 18, 16, 16);
+        v.spacing = 12f;
         v.childAlignment = TextAnchor.UpperCenter;
         v.childControlHeight = true;
         v.childControlWidth = true;
@@ -326,18 +334,20 @@ public class HackingMazeMinigame : MonoBehaviour
         var font = TMP_Settings.defaultFontAsset;
         var titleGo = new GameObject("MazeTitle", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
         titleGo.transform.SetParent(box.transform, false);
-        titleGo.GetComponent<LayoutElement>().preferredHeight = 28f;
+        titleGo.GetComponent<LayoutElement>().preferredHeight = 40f;
         var titleTmp = titleGo.GetComponent<TextMeshProUGUI>();
         if (font != null)
             titleTmp.font = font;
-        titleTmp.fontSize = 18;
+        titleTmp.fontSize = 28;
         titleTmp.fontStyle = FontStyles.Bold;
         titleTmp.alignment = TextAlignmentOptions.Center;
         titleTmp.color = new Color32(220, 230, 240, 255);
         titleTmp.text = "Packet routing maze";
 
-        _hintLabel = CreateTmpLine(box.transform, font, 22f, "Hold WASD / arrows. Red = bomb (fail). Orange = block — hazards favor shortest routes.");
-        _hintLabel.gameObject.GetComponent<LayoutElement>().preferredHeight = 40f;
+        CreateControlsSection(box.transform, font);
+
+        _hintLabel = CreateTmpLine(box.transform, font, 26f, string.Empty);
+        _hintLabel.gameObject.GetComponent<LayoutElement>().preferredHeight = 52f;
 
         var gridGo = new GameObject("MazeGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement));
         gridGo.transform.SetParent(box.transform, false);
@@ -354,7 +364,7 @@ public class HackingMazeMinigame : MonoBehaviour
 
         var btnRow = new GameObject("MazeButtonRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
         btnRow.transform.SetParent(box.transform, false);
-        btnRow.GetComponent<LayoutElement>().preferredHeight = 40f;
+        btnRow.GetComponent<LayoutElement>().preferredHeight = 56f;
         var h = btnRow.GetComponent<HorizontalLayoutGroup>();
         h.childAlignment = TextAnchor.MiddleCenter;
         h.spacing = 12f;
@@ -367,6 +377,62 @@ public class HackingMazeMinigame : MonoBehaviour
         _overlayRoot.SetActive(false);
     }
 
+    void CreateControlsSection(Transform boxParent, TMP_FontAsset font)
+    {
+        var wrap = new GameObject("ControlsSection", typeof(RectTransform), typeof(Image), typeof(LayoutElement), typeof(VerticalLayoutGroup));
+        wrap.transform.SetParent(boxParent, false);
+        var wrapLe = wrap.GetComponent<LayoutElement>();
+        wrapLe.preferredHeight = 168f;
+        wrapLe.minHeight = 148f;
+        wrapLe.flexibleHeight = 0f;
+
+        var wrapImg = wrap.GetComponent<Image>();
+        wrapImg.sprite = _pixelSprite;
+        wrapImg.type = Image.Type.Simple;
+        wrapImg.color = new Color32(18, 26, 38, 230);
+
+        var v = wrap.GetComponent<VerticalLayoutGroup>();
+        v.padding = new RectOffset(16, 16, 12, 14);
+        v.spacing = 8f;
+        v.childAlignment = TextAnchor.UpperLeft;
+        v.childControlWidth = true;
+        v.childControlHeight = true;
+        v.childForceExpandWidth = true;
+        v.childForceExpandHeight = false;
+
+        var titleGo = new GameObject("ControlsTitle", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+        titleGo.transform.SetParent(wrap.transform, false);
+        titleGo.GetComponent<LayoutElement>().preferredHeight = 30f;
+        var titleTmp = titleGo.GetComponent<TextMeshProUGUI>();
+        if (font != null)
+            titleTmp.font = font;
+        titleTmp.fontSize = 22;
+        titleTmp.fontStyle = FontStyles.Bold;
+        titleTmp.alignment = TextAlignmentOptions.TopLeft;
+        titleTmp.color = new Color32(210, 220, 235, 255);
+        titleTmp.text = "Controls";
+        titleTmp.enableWordWrapping = false;
+
+        var bodyGo = new GameObject("ControlsBody", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+        bodyGo.transform.SetParent(wrap.transform, false);
+        bodyGo.GetComponent<LayoutElement>().preferredHeight = 118f;
+        bodyGo.GetComponent<LayoutElement>().flexibleHeight = 1f;
+        var bodyTmp = bodyGo.GetComponent<TextMeshProUGUI>();
+        if (font != null)
+            bodyTmp.font = font;
+        bodyTmp.fontSize = 19;
+        bodyTmp.alignment = TextAlignmentOptions.TopLeft;
+        bodyTmp.color = new Color32(175, 198, 218, 255);
+        bodyTmp.enableWordWrapping = true;
+        bodyTmp.lineSpacing = 6f;
+        bodyTmp.text =
+            "• Move: WASD or arrow keys — hold to slide along corridors\n" +
+            "• Goal: reach the green uplink node\n" +
+            "• Orange: blocked relay (cannot pass)\n" +
+            "• Red: corrupted sector — stepping fails this run (no decryption %)\n" +
+            "• Esc or Abort breach: leave maze without progress";
+    }
+
     private static TMP_Text CreateTmpLine(Transform parent, TMP_FontAsset font, float fontSize, string text)
     {
         var go = new GameObject("Line", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
@@ -376,7 +442,7 @@ public class HackingMazeMinigame : MonoBehaviour
             tmp.font = font;
         tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color = new Color32(180, 200, 220, 255);
+        tmp.color = new Color32(195, 215, 235, 255);
         tmp.enableWordWrapping = true;
         tmp.text = text;
         return tmp;
@@ -387,7 +453,7 @@ public class HackingMazeMinigame : MonoBehaviour
         var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
         go.transform.SetParent(parent, false);
         go.GetComponent<LayoutElement>().flexibleWidth = 1f;
-        go.GetComponent<LayoutElement>().preferredHeight = 40f;
+        go.GetComponent<LayoutElement>().preferredHeight = 52f;
         var img = go.GetComponent<Image>();
         img.sprite = _pixelSprite;
         img.color = new Color32(127, 140, 141, 255);
@@ -402,7 +468,7 @@ public class HackingMazeMinigame : MonoBehaviour
         var font = TMP_Settings.defaultFontAsset;
         if (font != null)
             tmp.font = font;
-        tmp.fontSize = 16;
+        tmp.fontSize = 22;
         tmp.fontStyle = FontStyles.Bold;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
@@ -457,6 +523,55 @@ public class HackingMazeMinigame : MonoBehaviour
         _py = 1;
     }
 
+    /// <summary>
+    /// Opens extra floor cells on interior walls that already touch ≥2 corridors, turning the spanning tree into a
+    /// graph with cycles so multiple routes to the goal exist.
+    /// </summary>
+    void CarveRandomLoopPassages()
+    {
+        var target = Mathf.Clamp(Mathf.RoundToInt(_cols * _rows * loopCarveDensity), 4, 85);
+        var candidates = new List<Vector2Int>();
+        for (var x = 1; x < _cols - 1; x++)
+        for (var y = 1; y < _rows - 1; y++)
+        {
+            if (_walkable[x, y])
+                continue;
+            if (CountWalkableNeighbors4(x, y) < 2)
+                continue;
+            candidates.Add(new Vector2Int(x, y));
+        }
+
+        Shuffle(candidates);
+        var carved = 0;
+        foreach (var c in candidates)
+        {
+            if (carved >= target)
+                break;
+            if (_walkable[c.x, c.y])
+                continue;
+            _walkable[c.x, c.y] = true;
+            carved++;
+        }
+    }
+
+    static int CountWalkableNeighbors4(bool[,] walkable, int cols, int rows, int x, int y)
+    {
+        var n = 0;
+        foreach (var d in CardinalDirs)
+        {
+            var nx = x + d.x;
+            var ny = y + d.y;
+            if (nx < 0 || ny < 0 || nx >= cols || ny >= rows)
+                continue;
+            if (walkable[nx, ny])
+                n++;
+        }
+
+        return n;
+    }
+
+    int CountWalkableNeighbors4(int x, int y) => CountWalkableNeighbors4(_walkable, _cols, _rows, x, y);
+
     private void TryAddUnvisitedAtDistance2(List<Vector2Int> list, Vector2Int c, int dx, int dy)
     {
         var nx = c.x + dx;
@@ -504,7 +619,7 @@ public class HackingMazeMinigame : MonoBehaviour
     {
         for (var p = 0; p < target; p++)
         {
-            var options = BuildCorridorFirstCandidates();
+            var options = BuildBlendedRouteCandidates();
             var placed = false;
             foreach (var c in options)
             {
@@ -529,7 +644,7 @@ public class HackingMazeMinigame : MonoBehaviour
     {
         for (var p = 0; p < target; p++)
         {
-            var options = BuildCorridorFirstCandidates();
+            var options = BuildBlendedRouteCandidates();
             var placed = false;
             foreach (var c in options)
             {
@@ -551,9 +666,10 @@ public class HackingMazeMinigame : MonoBehaviour
     }
 
     /// <summary>
-    /// Shortest-path corridor cells first (where you are forced to consider detours), then other floor tiles.
+    /// Stochastic merge of shortest-route cells vs longer-route cells so hazards sit on competing paths, not one
+    /// obvious geodesic ribbon toward the goal.
     /// </summary>
-    List<Vector2Int> BuildCorridorFirstCandidates()
+    List<Vector2Int> BuildBlendedRouteCandidates()
     {
         var distS = BfsDistances(1, 1);
         var distG = BfsDistances(_gx, _gy);
@@ -588,8 +704,25 @@ public class HackingMazeMinigame : MonoBehaviour
 
         Shuffle(corridor);
         Shuffle(other);
-        corridor.AddRange(other);
-        return corridor;
+
+        var merged = new List<Vector2Int>(corridor.Count + other.Count);
+        var i = 0;
+        var j = 0;
+        while (i < corridor.Count || j < other.Count)
+        {
+            var canCorridor = i < corridor.Count;
+            var canOther = j < other.Count;
+            if (!canCorridor)
+                merged.Add(other[j++]);
+            else if (!canOther)
+                merged.Add(corridor[i++]);
+            else if (Random.value < corridorHazardBias)
+                merged.Add(corridor[i++]);
+            else
+                merged.Add(other[j++]);
+        }
+
+        return merged;
     }
 
     List<Vector2Int> BuildFloorCandidateListShuffled()
@@ -731,13 +864,13 @@ public class HackingMazeMinigame : MonoBehaviour
         var h = _gridRt.rect.height;
         if (w <= 1f || h <= 1f)
         {
-            w = 520f;
-            h = 380f;
+            w = 680f;
+            h = 520f;
         }
 
         var cellW = w / _cols;
         var cellH = h / _rows;
-        var side = Mathf.Max(4f, Mathf.Floor(Mathf.Min(cellW, cellH)));
+        var side = Mathf.Max(7f, Mathf.Floor(Mathf.Min(cellW, cellH)));
         _gridLayout.cellSize = new Vector2(side, side);
         _gridLayout.spacing = Vector2.zero;
         _gridLayout.padding = new RectOffset(0, 0, 0, 0);

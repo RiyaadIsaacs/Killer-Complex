@@ -157,16 +157,26 @@ public class DeliveryManager : MonoBehaviour
     /// </summary>
     public bool TryCompleteDeliveryAtDropPoint(int dropPointId)
     {
+        if (!CanInteractDropPoint(dropPointId))
+            return false;
+
+        CompleteCurrentDeliveryStep();
+        ActiveDropPointId = -1;
+        receptionDeliveryItem?.Deactivate();
+        return true;
+    }
+
+    /// <summary>
+    /// True when pressing E in this drop zone would succeed (same checks as <see cref="TryCompleteDeliveryAtDropPoint"/>).
+    /// </summary>
+    public bool CanInteractDropPoint(int dropPointId)
+    {
         if (currentDeliveryID >= 3)
             return false;
         if (ActiveDropPointId < 0 || dropPointId != ActiveDropPointId)
             return false;
         if (receptionDeliveryItem != null && !_hasPickedUpCurrentPackage)
             return false;
-
-        CompleteCurrentDeliveryStep();
-        ActiveDropPointId = -1;
-        receptionDeliveryItem?.Deactivate();
         return true;
     }
 

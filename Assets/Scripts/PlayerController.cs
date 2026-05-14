@@ -100,6 +100,9 @@ public class PlayerController : MonoBehaviour
         {
             cameraTransform = Camera.main.transform;
         }
+
+        if (GetComponent<InteractPromptHud>() == null)
+            gameObject.AddComponent<InteractPromptHud>();
     }
 
 
@@ -112,6 +115,7 @@ public class PlayerController : MonoBehaviour
         // Handle looking and movement separately for cleaner and more modular code
         HandleLook();
         HandleMovement();
+        UpdateInteractPrompt();
     }
 
     // Rotates the camera vertically and the player horizontally for First Person look
@@ -162,21 +166,48 @@ public class PlayerController : MonoBehaviour
     // Casts a short ray from the camera forward and invokes Interact() on hit objects
     private void TryInteract()
     {
-        Transform source = cameraTransform != null ? cameraTransform : transform;
-        Ray ray = new Ray(source.position, source.forward);
-        Vector3 rayEnd = ray.origin + ray.direction * interactDistance;
-
-        if (!Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayers))
-        {
-            if (drawInteractRayDebug)
-                Debug.DrawLine(ray.origin, rayEnd, Color.red, interactRayDebugDuration, false);
+        if (!TryGetInteractRay(out var hit))
             return;
-        }
 
         if (drawInteractRayDebug)
-            Debug.DrawLine(ray.origin, hit.point, Color.green, interactRayDebugDuration, false);
+        {
+            Transform source = cameraTransform != null ? cameraTransform : transform;
+            Debug.DrawLine(source.position, hit.point, Color.green, interactRayDebugDuration, false);
+        }
 
         // Collider may be on a child mesh while InteractDoor sits on a parent pivot.
         hit.transform.SendMessageUpwards("Interact", SendMessageOptions.DontRequireReceiver);
+    }
+
+    bool TryGetInteractRay(out RaycastHit hit)
+    {
+        hit = default;
+        Transform source = cameraTransform != null ? cameraTransform : transform;
+        var ray = new Ray(source.position, source.forward);
+        var rayEnd = ray.origin + ray.direction * interactDistance;
+
+        if (!Physics.Raycast(ray, out hit, interactDistance, interactableLayers))
+        {
+            if (drawInteractRayDebug)
+                Debug.DrawLine(ray.origin, rayEnd, Color.red, interactRayDebugDuration, false);
+            return false;
+        }
+
+        return true;
+    }
+
+    void UpdateInteractPrompt()
+    {
+        var hud = InteractPromptHud.Instance;
+        if (hud == null)
+            return;
+
+        if (!TryGetInteractRay(out var hit))
+            return;
+
+        if (!InteractPromptResolver.TryResolve(hit, out var text, out var worldPos))
+            return;
+
+        hud.Offer(text, worldPos, 10);
     }
 }
