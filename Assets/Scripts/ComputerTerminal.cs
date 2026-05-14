@@ -29,7 +29,11 @@ public class ComputerTerminal : MonoBehaviour
             return;
 
         if (Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            if (HackingMazeMinigame.TryConsumeEscape())
+                return;
             CloseTerminal();
+        }
     }
 
     /// <summary>
