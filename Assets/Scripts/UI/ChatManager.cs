@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
@@ -37,17 +38,15 @@ public class ChatManager : MonoBehaviour
         "Your computer wasn't all that secure. You're going to do exactly as I say if you want to keep your reputation in this market. " +
         "Message me when you're done pretending this isn't happening — and don't waste my time, bru.";
 
-    [Header("First player send → first delivery")]
-    [Tooltip("When true, the first non-empty SEND prepares a delivery leg (DeliveryManager) if none is active yet, then optionally appends a scripted H line (lobby/errands) before Ollama runs.")]
-    [SerializeField] private bool prepareFirstDeliveryOnFirstPlayerMessage = true;
+    [Header("Messenger → next delivery job")]
+    [Tooltip("When true, each non-empty SEND prepares the next delivery leg if none is active yet and runs remain—before Ollama runs so CONTEXT includes the destination. Turn off only if another script prepares jobs.")]
+    [SerializeField, FormerlySerializedAs("prepareFirstDeliveryOnFirstPlayerMessage")]
+    private bool prepareDeliveryOnMessengerSendWhenIdle = true;
+
     [Tooltip("Optional. If unset, the first DeliveryManager found in loaded scenes is used.")]
     [SerializeField] private DeliveryManager deliveryManager;
-    [SerializeField, TextArea(3, 12)]
-    private string scriptedFollowUpAfterFirstPlayerMessage =
-        "There's a package in the lobby — get it and move it. Now. Or everyone in your contacts list and the building manager gets a very interesting email. Don't keep me waiting, bru.";
 
     private bool _openingMessageShown;
-    private bool _firstPlayerDeliveryGateDone;
     private DeliveryManager _cachedDeliveryManager;
 
     private bool _typingLineInFeed;
@@ -158,9 +157,7 @@ public class ChatManager : MonoBehaviour
         TrySendPlayerMessage();
     }
 
-    /// <summary>
-    /// Append a line from another sender (e.g. AI). Formatted as [senderName]: response
-    /// </summary>
+    // Appends a new line to the feed with the format "[senderName]: response". 
     public void UpdateChatFeed(string senderName, string response)
     {
         if (string.IsNullOrWhiteSpace(response))
@@ -182,29 +179,22 @@ public class ChatManager : MonoBehaviour
         chatInputField.text = string.Empty;
         chatInputField.ActivateInputField();
 
-        MaybePrepareFirstDeliveryAfterFirstPlayerMessage();
+        MaybePrepareDeliveryWhenMessengerSendIfIdle();
 
         if (ollamaConnector != null)
             ollamaConnector.SendToOllama(text);
     }
 
-    void MaybePrepareFirstDeliveryAfterFirstPlayerMessage()
+    void MaybePrepareDeliveryWhenMessengerSendIfIdle()
     {
-        if (!prepareFirstDeliveryOnFirstPlayerMessage || _firstPlayerDeliveryGateDone)
+        if (!prepareDeliveryOnMessengerSendWhenIdle)
             return;
 
         var dm = ResolveDeliveryManager();
-        if (dm == null || dm.currentDeliveryID >= 3 || dm.ActiveDropPointId >= 0)
+        if (dm == null || dm.currentDeliveryID >= dm.TotalDeliveryLegs || dm.ActiveDropPointId >= 0)
             return;
 
-        _firstPlayerDeliveryGateDone = true;
         dm.PrepareNextDeliveryFromAi();
-
-        if (!string.IsNullOrWhiteSpace(scriptedFollowUpAfterFirstPlayerMessage))
-        {
-            var sender = string.IsNullOrWhiteSpace(introSenderName) ? "H" : introSenderName.Trim();
-            UpdateChatFeed(sender, scriptedFollowUpAfterFirstPlayerMessage.Trim());
-        }
     }
 
     DeliveryManager ResolveDeliveryManager()

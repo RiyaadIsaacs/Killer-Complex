@@ -37,6 +37,10 @@ public static class InteractPromptResolver
             return true;
         }
 
+        var deliveryZone = hit.transform.GetComponentInParent<DeliveryZone>();
+        if (deliveryZone != null && deliveryZone.TryGetWorldInteractPrompt(hit, out text, out worldPos))
+            return true;
+
         return false;
     }
 }

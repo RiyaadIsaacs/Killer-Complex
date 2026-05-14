@@ -44,4 +44,4 @@ First-person thriller: an **Ollama-driven** online persona (**H**) coerces the p
 
 - [ ] First-package flow: in-hand vs first pickup spawn (see `ollama-plan.md` when decided).
 - [ ] Ending priority if delivery quota and escape both satisfied.
-- [ ] Exact delivery count for Ending A and hacking thresholds for Ending B.
+- [ ] Exact delivery count for Ending A (**`DeliveryManager.TotalDeliveryLegs`**) and hacking thresholds for Ending B.

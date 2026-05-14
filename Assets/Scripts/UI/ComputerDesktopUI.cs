@@ -3,11 +3,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 
-/// <summary>
-/// Desktop-style UI: opens messenger or hacking terminal panels from icon buttons;
-/// each panel has a close (X) control that hides only that panel.
-/// Optional shutdown control closes the whole computer session via <see cref="ComputerTerminal.CloseTerminal"/>.
-/// </summary>
+// Desktop computer UI.
 public class ComputerDesktopUI : MonoBehaviour
 {
     [Header("Icon buttons")]
@@ -54,9 +50,7 @@ public class ComputerDesktopUI : MonoBehaviour
             shutdownComputerButton.onClick.AddListener(OnShutdownComputerClicked);
     }
 
-    /// <summary>
-    /// TextMeshPro SDF on UI needs extra canvas vertex channels; pixel snapping reduces soft edges from fractional scale.
-    /// </summary>
+    // Configures the canvas for canvas text.
     static void ApplyCrispTextCanvasSettings(Canvas canvas)
     {
         if (canvas == null)

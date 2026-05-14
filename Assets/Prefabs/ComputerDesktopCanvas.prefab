@@ -4295,9 +4295,6 @@ MonoBehaviour:
     waste my time, bru.
   prepareFirstDeliveryOnFirstPlayerMessage: 1
   deliveryManager: {fileID: 0}
-  scriptedFollowUpAfterFirstPlayerMessage: There's a package in the lobby — get
-    it and move it. Now. Or everyone in your contacts list and the building manager
-    gets a very interesting email. Don't keep me waiting, bru.
 --- !u!1 &7899507401980877974
 GameObject:
   m_ObjectHideFlags: 0

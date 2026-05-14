@@ -1,12 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// World computer: interact opens a UI canvas and disables <see cref="PlayerController"/>.
-/// Escape (or <see cref="CloseTerminal"/>) closes the UI and re-enables the player.
-/// Put on the same hierarchy as the collider the player looks at, or a parent (SendMessageUpwards).
-/// You can also use <see cref="ComputerInteract"/> on the collider object to forward to this component.
-/// </summary>
+// Computer terminal: when the player interacts, opens a UI screen and disables player movement until closed.
 public class ComputerTerminal : MonoBehaviour
 {
     [Header("References")]
@@ -36,9 +31,7 @@ public class ComputerTerminal : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Invoked by <see cref="PlayerController"/> via SendMessageUpwards when the player uses interact.
-    /// </summary>
+    // Sends a message via a raycast to call interact.
     public void Interact()
     {
         if (isOpen)
@@ -70,9 +63,6 @@ public class ComputerTerminal : MonoBehaviour
         computerScreenRoot.SetActive(true);
     }
 
-    /// <summary>
-    /// Closes the terminal. Call from UI buttons or other scripts if needed.
-    /// </summary>
     public void CloseTerminal()
     {
         if (!isOpen)

@@ -50,3 +50,13 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify in Editor: first message rolls delivery + context, zones use ids **0–6**, interact pickup + zone **E**, Ollama replies.
 
 ---
+
+## 2026-05-14 — Delivery pacing, interact drop-off, LLM context, HUD
+
+- **Delivery pacing:** `DeliveryManager` no longer calls `PrepareNextDeliveryFromAi` automatically when a leg completes; **`ChatManager`** calls it on **each** messenger SEND while **`ActiveDropPointId < 0`** and runs remain (`prepareDeliveryOnMessengerSendWhenIdle`, with **`FormerlySerializedAs`** for the old Inspector field). Ties the next job to **talking to H** before pickup/destination exist again.
+- **Completion flow:** `TryCompleteDeliveryAtDropPoint` clears the active leg **before** `OnDeliveryCompleted`; `CompleteCurrentDeliveryStep` no longer chains an immediate second prepare. **`DeliveryCompletionChatNotifier`** posts scripted chat only (no longer prepares the next leg).
+- **Interact drop-off:** `DeliveryZone` uses **`Interact`** + **`InteractPromptResolver`**; **`GlobalNotificationHud.ShowDeliveryFeedback`** for success/failure toasts.
+- **LLM:** `BuildPlayerTurnForPrompt` uses **prose** `[CONTEXT]` (valid apartment list + destination); system prompt discourages invented units and echoing placeholder-like tokens. **`TotalDeliveryLegs`** on `DeliveryManager` drives quota in **`OllamaConnector`** when linked.
+- **Docs:** `README.md`, `setup.md`, `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md`, `RiyaadWork.md` updated for this push.
+
+---

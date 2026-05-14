@@ -1,11 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// World pickup (e.g. reception package). Starts hidden; <see cref="DeliveryManager"/> calls
-/// <see cref="ActivateForDelivery"/> when a new job is issued (scripted AI beat or first delivery on play).
-/// Put a collider in front of the player ray and assign <see cref="deliveryManager"/>; the player must
-/// <b>Interact</b> (same as computer/doors) so <see cref="DeliveryManager.TryRegisterPackagePickup"/> runs before any drop-off zone accepts the package.
-/// </summary>
+// Pickup item for delivery: when the player interacts with this item, it registers a pickup with the manager.
 public class DeliveryItem : MonoBehaviour
 {
     [Tooltip("If true, this GameObject is disabled in Awake so nothing shows until ActivateForDelivery.")]
@@ -44,9 +39,7 @@ public class DeliveryItem : MonoBehaviour
             gameObject.SetActive(false);
     }
 
-    /// <summary>
-    /// Invoked by <see cref="PlayerController"/> raycast + SendMessageUpwards when the player uses interact on this collider hierarchy.
-    /// </summary>
+    // Sends a message via a raycast to call interact.
     public void Interact()
     {
         if (deliveryManager == null)

@@ -48,6 +48,13 @@
 
 ---
 
+## 2026-05-14
+
+- **Documentation & delivery pipeline:** Updated `README.md`, `setup.md`, `ollama-plan.md`, `prompts-used.md`, `refinements-changes.md` for messenger-gated next legs, **`TotalDeliveryLegs`**, interact **`DeliveryZone`**, prose **`[CONTEXT]`**, and HUD toasts; aligned with current `ChatManager` / `DeliveryManager` / `OllamaConnector` behaviour.
+- **Pushed:** Commit to GitHub with code + docs from this session.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

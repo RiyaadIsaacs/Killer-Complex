@@ -23,7 +23,10 @@ public class OllamaConnector : MonoBehaviour
         "RULE: never apologize, back down, or admit fault. " +
         "If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). " +
         "Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). " +
-        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, rapport, apartment room for the current delivery when listed); treat that room as where the package must go. " +
+        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, rapport, delivery instructions). " +
+        "When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. " +
+        "Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. " +
+        "If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. " +
         "This is fiction only — do not reference real people's private data.";
 
     [Header("References")]
@@ -36,7 +39,7 @@ public class OllamaConnector : MonoBehaviour
     [Tooltip("0–100. Other scripts can update at runtime via LikeabilityPercent.")]
     private float likeabilityPercent = 50f;
     [SerializeField]
-    [Tooltip("Must match the number of delivery steps in DeliveryManager.")]
+    [Tooltip("Used for LLM context only when DeliveryManager is not assigned; otherwise TotalDeliveryLegs from DeliveryManager is used.")]
     private int totalDeliveries = 3;
 
     [Header("Ollama")]
@@ -203,25 +206,52 @@ public class OllamaConnector : MonoBehaviour
     private string BuildPlayerTurnForPrompt(string userMessage)
     {
         int completed = 0;
-        int total = Mathf.Max(1, totalDeliveries);
+        int total = deliveryManager != null
+            ? deliveryManager.TotalDeliveryLegs
+            : Mathf.Max(1, totalDeliveries);
         if (deliveryManager != null)
             completed = Mathf.Clamp(deliveryManager.currentDeliveryID, 0, total);
 
         int like = Mathf.RoundToInt(likeabilityPercent);
-        string drop = string.Empty;
+        string allowed = DeliveryManager.MappedApartmentsListForPrompt;
+
+        var ctx = new StringBuilder(384);
+        ctx.Append("Player has completed ");
+        ctx.Append(completed);
+        ctx.Append('/');
+        ctx.Append(total);
+        ctx.Append(" deliveries. Likeability is ");
+        ctx.Append(like);
+        ctx.Append("%.");
+        ctx.Append(" Valid apartment unit numbers in this building are: ");
+        ctx.Append(allowed);
+        ctx.Append('.');
+
         if (deliveryManager != null && deliveryManager.ActiveDropPointId >= 0)
         {
-            drop = $" Current delivery drop-off id is {deliveryManager.ActiveDropPointId}.";
-            if (deliveryManager.TryGetApartmentRoomForActiveDrop(out int room))
-                drop += $" Apartment room for this leg is {room}.";
+            int dest = deliveryManager.CurrentLegDestinationApartment;
+            if (dest < 0 && deliveryManager.TryGetApartmentRoomForActiveDrop(out int mapped))
+                dest = mapped;
+
+            if (dest >= 0)
+            {
+                ctx.Append(" For the current delivery, the package must be brought to apartment ");
+                ctx.Append(dest);
+                ctx.Append(" only; do not send the player to any other unit.");
+            }
+            else
+            {
+                ctx.Append(" A delivery is active but no destination apartment is assigned in data; do not invent a room number.");
+            }
+
             if (deliveryManager.RequiresPhysicalPickup)
             {
-                drop += deliveryManager.HasPickedUpCurrentPackage
-                    ? " Player has picked up the package for this leg."
-                    : " Player has not picked up the package for this leg yet.";
+                ctx.Append(deliveryManager.HasPickedUpCurrentPackage
+                    ? " The player has picked up the package for this leg."
+                    : " The player has not picked up the package for this leg yet.");
             }
         }
 
-        return $"[CONTEXT: Player has completed {completed}/{total} deliveries. Likeability is {like}%.{drop}] Player says: {userMessage}";
+        return $"[CONTEXT: {ctx}] Player says: {userMessage}";
     }
 }

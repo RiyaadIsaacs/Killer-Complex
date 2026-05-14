@@ -17,10 +17,6 @@ public class DeliveryCompletionChatNotifier : MonoBehaviour
     private string messageWhenMoreDeliveriesRemain =
         "Well done. I'll organise another delivery for you to do.";
 
-    [Header("Delivery flow")]
-    [Tooltip("After H's scripted line, roll a new random drop point and activate the reception DeliveryItem (if configured on DeliveryManager).")]
-    [SerializeField] private bool prepareNextDeliveryWhenScriptedLineFires = true;
-
     private void OnEnable()
     {
         if (deliveryManager != null)
@@ -41,13 +37,10 @@ public class DeliveryCompletionChatNotifier : MonoBehaviour
         if (string.IsNullOrWhiteSpace(messageWhenMoreDeliveriesRemain))
             return;
 
-        // After completion, currentDeliveryID is already the next step (or 3 when the quota is finished).
-        if (deliveryManager.currentDeliveryID >= 3)
+        // After completion, currentDeliveryID is already the next step (or TotalDeliveryLegs when the quota is finished).
+        if (deliveryManager.currentDeliveryID >= deliveryManager.TotalDeliveryLegs)
             return;
 
         chatManager.UpdateChatFeed(hackerSenderName, messageWhenMoreDeliveriesRemain.Trim());
-
-        if (prepareNextDeliveryWhenScriptedLineFires)
-            deliveryManager.PrepareNextDeliveryFromAi();
     }
 }

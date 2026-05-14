@@ -30,7 +30,23 @@ You are "H", a hacker antagonist who communicates only through text. You operate
 
 **Outcome:** In-engine; paired with dynamic context line (below). Iterate here on every system-string edit.
 
-**Iteration notes:** Uses **`/api/generate`** single `prompt` (not chat messages array yet). Prior persona label **V** (2026-05-12) superseded by **H** for this revision. **2026-05-13 (later):** system string extended so `[CONTEXT]` may include **apartment room** for the active delivery; model instructed to treat that room as authoritative.
+**Iteration notes:** Uses **`/api/generate`** single `prompt` (not chat messages array yet). Prior persona label **V** (2026-05-12) superseded by **H** for this revision. **2026-05-13 (later):** system string extended so `[CONTEXT]` may include **apartment room** for the active delivery; model instructed to treat that room as authoritative. **2026-05-14:** system string adds rules against **invented** apartment numbers and **verbatim echo** of CONTEXT scaffolding; `[CONTEXT]` body rewritten in **natural language** (whitelist + destination) in `BuildPlayerTurnForPrompt` — see **Game — Ollama context — 2026-05-14** below.
+
+---
+
+## Game — Ollama system prompt — 2026-05-14 — `OllamaConnector` (iteration on **H**)
+
+**Goal:** Same persona **H** as 2026-05-13, plus explicit instructions: honour destination in CONTEXT; never invent apartment numbers not listed as valid; never paste ALL CAPS / placeholder-like labels from CONTEXT into replies; pickup/reception phrasing when CONTEXT says so.
+
+**Prompt (system — exact string in code after this date):**
+
+```text
+You are "H", a hacker antagonist who communicates only through text. You operate in and around a South African apartment complex. You coerce the resident with implied threats and leverage; you never claim to be law enforcement. CORE CHARACTER — TONE: threatening, impatient, transactional. Every reply should pressure, rush, or frame obedience as a deal (compliance vs consequences). SLANG: you may use South African English touches such as "eish", "sharp", and "lekker" sparingly, and only sarcastically or mockingly — never warmly or kindly. RULE: never apologize, back down, or admit fault. If the player is rude, defiant, or insults you, escalate immediately: threaten to leak the specific file **Project_Bleed_v2.docx** (use that exact filename). Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). A bracketed [CONTEXT: ...] line before "Player says:" gives true in-world facts (errands completed, rapport, delivery instructions). When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. This is fiction only — do not reference real people's private data.
+```
+
+**Outcome:** In-engine; supersedes the shorter 2026-05-13 system block for documentation purposes (code is source of truth).
+
+**Iteration notes:** Keep this block synced whenever `OllamaConnector` `SystemPrompt` const changes.
 
 ---
 
@@ -68,11 +84,29 @@ You are "V", a cold, manipulative blackmailer who communicates only through text
 
 **Outcome:** Implemented in `BuildPlayerTurnForPrompt`; full HTTP `prompt` = system + `\n\n---\n\n` + template.
 
-**Iteration notes:** `Y` default **3** (`totalDeliveries` on component); `X` from optional `DeliveryManager.currentDeliveryID`; `Z` from `LikeabilityPercent`. When a delivery leg is active, additional sentences are appended (see **Game — Ollama context extension — 2026-05-13** below).
+**Iteration notes:** `Y` comes from **`DeliveryManager.TotalDeliveryLegs`** when `DeliveryManager` is assigned on `OllamaConnector`, else from serialized **`totalDeliveries`** (default **3**). `X` from `DeliveryManager.currentDeliveryID`. When a leg is active, additional **prose** sentences are appended (see **Game — Ollama context — 2026-05-14** below). Older **drop-off id** in CONTEXT was removed to reduce model hallucinations (“apartment 6”).
 
 ---
 
-## Game — Ollama context extension — 2026-05-13
+## Game — Ollama context — 2026-05-14
+
+**Goal:** `[CONTEXT: …]` is **natural language** only: delivery progress, likeability, **full whitelist** of valid apartment numbers for the building, and when a leg is active the **single destination apartment** plus optional pickup lines. No internal **`ActiveDropPointId`** in the prompt.
+
+**Shape (paraphrased; built in `OllamaConnector.BuildPlayerTurnForPrompt`):**
+
+```text
+[CONTEXT: Player has completed {X}/{Y} deliveries. Likeability is {Z}%. Valid apartment unit numbers in this building are: {comma-separated sorted list}. For the current delivery, the package must be brought to apartment {dest} only; do not send the player to any other unit. The player has (not) picked up the package for this leg.] Player says: {typed}
+```
+
+*(Pickup sentence only when `DeliveryManager` has a reception `DeliveryItem` configured; destination paragraph only while a leg is active.)*
+
+**Outcome:** Implemented in code; paired with **2026-05-14** system prompt block above.
+
+**Iteration notes:** Supersedes the **2026-05-13** “drop-off id + room” fragment for documentation; map of **dropPointId → room** remains in `DeliveryManager` for gameplay.
+
+---
+
+## Game — Ollama context extension — 2026-05-13 *(superseded by 2026-05-14 for prompt shape)*
 
 **Goal:** Hidden prompt tells **H** the **drop-off id**, mapped **apartment room** (201–208 for ids 0–6), and whether the player has **physically picked up** the reception package when that gate is enabled.
 

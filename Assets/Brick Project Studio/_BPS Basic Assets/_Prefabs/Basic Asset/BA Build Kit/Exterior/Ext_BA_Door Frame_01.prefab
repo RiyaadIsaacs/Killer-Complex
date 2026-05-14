@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 8632541649090280823}
   - component: {fileID: 1133377342972210209}
   - component: {fileID: 6097361097863123900}
+  - component: {fileID: 5793314606434183971}
   m_Layer: 0
   m_Name: Ext_Door_01
   m_TagString: Untagged
@@ -110,7 +111,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -153,6 +154,23 @@ MonoBehaviour:
   openandclose1: {fileID: 1133377342972210209}
   open: 0
   Player: {fileID: 0}
+--- !u!114 &5793314606434183971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1800321547486124076}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c4a9b2e1f0d4836a5e8c1d2f3b4a6e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeliveryZone
+  dropPointId: 0
+  deliveryManager: {fileID: 0}
+  packageDeliveredNotificationRoot: {fileID: 0}
+  packageDeliveredLabel: {fileID: 0}
+  notificationDisplaySeconds: 2.5
 --- !u!1 &3325282353493821824
 GameObject:
   m_ObjectHideFlags: 0
@@ -362,7 +380,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.24737531, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4153695505823113251}
