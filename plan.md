@@ -27,7 +27,7 @@ First-person thriller: an **Ollama-driven** online persona (**H**) coerces the p
 | M1 | `OllamaChatClient` + test UI in scene | TBD |
 | M2 | Mission state + pickup/delivery interactables | TBD |
 | M3 | Computer hub + prompt iteration (`prompts-used.md`) | TBD |
-| M4 | Hacking vertical slice | TBD |
+| M4 | Hacking vertical slice (maze breach UI: controls dock beside terminal — `refinements-changes.md`) | TBD |
 | M5 | Endings + polish + Windows build | TBD |
 | M6 | Videos + ARC zip | TBD |
 
