@@ -8171,6 +8171,13 @@ MonoBehaviour:
   openEulerAngles: {x: 0, y: 90, z: 0}
   rotationDuration: 0.35
   startOpen: 1
+  myApartmentDoor: 0
+  playKnockOnBadEndingStart: 1
+  apartmentDoorKnockClip: {fileID: 0}
+  apartmentKnockCount: 3
+  apartmentKnockSpacingSeconds: 0.14
+  apartmentKnockStartDelaySeconds: 0.55
+  apartmentKnockVolumeScale: 1
   disableAnimatorsUnderPivot: 1
 --- !u!1001 &788401906
 PrefabInstance:
@@ -9197,12 +9204,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OllamaConnector
   chatManager: {fileID: 1950011877}
+  computerDesktopUi: {fileID: 0}
   deliveryManager: {fileID: 1627386561}
-  likeabilityPercent: 50
+  desktopMessengerNotification: {fileID: 0}
+  suspicionPercent: 0
+  suspicionPerIgnoredMazeAttempt: 12
   totalDeliveries: 3
+  wifeStatusForLlmContext: Hostage secured off-site, conscious, monitored. Vitals
+    nominal; restraint abrasion on wrists observed. Escalate with new concrete clinical
+    detail when the player delays, ignores orders, or fails a delivery.
   apiUrl: http://localhost:11434/api/generate
   model: mistral:7b-instruct
   requestTimeoutSeconds: 180
+  badEndingOrchestrator: {fileID: 0}
 --- !u!4 &854533274
 Transform:
   m_ObjectHideFlags: 0
@@ -13689,6 +13703,13 @@ MonoBehaviour:
   openEulerAngles: {x: 0, y: 90, z: 0}
   rotationDuration: 0.35
   startOpen: 0
+  myApartmentDoor: 0
+  playKnockOnBadEndingStart: 1
+  apartmentDoorKnockClip: {fileID: 0}
+  apartmentKnockCount: 3
+  apartmentKnockSpacingSeconds: 0.14
+  apartmentKnockStartDelaySeconds: 0.55
+  apartmentKnockVolumeScale: 1
   disableAnimatorsUnderPivot: 1
 --- !u!1001 &1305699954
 PrefabInstance:
@@ -18121,6 +18142,13 @@ MonoBehaviour:
   openEulerAngles: {x: 0, y: 90, z: 0}
   rotationDuration: 0.35
   startOpen: 1
+  myApartmentDoor: 0
+  playKnockOnBadEndingStart: 1
+  apartmentDoorKnockClip: {fileID: 0}
+  apartmentKnockCount: 3
+  apartmentKnockSpacingSeconds: 0.14
+  apartmentKnockStartDelaySeconds: 0.55
+  apartmentKnockVolumeScale: 1
   disableAnimatorsUnderPivot: 1
 --- !u!1001 &1665943645
 PrefabInstance:
@@ -23209,6 +23237,13 @@ MonoBehaviour:
   openEulerAngles: {x: 0, y: 90, z: 0}
   rotationDuration: 0.35
   startOpen: 1
+  myApartmentDoor: 0
+  playKnockOnBadEndingStart: 1
+  apartmentDoorKnockClip: {fileID: 0}
+  apartmentKnockCount: 3
+  apartmentKnockSpacingSeconds: 0.14
+  apartmentKnockStartDelaySeconds: 0.55
+  apartmentKnockVolumeScale: 1
   disableAnimatorsUnderPivot: 1
 --- !u!1001 &2034428686
 PrefabInstance:
