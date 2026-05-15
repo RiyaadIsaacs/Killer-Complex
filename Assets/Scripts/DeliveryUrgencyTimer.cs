@@ -47,6 +47,8 @@ public class DeliveryUrgencyTimer : MonoBehaviour
     bool _countdownActive;
     bool _timedOut;
     bool _awaitingHMessageToStartTimer;
+    /// <summary>True after H posted for the active leg while the PC was open — countdown starts on <see cref="TryStartCountdownAfterComputerSessionClosed"/>.</summary>
+    bool _awaitingComputerCloseToStartTimer;
     int _pendingTimerCompletedLegCount;
 
     DeliveryManager _resolvedDeliveryManager;
@@ -110,7 +112,37 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         StopCountdown();
     }
 
-    void CancelPendingTimerStart() => _awaitingHMessageToStartTimer = false;
+    void CancelPendingTimerStart() => CancelAllDeferredCountdownState();
+
+    void CancelAllDeferredCountdownState()
+    {
+        _awaitingHMessageToStartTimer = false;
+        _awaitingComputerCloseToStartTimer = false;
+    }
+
+    static bool IsAnyComputerSessionOpen()
+    {
+        foreach (var terminal in FindObjectsByType<ComputerTerminal>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (terminal != null && terminal.IsOpen)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Call when the player leaves the computer (<see cref="ComputerTerminal.CloseTerminal"/>).
+    /// Starts the leg countdown if it was deferred while H's reply arrived during an open session.
+    /// </summary>
+    public static void NotifyComputerSessionClosed()
+    {
+        foreach (var timer in FindObjectsByType<DeliveryUrgencyTimer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (timer != null)
+                timer.TryStartCountdownAfterComputerSessionClosed();
+        }
+    }
 
     bool IsMenuScene(string sceneName)
     {
@@ -163,6 +195,7 @@ public class DeliveryUrgencyTimer : MonoBehaviour
 
         if (IsMenuScene(SceneManager.GetActiveScene().name))
         {
+            CancelPendingTimerStart();
             StopCountdown();
             return;
         }
@@ -174,13 +207,16 @@ public class DeliveryUrgencyTimer : MonoBehaviour
             return;
         }
 
+        CancelPendingTimerStart();
         _pendingTimerCompletedLegCount = dm.currentDeliveryID;
         _awaitingHMessageToStartTimer = true;
         StopCountdown();
     }
 
     /// <summary>
-    /// Starts the leg countdown after <b>H</b> posts to the messenger (call from <see cref="OllamaConnector.NotifyHPostedToMessenger"/>).
+    /// Called after <b>H</b> posts to the messenger when a leg is waiting for that reply.
+    /// If the computer session is open, the countdown is deferred until the player closes the PC
+    /// so they can read and keep chatting without losing time. If the PC is already closed, starts immediately.
     /// </summary>
     public void TryStartCountdownAfterHMessage()
     {
@@ -189,26 +225,53 @@ public class DeliveryUrgencyTimer : MonoBehaviour
 
         if (IsMenuScene(SceneManager.GetActiveScene().name))
         {
-            CancelPendingTimerStart();
+            CancelAllDeferredCountdownState();
             return;
         }
 
         var dm = ResolveDeliveryManager();
         if (dm == null || dm.ActiveDropPointId < 0 || dm.PostDeliveryStepAwayBeatPending)
         {
-            CancelPendingTimerStart();
+            CancelAllDeferredCountdownState();
             StopCountdown();
             return;
         }
 
-        CancelPendingTimerStart();
+        _awaitingHMessageToStartTimer = false;
+
+        if (IsAnyComputerSessionOpen())
+            _awaitingComputerCloseToStartTimer = true;
+        else
+            BeginLegCountdown(_pendingTimerCompletedLegCount);
+    }
+
+    void TryStartCountdownAfterComputerSessionClosed()
+    {
+        if (!_awaitingComputerCloseToStartTimer || _timedOut)
+            return;
+
+        if (IsMenuScene(SceneManager.GetActiveScene().name))
+        {
+            CancelAllDeferredCountdownState();
+            return;
+        }
+
+        var dm = ResolveDeliveryManager();
+        if (dm == null || dm.ActiveDropPointId < 0 || dm.PostDeliveryStepAwayBeatPending)
+        {
+            CancelAllDeferredCountdownState();
+            StopCountdown();
+            return;
+        }
+
+        _awaitingComputerCloseToStartTimer = false;
         BeginLegCountdown(_pendingTimerCompletedLegCount);
     }
 
     /// <summary>Called when H's post-drop "step away" line posts — keeps the lull free of an active countdown.</summary>
     public void NotifyHSteppedAwayFromComputer()
     {
-        CancelPendingTimerStart();
+        CancelAllDeferredCountdownState();
         StopCountdown();
     }
 

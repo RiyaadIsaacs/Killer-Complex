@@ -40,6 +40,14 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 
 ---
 
+## 2c. Delivery urgency timer
+
+- **Script:** `Assets/Scripts/DeliveryUrgencyTimer.cs` — per-leg HUD countdown toward a timeout bad-ending; budget from **`initialLegTimeSeconds`** minus **`secondsReducedPerCompletedLeg`** × legs already completed (optional **`minimumLegTimeSeconds`** floor).
+- **When it starts:** After **H** posts for an active delivery leg, the countdown **does not** tick while the **computer session is open** (`ComputerTerminal` / desk UI). It **starts when the player leaves the PC** (Escape or shutdown), so you can read **H**’s reply and keep chatting without losing time. If **H**’s reply arrives **after** the session is already closed, the timer **starts immediately**.
+- **Wiring:** `ComputerTerminal.CloseTerminal()` calls **`DeliveryUrgencyTimer.NotifyComputerSessionClosed()`**. **`OllamaConnector.NotifyHPostedToMessenger()`** still arms the leg via **`TryStartCountdownAfterHMessage()`** (defer vs immediate). Post-drop “step away” replies clear pending starts via **`NotifyHSteppedAwayFromComputer()`** as before.
+
+---
+
 ## 3. Unity ↔ Ollama
 
 - **Script:** `Assets/Scripts/OllamaConnector.cs` — `UnityWebRequest` **POST** to **`http://localhost:11434/api/generate`** (override in the Inspector on the component). JSON body: `model`, `prompt`, `stream: false`. Default model field: **`mistral:7b-instruct`** (change to match what you pulled).

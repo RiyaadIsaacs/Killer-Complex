@@ -114,6 +114,13 @@
 
 ---
 
+## 2026-05-17 — Urgency timer starts when leaving computer
+
+- **UX / systems:** **`DeliveryUrgencyTimer`** defers per-leg countdown until **`ComputerTerminal.CloseTerminal()`** if **H** posted while the desk session was open; **`NotifyComputerSessionClosed`**; immediate start if PC already closed.
+- **Documentation:** **`setup.md`** §2c, **`ollama-plan.md`** (CONTEXT note + changelog), **`refinements-changes.md`**, this file.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*
