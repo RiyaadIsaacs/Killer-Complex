@@ -2,9 +2,14 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 /// <summary>
 /// Attach to a persistent object in the gameplay scene (e.g. empty "GameUI" or the pause Canvas root).
-/// Assign a child panel that holds the pause UI; wire buttons to <see cref="Resume"/>, <see cref="RestartGame"/>, <see cref="GoToMainMenu"/>.
+/// Assign a child panel that holds the pause UI; wire buttons to <see cref="Resume"/>, <see cref="RestartGame"/>,
+/// <see cref="GoToMainMenu"/>, and <see cref="QuitGame"/>.
 /// Press Escape to pause / resume (skipped while a computer terminal or maze overlay handles Escape).
 /// </summary>
 public class PauseScreen : MonoBehaviour
@@ -20,6 +25,22 @@ public class PauseScreen : MonoBehaviour
     [SerializeField] private string mainMenuSceneName = "Main Menu";
 
     public bool IsPaused { get; private set; }
+
+    /// <summary>True when any <see cref="PauseScreen"/> in the scene has the menu open.</summary>
+    public static bool IsGameplayPaused
+    {
+        get
+        {
+            var screens = FindObjectsByType<PauseScreen>(FindObjectsSortMode.None);
+            foreach (var screen in screens)
+            {
+                if (screen != null && screen.IsPaused)
+                    return true;
+            }
+
+            return false;
+        }
+    }
 
     void Awake()
     {
@@ -90,6 +111,17 @@ public class PauseScreen : MonoBehaviour
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(mainMenuSceneName);
+    }
+
+    /// <summary>Hook to Quit Game button. Stops Play mode in the Editor; closes the build on a standalone player.</summary>
+    public void QuitGame()
+    {
+        Time.timeScale = 1f;
+#if UNITY_EDITOR
+        EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     /// <summary>Can also be wired to a Pause button if you add one.</summary>
