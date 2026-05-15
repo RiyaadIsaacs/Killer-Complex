@@ -257,6 +257,18 @@ Ollama as online persona blackmailing with fictional personal info; designates a
 
 ---
 
+## Cursor — 2026-05-17 — Delivery urgency timer starts when leaving PC
+
+**Goal:** Avoid losing countdown time while still at the computer reading **H** or chatting; start the urgent delivery HUD timer when the player **exits** the PC session.
+
+**Prompt (condensed user request):** Timer should not start when still in conversation — start when exiting the computer.
+
+**Outcome:** **`DeliveryUrgencyTimer`** — defer after **H** post if any **`ComputerTerminal`** is open (`_awaitingComputerCloseToStartTimer`); **`NotifyComputerSessionClosed()`** from **`ComputerTerminal.CloseTerminal()`**; immediate start if **H** posts while PC already closed. **`[CONTEXT]`** urgent seconds unchanged in behaviour (only while countdown active). Docs: **`setup.md`** §2c, **`ollama-plan.md`** §4 + §8, **`refinements-changes.md`**, **`RiyaadWork.md`**.
+
+**Iteration notes:** No system-prompt edit; context timing aligns with **`GetRemainingSecondsForLlmContext`**.
+
+---
+
 ## Template — copy for new rows
 
 ### YYYY-MM-DD — Game Ollama — 

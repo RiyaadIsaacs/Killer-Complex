@@ -90,5 +90,7 @@ public class ComputerTerminal : MonoBehaviour
             Cursor.lockState = savedLockMode;
             Cursor.visible = savedCursorVisible;
         }
+
+        DeliveryUrgencyTimer.NotifyComputerSessionClosed();
     }
 }

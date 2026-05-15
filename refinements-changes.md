@@ -129,3 +129,13 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify in Editor: start maze → only nearby tiles visible; green node appears when explored; goal position changes between runs.
 
 ---
+
+## 2026-05-17 — Delivery urgency: start timer when leaving PC
+
+- **Gameplay / UX:** **`DeliveryUrgencyTimer`** — after **H** posts for an active leg, the HUD countdown **waits** until the player **closes the computer session** (Esc / shutdown → **`ComputerTerminal.CloseTerminal`** → **`NotifyComputerSessionClosed`**). If **H**’s line arrives while the PC is **already** closed, **`TryStartCountdownAfterHMessage`** starts **immediately**. Lets players read and keep messaging **H** without the clock draining at the desk.
+- **LLM context:** **`GetRemainingSecondsForLlmContext`** stays inactive until the countdown runs, so **`[CONTEXT]`** omits urgent seconds until after leave-PC (aligned with **`AppendStaticGameContextForLlm`** in **`OllamaConnector`**).
+- **Code:** **`ComputerTerminal`** end of **`CloseTerminal`** calls **`DeliveryUrgencyTimer.NotifyComputerSessionClosed()`**; deferred state **`_awaitingComputerCloseToStartTimer`**; new leg prep clears stale defer flags.
+- **Docs:** **`setup.md`** §2c, **`ollama-plan.md`** §4 + §8, this file, **`RiyaadWork.md`**.
+- **AI-assisted:** Cursor; verify: **H** replies at PC → no countdown until exit; drop-off flow + step-away clears unchanged.
+
+---
