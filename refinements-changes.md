@@ -152,3 +152,40 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify: restart from pause → timer budget resets; final trap line at PC → read messenger → leave desk → icons lock; maze reopen + multi-leg chat.
 
 ---
+
+## 2026-05-15 — Main menu, pause menu, build settings
+
+- **Scripts:** **`MainMenuScreen`** — **`PlayGame()`** loads **`Main Game`**; **`QuitGame()`** exits play / build. **`PauseScreen`** — **Esc** toggles pause (**`IsGameplayPaused`** static); **`Resume`**, **`RestartGame`**, **`GoToMainMenu`**, **`QuitGame`**; respects **`GameSceneIntroPanel.BlocksGameplay`**, open **`ComputerTerminal`**, and **`HackingMazeMinigame.TryConsumeEscape()`** so maze / PC get Esc first.
+- **Scenes / build:** **`Assets/Scenes/Main Menu.unity`** added; **`ProjectSettings/EditorBuildSettings.asset`** — index **0** = Main Menu, **1** = Main Game.
+- **Editor setup (manual):** Wire menu / pause buttons to public methods; keep **`pausePanel`** on an always-active parent so **`PauseScreen`** still receives Esc when the panel is hidden.
+- **AI-assisted:** Cursor; verify: Play from main menu → gameplay; Esc pause/resume; restart / main menu / quit from pause panel.
+
+---
+
+## 2026-05-15 — Movement controls HUD (gameplay)
+
+- **UI:** **`MovementControlsHud`** — runtime bottom-left panel (WASD move, **SPACE** jump, **SHIFT — toggle sprint**, **ESC — pause**); optional assigned panel or auto-built overlay canvas; hides while **`PauseScreen.IsGameplayPaused`** or **`GameSceneIntroPanel.BlocksGameplay`**.
+- **Setup:** Add component on **`Temp-Player`** (or a **GameUI** empty) in **`Main Game`** only — not on Main Menu.
+- **AI-assisted:** Cursor; verify: hints visible during play, hidden on pause / intro; sprint copy matches toggle behaviour on **`PlayerController`**.
+
+---
+
+## 2026-05-15 — Falling trap → bad ending
+
+- **World:** **`TrapTriggerZone`** — hallway trigger spawns **`trapPrefab`** above the player (once or repeatable). **`FallingTrap`** — drops (kinematic move or **Rigidbody** gravity); bad ending when child **`TrapCatchZone`** (trigger collider) overlaps the player — not the root mesh collider.
+- **Prefab layout:** **`TrapRoot` (`FallingTrap`)** → child **`TrapCatchZone`** (trigger + script). **`catchZone`** on **`FallingTrap`** can stay empty (auto-finds child).
+- **Bad ending:** **`FallingTrap.OnPlayerCaught()`** → **`BadEndingOrchestrator.TriggerPlayerCaughtByTrap()`** (optional door/desktop setup + **`RevealBadEndingCanvas()`**); optional **`OllamaConnector`** trap line when deliveries are complete.
+- **AI-assisted:** Cursor; verify: walk into trigger → trap falls → catch zone hits player → bad-ending canvas / knock flow as configured.
+
+---
+
+## 2026-05-15 — Hacking maze UI: full-panel overlay, status bar, Abort breach fix
+
+- **Layout / host:** Maze dimmer + **`MazeBox`** now parent under **`PanelHackingTerminal`** (not **`ConsoleScrollView/Viewport`** or **`HackingTerminalContent`** — that object’s **`VerticalLayoutGroup`** was squashing the overlay and breaking clicks). Overlay uses **`LayoutElement.ignoreLayout`**; **`BringMazeOverlayToFront()`** keeps it above terminal chrome (controls dock is **not** forced on top).
+- **While maze open:** **`ConsoleScrollView`** hidden so log text does not show through; restored on **`HideMazeUi`**. Maze box uses ~**97%** of terminal panel size (caps **~1120×860**); grid gets remaining height after title / button / status chrome.
+- **Status line:** Bottom **light strip** + **dark text** (tier, hazards, vision, position) — replaces low-contrast footer on the dark panel; **`raycastTarget`** off so it does not block the button.
+- **Abort breach:** Fixed non-clickable button — overlay reparent + dock / status bar / button label raycast fixes; **`btnRow`** minimum height preserved.
+- **Code:** `HackingMazeMinigame` — **`EnsureOverlayOnMazeHost`**, **`SetConsoleScrollVisible`**, **`CreateMazeStatusBar`**, **`MazeChromeVerticalReserve`** / sizing tweaks.
+- **AI-assisted:** Cursor; verify: **Hack** → large readable maze; status readable at bottom; **Abort breach** and **Esc** close without progress; controls dock still readable on the left.
+
+---

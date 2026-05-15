@@ -277,6 +277,118 @@ Ollama as online persona blackmailing with fictional personal info; designates a
 
 ---
 
+## Cursor — 2026-05-14 — Hacking maze + world interact (user prompts)
+
+**Goal:** Archive **exact** user messages from the Cursor session that added the maze breach minigame, progression/difficulty, controls, and **[E]** interact prompts.
+
+**Prompts (user, verbatim unless noted):**
+
+1. *Hacking button → maze minigame:*  
+   `So what i want to do is basically when I access my computer terminal and click on my hacking button, it will open a panel that will generate a mini game for me. The mini game could be a maze game. Please do this for me`
+
+2. *+10% progress, scaling difficulty, obstacles, bombs:*  
+   `So i want it where if you complete a maze then it will add 10 percent to the hacking progress bar and after every successful maze won, the next one will be a bit more difficult. You can start adding things like obstacles in the way or perhaps bombs that will end your game.`
+
+3. *Bigger maze, hold movement, hazards on route:*  
+   `I would like my maze mini game to appear a bit bigger. I also want to be able to hold my WASD or arrow keys to move along the paths, not just have to tap constantly. I also would like the mazes to be a bit more complex or difficult, where the bombs or blocks will actually be in the way i need to go and i have to move around them`
+
+4. *Multiple routes, less obvious path:*  
+   `I want there to be multiple routes to the end of the maze, but the bombs and blocks will be in the way, cause right now it is too easy to see which route to follow`
+
+5. *World [E] prompts:*  
+   `I want an interact (E) prompt to appear near any object i can interact with`
+
+6. *Maze controls section:*  
+   `can you please add a controls section for the maze mini game`
+
+7. *Prefab wiring question:*  
+   `is the mini game added to the canvas prefab ?`
+
+8. *Readable maze panel:*  
+   `make the maze game panel bigger, i cant read the text on it cause its too small`
+
+9. *Docs:*  
+   `Can you update the @refinements-changes.md with all the changes Ive made`
+
+**Outcome:** **`HackingMazeMinigame`**, **`HackingTerminalPanel`** maze flow, **`InteractPromptHud`** / **`Interactable`** / **`DeliveryZone`** prompts, controls dock (see **Cursor — 2026-05-14 — Hacking maze controls layout** above); maze not serialized on prefab by default (runtime **`AddComponent`**).
+
+**Iteration notes:** Later **2026-05-15** sessions resized overlay, fog of war, and full-panel layout — see sections below.
+
+---
+
+## Cursor — 2026-05-15 — Ollama model + docs (user prompts)
+
+**Goal:** Log tooling / documentation requests from the same project period.
+
+**Prompts (user, verbatim):**
+
+1. `please tell me what LLM is being used in the project`
+2. `can you pull it for me` *(local Ollama model pull — **`mistral:7b-instruct`** per project defaults)*
+
+**Outcome:** Identified **`OllamaConnector`** default model; pull attempted via shell when Ollama was available.
+
+**Iteration notes:** Not a change to in-game **`SystemPrompt`** text.
+
+---
+
+## Cursor — 2026-05-15 — Main menu & pause menu (user prompts)
+
+**Goal:** Main menu (**Play** / **Quit**) and pause menu (**Resume** / **Restart** / **Main Menu**), then scripts-only after scene tooling was reverted.
+
+**Prompts (user, verbatim):**
+
+1. `i want to make a main menu screen thatll have a play game and quit game option. I also want a pause menu screen thatll have a resume game, restart game and main menu option`
+2. `okay so what must i do in Unity to get this to work`
+3. `okay i undid those changes you made for the main menu and pause screen. Rather make me a script for a main menu screen and pause screen`
+4. *Build error:*  
+   `Scene 'Main Menu' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded. ... I get this error, how do i fix it`
+
+**Outcome:** **`MainMenuScreen.cs`**, **`PauseScreen.cs`**; **`Assets/Scenes/Main Menu.unity`** + **`EditorBuildSettings`** (Main Menu index 0, Main Game index 1); manual Unity wiring documented in chat.
+
+**Iteration notes:** **Quit** added to pause menu in a follow-up (see next section).
+
+---
+
+## Cursor — 2026-05-15 — Falling trap → bad ending (user prompts)
+
+**Goal:** Hallway trigger spawns a dropping trap; catch volume on prefab triggers bad ending.
+
+**Prompts (user, verbatim):**
+
+1. `Make me a script for a trap that would spawn and drop on the player if they hit a trigger. I want it so the the player would walk or run and they will hit a trigger and that will spawn a trap from above that will drop and trigger the bad ending in the game`
+2. `add a zone around my prefab so that when a part of that zone hits the player then it will trigger the bad ending`
+3. `so what must go in tap catch zone in my falling trap component on my prefab` *(user typo: **trap** catch zone)*
+
+**Outcome:** **`TrapTriggerZone`**, **`FallingTrap`**, **`TrapCatchZone`**; **`BadEndingOrchestrator.TriggerPlayerCaughtByTrap()`**; prefab layout documented (child trigger zone, optional empty **`catchZone`** field).
+
+**Iteration notes:** Separate from Ollama **bad-ending messenger** beat (**2026-05-28** hidden **`[SYSTEM]`** block).
+
+---
+
+## Cursor — 2026-05-15 — Movement controls HUD + maze UI polish (user prompts)
+
+**Goal:** On-screen control hints in gameplay; maze layout/readability; **Abort breach** click fix.
+
+**Prompts (user, verbatim):**
+
+1. `please list all the scripts you made for me`
+2. `can you update my pause menu script to have a quit game function as well`
+3. `could you add a Ui box in my main game that will give movement controls which is WASD to move, SPACE to jump and SHIFT + WASD to sprint`
+4. `change it for the toggle then` *(sprint is toggle on Shift, not hold)*
+5. `also ESC to pause`
+6. `how do i get this to show on my maing game screen now for only when im playing`
+7. `my maze game is still a bit too small and being covered by text so i cant see my full maze, please fix this`
+8. `the text at the bottom of the maze game panel i cant really see, could you make the panel bigger or change that text to black`
+9. `the abort breach isnt working now though`
+10. `Please update the @refinements-changes.md with all my changes and refinements i made today`
+11. `Please update the prompts-used.md with all my prompts ive given you`
+
+**Outcome:** **`MovementControlsHud`** (bottom-left, hides on pause/intro); maze overlay on **`PanelHackingTerminal`**, console hidden during maze, light status strip + dark text, raycast/sibling fixes for **Abort breach**; **`PauseScreen.QuitGame()`**; **`refinements-changes.md`** updated **2026-05-15**.
+
+**Iteration notes:** Add **`MovementControlsHud`** on **`Temp-Player`** (or **GameUI**) in **Main Game** only; restart Play after maze UI code changes so runtime overlay rebuilds.
+
+---
+
 ## Template — copy for new rows
 
 ### YYYY-MM-DD — Game Ollama — 
