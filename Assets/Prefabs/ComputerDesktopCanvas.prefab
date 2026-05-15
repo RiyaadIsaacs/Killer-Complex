@@ -4516,9 +4516,11 @@ MonoBehaviour:
   typingPulseAlphaMax: 1
   introSenderName: H
   openingMessage: "I see you're finally at the computer. Stop looking for your wife\u2014she's
-    not at home anymore. If you want to see her again, you're going to be my legs
-    tonight. There is a package in the lobby. If you don't get back to me, you will
-    never hear from her again. Don't test me, bru. Move it."
+    not at home anymore. If you want to see her again, you're running urgent package
+    deliveries for my customers across this complex tonight. When I give you a job,
+    find the package somewhere in the building and get it to the unit I name\u2014fast.
+    If you don't get back to me, you will never hear from her again. Don't test me,
+    bru. Move it."
   prepareDeliveryOnMessengerSendWhenIdle: 1
   deliveryManager: {fileID: 0}
 --- !u!1 &7899507401980877974

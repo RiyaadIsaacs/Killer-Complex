@@ -148,6 +148,20 @@ I see you're finally at the computer. Stop looking for your wife—she's not at 
 
 ---
 
+## Game — Conversational H (insults / tone) — 2026-05-15
+
+**Goal:** **H** answers what the player actually says (insults, friendliness, seriousness) before delivery boilerplate; never brushes off provocation or repeats the same job script every reply.
+
+**Prompt (system — exact string in `OllamaConnector.SystemPrompt` after this date):** See `Assets/Scripts/OllamaConnector.cs` (`SystemPrompt` const). Key rules: reply shape (engage player message first, then at most one short job clause); insults must be answered directly; friendly/serious tone acknowledged in character; vary phrasing; 3–6 sentences typical.
+
+**Hidden `[CONTEXT]` addition:** `AppendStaticGameContextForLlm` appends a dialogue rule each turn; active-delivery facts are labelled background-only so the model does not lead every message with pickup/destination text.
+
+**Outcome:** In-engine; re-test with insults, friendly, and serious player lines after `ollama pull` / Play.
+
+**Iteration notes:** Local **mistral:7b-instruct** may still be stiff—raise temperature in Ollama options later if needed.
+
+---
+
 ## Game — Bad ending trap (hidden `[SYSTEM]`) — 2026-05-28
 
 **Goal:** When **all** configured delivery legs are done and the one-shot post-drop “H steps away” beat is still pending, the **next** messenger send must **not** ask for the dismissive-away excuse. Instead, **one** Ollama generate uses a hidden **`[SYSTEM]`** line (not duplicated as a visible messenger **`[SYSTEM]`** row) so **H** leads the player into the **final trap** (eerie calm; last package at **Room 204** fiction).
@@ -228,6 +242,18 @@ Ollama as online persona blackmailing with fictional personal info; designates a
 **Outcome:** Implemented in `HackingMazeMinigame` — external **`_controlsDockRoot`** under the terminal panel parent, **`LayoutControlsDock`**, **`CreateControlsSection(..., dockOutsideTerminal: true)`**, reduced **`MazeChromeVerticalReserve`**, dock teardown in **`HideMazeUi`** / **`OnDestroy`**.
 
 **Iteration notes:** No change to **Ollama** system or `[CONTEXT]` templates this session.
+
+---
+
+## Cursor — 2026-05-15 — Maze fog of war + random victory tile
+
+**Goal:** The hacking maze should not show the full map — only a **3×3** lit area around the player. Randomize the **green** uplink (victory) cell each run instead of a fixed corner.
+
+**Prompt (condensed user request):** Add fog so the player has vision of 3×3 around them; randomize the green victory position.
+
+**Outcome:** `HackingMazeMinigame` — **`visionRadius`** (default 1 → 3×3), **`fogColor`**, **`IsCellVisible`** / **`GetRevealedCellColor`** in **`RefreshAllCells`**; **`PickRandomGoalCell()`** after loop carving with **`minGoalDistanceFromStart`**; controls/hint copy updated. Docs: **`setup.md`** §2b, **`README.md`**, **`refinements-changes.md`**, **`RiyaadWork.md`**.
+
+**Iteration notes:** No Ollama prompt or API change. Tune **`visionRadius`** or **`minGoalDistanceFromStart`** on the maze component in the Inspector if needed.
 
 ---
 

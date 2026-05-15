@@ -34,9 +34,13 @@ public class ChatManager : MonoBehaviour
     [Header("Intro")]
     [SerializeField] private string introSenderName = "H";
     [SerializeField, TextArea(5, 20)]
-    private string openingMessage =
+    private string openingMessage = DefaultOpeningMessage;
+
+    /// <summary>Default messenger intro (also baked into <c>ComputerDesktopCanvas</c> prefab).</summary>
+    public const string DefaultOpeningMessage =
         "I see you're finally at the computer. Stop looking for your wife\u2014she's not at home anymore. " +
-        "If you want to see her again, you're going to be my legs tonight. " +
+        "If you want to see her again, you're running urgent package deliveries for my customers across this complex tonight. " +
+        "When I give you a job, find the package somewhere in the building and get it to the unit I name\u2014fast. " +
         "If you don't get back to me, you will never hear from her again. Don't test me, bru. Move it.";
 
     [Header("Messenger → next delivery job")]
@@ -76,6 +80,15 @@ public class ChatManager : MonoBehaviour
         _openingMessageShown = true;
         UpdateChatFeed(introSenderName, openingMessage);
     }
+
+#if UNITY_EDITOR
+    [ContextMenu("Reset Opening Message To Default")]
+    void ResetOpeningMessageToDefault()
+    {
+        openingMessage = DefaultOpeningMessage;
+        UnityEditor.EditorUtility.SetDirty(this);
+    }
+#endif
 
     private void OnDestroy()
     {
@@ -168,8 +181,13 @@ public class ChatManager : MonoBehaviour
         if (IsHSender(senderName))
             line += "\n";
         AppendLine(line);
-        if (IsHSender(senderName) && ollamaConnector != null)
-            ollamaConnector.NotifyHPostedToMessenger();
+        if (IsHSender(senderName))
+        {
+            if (ollamaConnector != null)
+                ollamaConnector.NotifyHPostedToMessenger();
+            else
+                TryStartDeliveryUrgencyTimerAfterHMessage();
+        }
     }
 
     /// <summary>True for messenger lines from <b>H</b> so we can add a blank line after each reply for readability.</summary>
@@ -207,8 +225,8 @@ public class ChatManager : MonoBehaviour
         else if (deferPrepareNextLeg && dm != null)
             dm.AbandonPostDeliveryStepAwayBeat();
 
-        if (deferPrepareNextLeg)
-            MaybePrepareDeliveryWhenMessengerSendIfIdle();
+        // Do not prepare the next leg on the same send that triggers H's post-drop "step away" reply.
+        // The next job is rolled on the player's following messenger send (see refinements-changes.md).
     }
 
     void MaybePrepareDeliveryWhenMessengerSendIfIdle()
@@ -241,6 +259,15 @@ public class ChatManager : MonoBehaviour
         if (_cachedDeliveryManager == null)
             _cachedDeliveryManager = UnityEngine.Object.FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
         return _cachedDeliveryManager;
+    }
+
+    static void TryStartDeliveryUrgencyTimerAfterHMessage()
+    {
+        foreach (var timer in UnityEngine.Object.FindObjectsByType<DeliveryUrgencyTimer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (timer != null)
+                timer.TryStartCountdownAfterHMessage();
+        }
     }
 
     private static string FormatLineStatic(string senderName, string body)

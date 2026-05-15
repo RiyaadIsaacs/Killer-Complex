@@ -49,6 +49,18 @@ public class HackingMazeMinigame : MonoBehaviour
     [Tooltip("When placing bombs/blocks, chance to pick a shortest-route cell vs a longer-route cell (lower = less obvious 'line' toward the goal).")]
     [SerializeField, Range(0.15f, 0.75f)] private float corridorHazardBias = 0.38f;
 
+    [Header("Vision")]
+    [Tooltip("Chebyshev radius around the player for visible cells (1 = 3×3, 2 = 5×5).")]
+    [SerializeField, Range(0, 3)]
+    private int visionRadius = 2;
+
+    [SerializeField] private Color32 fogColor = new(12, 16, 22, 255);
+
+    [Header("Goal placement")]
+    [Tooltip("Minimum BFS steps from start (1,1) when picking a random green uplink cell.")]
+    [SerializeField, Min(3)]
+    private int minGoalDistanceFromStart = 6;
+
     [Header("Colours")]
     [SerializeField] private Color32 wallColor = new(25, 35, 50, 255);
     [SerializeField] private Color32 floorColor = new(52, 73, 94, 255);
@@ -130,6 +142,7 @@ public class HackingMazeMinigame : MonoBehaviour
 
         GenerateMaze();
         CarveRandomLoopPassages();
+        PickRandomGoalCell();
         PlaceHazards(obstacleCount, bombCount);
 
         BuildOrResizeCellGrid();
@@ -358,11 +371,12 @@ public class HackingMazeMinigame : MonoBehaviour
     {
         _won = true;
         _host?.AppendConsoleLine("> Uplink node reached — segment cleared.");
+        // Apply progress (and 100% hack / good ending) before maze-outcome suspicion or bad-ending dispatch.
+        _host?.ApplyMazeRoundWin();
         _host?.OnMazeRoundAttemptFinished(true);
         HideMazeUi();
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
-        _host?.ApplyMazeRoundWin();
     }
 
     private void EnsureUiBuilt()
@@ -538,7 +552,8 @@ public class HackingMazeMinigame : MonoBehaviour
         bodyTmp.lineSpacing = 6f;
         bodyTmp.text =
             "• Move: WASD or arrow keys — hold to slide along corridors\n" +
-            "• Goal: reach the green uplink node\n" +
+            "• Vision: only a 3×3 area around you is lit — explore to find the uplink\n" +
+            "• Goal: reach the green uplink node (hidden until you are close)\n" +
             "• Orange: blocked relay (cannot pass)\n" +
             "• Red: corrupted sector — stepping fails this run (no decryption %)\n" +
             "• Esc or Abort breach: leave maze without progress";
@@ -593,8 +608,9 @@ public class HackingMazeMinigame : MonoBehaviour
     {
         if (_hintLabel == null || _won)
             return;
+        var vision = visionRadius * 2 + 1;
         _hintLabel.text =
-            $"Tier {tier} · {obstacles} blocks · {bombs} bombs — reach green. Pos ({_px},{_py}). Escape aborts.";
+            $"Tier {tier} · {obstacles} blocks · {bombs} bombs — {vision}×{vision} vision. Pos ({_px},{_py}). Find the uplink.";
     }
 
     private void GenerateMaze()
@@ -631,11 +647,63 @@ public class HackingMazeMinigame : MonoBehaviour
             stack.Push(n);
         }
 
-        _gx = _cols - 2;
-        _gy = _rows - 2;
         _px = 1;
         _py = 1;
+        _gx = _cols - 2;
+        _gy = _rows - 2;
     }
+
+    /// <summary>Picks a random walkable uplink cell far enough from the start so the green goal is not always in the same corner.</summary>
+    void PickRandomGoalCell()
+    {
+        var distFromStart = BfsDistances(1, 1);
+        var minDist = Mathf.Clamp(minGoalDistanceFromStart, 3, Mathf.Max(4, (_cols + _rows) / 2));
+        var candidates = new List<Vector2Int>();
+
+        for (var x = 1; x < _cols - 1; x++)
+        for (var y = 1; y < _rows - 1; y++)
+        {
+            if (!_walkable[x, y])
+                continue;
+            if (x == 1 && y == 1)
+                continue;
+            if (distFromStart[x, y] < minDist)
+                continue;
+            candidates.Add(new Vector2Int(x, y));
+        }
+
+        if (candidates.Count == 0)
+        {
+            for (var x = 1; x < _cols - 1; x++)
+            for (var y = 1; y < _rows - 1; y++)
+            {
+                if (!_walkable[x, y] || (x == 1 && y == 1))
+                    continue;
+                if (distFromStart[x, y] < 0)
+                    continue;
+                candidates.Add(new Vector2Int(x, y));
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            _gx = Mathf.Clamp(_cols - 2, 1, _cols - 2);
+            _gy = Mathf.Clamp(_rows - 2, 1, _rows - 2);
+            return;
+        }
+
+        var goal = candidates[Random.Range(0, candidates.Count)];
+        _gx = goal.x;
+        _gy = goal.y;
+    }
+
+    bool IsCellVisible(int x, int y)
+    {
+        return Mathf.Abs(x - _px) <= visionRadius && Mathf.Abs(y - _py) <= visionRadius;
+    }
+
+    bool IsHazardAt(int x, int y) =>
+        (_obstacle != null && _obstacle[x, y]) || (_bomb != null && _bomb[x, y]);
 
     /// <summary>
     /// Opens extra floor cells on interior walls that already touch ≥2 corridors, turning the spanning tree into a
@@ -867,7 +935,7 @@ public class HackingMazeMinigame : MonoBehaviour
         for (var y = 0; y < _rows; y++)
             dist[x, y] = -1;
 
-        if (!_walkable[sx, sy] || _obstacle[sx, sy] || _bomb[sx, sy])
+        if (!_walkable[sx, sy] || IsHazardAt(sx, sy))
             return dist;
 
         var q = new Queue<Vector2Int>();
@@ -884,7 +952,7 @@ public class HackingMazeMinigame : MonoBehaviour
                 var ny = c.y + off.y;
                 if (nx < 0 || ny < 0 || nx >= _cols || ny >= _rows)
                     continue;
-                if (!_walkable[nx, ny] || _obstacle[nx, ny] || _bomb[nx, ny])
+                if (!_walkable[nx, ny] || IsHazardAt(nx, ny))
                     continue;
                 if (dist[nx, ny] >= 0)
                     continue;
@@ -925,7 +993,7 @@ public class HackingMazeMinigame : MonoBehaviour
                 var ny = c.y + d.y;
                 if (nx < 0 || ny < 0 || nx >= _cols || ny >= _rows)
                     continue;
-                if (!_walkable[nx, ny] || _obstacle[nx, ny] || _bomb[nx, ny])
+                if (!_walkable[nx, ny] || IsHazardAt(nx, ny))
                     continue;
                 if (visited[nx, ny])
                     continue;
@@ -1004,21 +1072,23 @@ public class HackingMazeMinigame : MonoBehaviour
         {
             var idx = y * _cols + x;
             var img = _cellImages[idx];
-            Color32 c;
-            if (x == _px && y == _py)
-                c = playerColor;
-            else if (x == _gx && y == _gy)
-                c = goalColor;
-            else if (!_walkable[x, y])
-                c = wallColor;
-            else if (_obstacle[x, y])
-                c = obstacleColor;
-            else if (_bomb[x, y])
-                c = bombColor;
-            else
-                c = floorColor;
-            img.color = c;
+            img.color = IsCellVisible(x, y) ? GetRevealedCellColor(x, y) : fogColor;
         }
+    }
+
+    Color32 GetRevealedCellColor(int x, int y)
+    {
+        if (x == _px && y == _py)
+            return playerColor;
+        if (x == _gx && y == _gy)
+            return goalColor;
+        if (!_walkable[x, y])
+            return wallColor;
+        if (_obstacle != null && _obstacle[x, y])
+            return obstacleColor;
+        if (_bomb != null && _bomb[x, y])
+            return bombColor;
+        return floorColor;
     }
 
     private static void StretchFull(RectTransform rt)

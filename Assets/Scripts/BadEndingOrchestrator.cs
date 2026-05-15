@@ -71,6 +71,12 @@ public class BadEndingOrchestrator : MonoBehaviour
     /// <summary>Called the moment the bad-ending Ollama HTTP request is started (before the reply returns).</summary>
     public void StartBadEnding()
     {
+        if (GoodEndingOrchestrator.Instance != null && GoodEndingOrchestrator.Instance.IsGoodEndingDoorPhase)
+        {
+            Debug.LogWarning($"{nameof(BadEndingOrchestrator)}: Good-ending door phase is active — bad ending not started.", this);
+            return;
+        }
+
         StopApartmentKnockRepeatIfAny();
 
         _doorPhaseActive = true;

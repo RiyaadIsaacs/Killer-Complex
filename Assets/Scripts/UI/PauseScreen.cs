@@ -47,6 +47,9 @@ public class PauseScreen : MonoBehaviour
             return;
         }
 
+        if (GameSceneIntroPanel.BlocksGameplay)
+            return;
+
         if (IsAnyComputerOpen())
             return;
 

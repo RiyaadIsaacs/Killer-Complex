@@ -74,6 +74,9 @@ public class DeliveryManager : MonoBehaviour
 
     public event Action<int> OnDeliveryCompleted;
 
+    /// <summary>Fired when <see cref="PrepareNextDeliveryFromAi"/> rolls a new active leg (pickup + destination ready).</summary>
+    public event Action OnDeliveryLegPrepared;
+
     public bool RequiresPhysicalPickup => receptionDeliveryItem != null;
 
     public bool HasPickedUpCurrentPackage => hasPickedUpCurrentPackage;
@@ -121,6 +124,19 @@ public class DeliveryManager : MonoBehaviour
     public void ConsumePostDeliveryBeatForBadEnding()
     {
         _postDeliveryStepAwayBeatPending = false;
+    }
+
+    /// <summary>
+    /// Arms the bad-ending Ollama path: quota exceeded, active leg cleared, post-drop beat set (e.g. suspicion hit 100%).
+    /// </summary>
+    public void ForceSuspicionMaxBadEndingState()
+    {
+        currentDeliveryID = TotalDeliveryLegs + 1;
+        ActiveDropPointId = -1;
+        CurrentLegDestinationApartment = -1;
+        hasPickedUpCurrentPackage = false;
+        receptionDeliveryItem?.Deactivate();
+        _postDeliveryStepAwayBeatPending = true;
     }
 
     void OnValidate()
@@ -175,6 +191,9 @@ public class DeliveryManager : MonoBehaviour
         hasPickedUpCurrentPackage = false;
         RollNextRandomDropPoint();
         receptionDeliveryItem?.ActivateForDelivery();
+
+        if (ActiveDropPointId >= 0)
+            OnDeliveryLegPrepared?.Invoke();
     }
 
     public bool TryRegisterPackagePickup(DeliveryItem item)

@@ -106,6 +106,14 @@
 
 ---
 
+## 2026-05-15 — Maze fog of war + random goal
+
+- **Gameplay:** `HackingMazeMinigame.cs` — **3×3 vision** (`visionRadius`, `fogColor`); **`PickRandomGoalCell()`** randomizes green uplink placement with **`minGoalDistanceFromStart`**.
+- **Documentation:** `setup.md` §2b, `README.md`, `refinements-changes.md`, `prompts-used.md`, this file.
+- **Pushed:** Commit to GitHub with maze changes and doc refresh.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

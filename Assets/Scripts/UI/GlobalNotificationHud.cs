@@ -18,6 +18,9 @@ public class GlobalNotificationHud : MonoBehaviour
     [Tooltip("Inactive by default. Filled automatically for a child named PackageDeliveredLabel with TextMeshProUGUI, or assign manually.")]
     [SerializeField] private TextMeshProUGUI packageDeliveredLabel;
 
+    [Tooltip("Inactive by default. Shown while an urgent delivery leg is counting down. Auto-resolves a child named UrgentDeliveryTimerLabel.")]
+    [SerializeField] private TextMeshProUGUI urgentDeliveryTimerLabel;
+
     [Header("Lifecycle")]
     [Tooltip("If true, only one HUD survives scene loads (typical for global toasts).")]
     [SerializeField] private bool persistAcrossScenes = true;
@@ -28,39 +31,63 @@ public class GlobalNotificationHud : MonoBehaviour
 
     public RectTransform TopLeftContent => topLeftContent;
     public TextMeshProUGUI PackageDeliveredLabel => packageDeliveredLabel;
+    public TextMeshProUGUI UrgentDeliveryTimerLabel => urgentDeliveryTimerLabel;
 
     /// <summary>
     /// Row GameObject to show or hide (background + text). TMP may be on a child under <c>PackageDeliveredLabel</c>.
     /// </summary>
-    public static GameObject GetPackageDeliveredRowRoot(TextMeshProUGUI tmp)
+    public static GameObject GetPackageDeliveredRowRoot(TextMeshProUGUI tmp) =>
+        GetNotificationRowRoot(tmp, "PackageDeliveredLabel");
+
+    public static GameObject GetUrgentDeliveryTimerRowRoot(TextMeshProUGUI tmp) =>
+        GetNotificationRowRoot(tmp, "UrgentDeliveryTimerLabel");
+
+    static GameObject GetNotificationRowRoot(TextMeshProUGUI tmp, string rowName)
     {
         if (tmp == null)
             return null;
         var p = tmp.transform.parent;
-        if (p != null && p.name == "PackageDeliveredLabel")
+        if (p != null && p.name == rowName)
             return p.gameObject;
         return tmp.gameObject;
     }
 
     private void OnValidate()
     {
-        if (packageDeliveredLabel != null)
+        TryAutoAssignLabel(ref packageDeliveredLabel, "PackageDeliveredLabel");
+        TryAutoAssignLabel(ref urgentDeliveryTimerLabel, "UrgentDeliveryTimerLabel");
+    }
+
+    void TryAutoAssignLabel(ref TextMeshProUGUI field, string rowName)
+    {
+        if (field != null)
             return;
+
         foreach (var tr in GetComponentsInChildren<Transform>(true))
         {
-            if (tr.name != "PackageDeliveredLabel")
+            if (tr.name != rowName)
                 continue;
             var tmp = tr.GetComponentInChildren<TextMeshProUGUI>(true);
             if (tmp != null)
             {
-                packageDeliveredLabel = tmp;
+                field = tmp;
                 break;
             }
         }
     }
 
+    /// <summary>Runtime fallback when the urgent timer row exists but was not wired in the Inspector.</summary>
+    public void TryAutoAssignUrgentTimerLabel() => TryAutoAssignLabel(ref urgentDeliveryTimerLabel, "UrgentDeliveryTimerLabel");
+
     private void Awake()
     {
+        if (GetComponent<GameSceneIntroPanel>() == null)
+            gameObject.AddComponent<GameSceneIntroPanel>();
+
+        var hudRect = transform as RectTransform;
+        if (hudRect != null && hudRect.localScale == Vector3.zero)
+            hudRect.localScale = Vector3.one;
+
         if (!persistAcrossScenes)
             return;
 
@@ -99,18 +126,94 @@ public class GlobalNotificationHud : MonoBehaviour
     /// Resolves the package-delivered TMP for <see cref="DeliveryZone"/> when it is not wired in the Inspector:
     /// persistent HUD instance first, then any <see cref="GlobalNotificationHud"/> in loaded scenes.
     /// </summary>
-    public static TextMeshProUGUI FindPackageDeliveredLabel()
+    public static TextMeshProUGUI FindPackageDeliveredLabel() =>
+        FindHudWithLabel(h => h.packageDeliveredLabel);
+
+    public static TextMeshProUGUI FindUrgentDeliveryTimerLabel() =>
+        FindHudWithLabel(h => h.urgentDeliveryTimerLabel);
+
+    static TextMeshProUGUI FindHudWithLabel(System.Func<GlobalNotificationHud, TextMeshProUGUI> selector)
     {
-        if (_instance != null && _instance.packageDeliveredLabel != null)
-            return _instance.packageDeliveredLabel;
+        if (_instance != null)
+        {
+            var label = selector(_instance);
+            if (label != null)
+                return label;
+        }
 
         foreach (var hud in Object.FindObjectsByType<GlobalNotificationHud>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            if (hud != null && hud.packageDeliveredLabel != null)
-                return hud.packageDeliveredLabel;
+            if (hud == null)
+                continue;
+            var label = selector(hud);
+            if (label != null)
+                return label;
         }
 
         return null;
+    }
+
+    /// <summary>Resolves the persistent HUD instance, or any loaded <see cref="GlobalNotificationHud"/>.</summary>
+    public static GlobalNotificationHud FindHud()
+    {
+        if (_instance != null)
+            return _instance;
+
+        foreach (var hud in Object.FindObjectsByType<GlobalNotificationHud>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (hud != null)
+                return hud;
+        }
+
+        return null;
+    }
+
+    public void SetUrgentDeliveryTimerVisible(bool visible)
+    {
+        if (urgentDeliveryTimerLabel == null)
+            return;
+
+        var row = GetUrgentDeliveryTimerRowRoot(urgentDeliveryTimerLabel);
+        if (row == null)
+            return;
+
+        if (visible)
+            EnsureActiveHierarchy(gameObject);
+
+        row.SetActive(visible);
+    }
+
+    /// <summary>Updates the urgent timer row and shows it. No-op if the label is not assigned.</summary>
+    public void ShowUrgentDeliveryTimer(string message)
+    {
+        if (urgentDeliveryTimerLabel == null || string.IsNullOrEmpty(message))
+            return;
+
+        EnsureActiveHierarchy(gameObject);
+
+        urgentDeliveryTimerLabel.text = message;
+        var row = GetUrgentDeliveryTimerRowRoot(urgentDeliveryTimerLabel);
+        if (row != null)
+        {
+            EnsureActiveHierarchy(row);
+            row.SetActive(true);
+        }
+    }
+
+    public void HideUrgentDeliveryTimer() => SetUrgentDeliveryTimerVisible(false);
+
+    public static void ShowUrgentDeliveryTimerOnHud(string message)
+    {
+        var hud = FindHud();
+        if (hud == null)
+            return;
+        hud.ShowUrgentDeliveryTimer(message);
+    }
+
+    public static void HideUrgentDeliveryTimerOnHud()
+    {
+        var hud = FindHud();
+        hud?.HideUrgentDeliveryTimer();
     }
 
     /// <summary>
@@ -173,7 +276,9 @@ public class GlobalNotificationHud : MonoBehaviour
         _deliveryRowHideRoutine = StartCoroutine(HideDeliveryRowAfter(row, Mathf.Max(0.25f, displaySeconds)));
     }
 
-    static void EnsureActiveHierarchy(GameObject leaf)
+    static void EnsureActiveHierarchy(GameObject leaf) => EnsureActiveHierarchyStatic(leaf);
+
+    internal static void EnsureActiveHierarchyStatic(GameObject leaf)
     {
         if (leaf == null)
             return;

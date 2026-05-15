@@ -5,6 +5,9 @@ using UnityEngine.UI;
 
 public static class MessengerChatUIBuilder
 {
+    public const float SuspicionBarHeight = 36f;
+    public const string SuspicionBarRowName = "SuspicionBarRow";
+
     public static void AttachToPanel(GameObject messengerPanel, Sprite whiteSprite)
     {
         var font = TMP_Settings.defaultFontAsset;
@@ -22,13 +25,16 @@ public static class MessengerChatUIBuilder
         chatRootRt.anchorMax = new Vector2(1f, 1f);
         chatRootRt.offsetMin = new Vector2(16f, 16f);
         chatRootRt.offsetMax = new Vector2(-16f, -52f);
+
+        CreateSuspicionBarRow(chatRoot.transform, whiteSprite, font);
+
         var scrollGo = new GameObject("ChatScrollView", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
         Undo.RegisterCreatedObjectUndo(scrollGo, "Create ChatScrollView");
         scrollGo.transform.SetParent(chatRoot.transform, false);
         var scrollRt = scrollGo.GetComponent<RectTransform>();
         scrollRt.anchorMin = new Vector2(0f, 0f);
         scrollRt.anchorMax = new Vector2(1f, 1f);
-        scrollRt.offsetMin = new Vector2(0f, 56f);
+        scrollRt.offsetMin = new Vector2(0f, 56f + SuspicionBarHeight + 6f);
         scrollRt.offsetMax = new Vector2(0f, 0f);
         var scrollBg = scrollGo.GetComponent<Image>();
         scrollBg.sprite = whiteSprite;
@@ -165,6 +171,259 @@ public static class MessengerChatUIBuilder
         so.FindProperty("sendButton").objectReferenceValue = sendBtn;
         so.ApplyModifiedProperties();
     }
+
+    /// <summary>Adds <see cref="SuspicionBarRowName"/> under an existing <c>ChatRoot</c> and nudges <c>ChatScrollView</c> down.</summary>
+    public static bool TryAttachSuspicionBarToExistingChatRoot(Transform chatRoot, Sprite whiteSprite, TMP_FontAsset font)
+    {
+        if (chatRoot == null || font == null)
+            return false;
+
+        if (chatRoot.Find(SuspicionBarRowName) != null)
+            return false;
+
+        CreateSuspicionBarRow(chatRoot, whiteSprite, font);
+
+        var scroll = chatRoot.Find("ChatScrollView")?.GetComponent<RectTransform>();
+        if (scroll != null)
+        {
+            var min = scroll.offsetMin;
+            min.y = Mathf.Max(min.y, 56f + SuspicionBarHeight + 6f);
+            scroll.offsetMin = min;
+        }
+
+        return true;
+    }
+
+    static void CreateSuspicionBarRow(Transform chatRoot, Sprite whiteSprite, TMP_FontAsset font)
+    {
+        var row = new GameObject(SuspicionBarRowName, typeof(RectTransform), typeof(Image), typeof(MessengerSuspicionBar));
+        Undo.RegisterCreatedObjectUndo(row, "Create SuspicionBarRow");
+        row.transform.SetParent(chatRoot, false);
+        row.transform.SetAsFirstSibling();
+
+        var rowRt = row.GetComponent<RectTransform>();
+        rowRt.anchorMin = new Vector2(0f, 1f);
+        rowRt.anchorMax = new Vector2(1f, 1f);
+        rowRt.pivot = new Vector2(0.5f, 1f);
+        rowRt.anchoredPosition = new Vector2(0f, -2f);
+        rowRt.sizeDelta = new Vector2(0f, SuspicionBarHeight);
+
+        var rowBg = row.GetComponent<Image>();
+        rowBg.sprite = whiteSprite;
+        rowBg.type = Image.Type.Simple;
+        rowBg.color = new Color32(44, 62, 80, 90);
+
+        var titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
+        titleGo.transform.SetParent(row.transform, false);
+        var titleRt = titleGo.GetComponent<RectTransform>();
+        titleRt.anchorMin = new Vector2(0f, 0f);
+        titleRt.anchorMax = new Vector2(0f, 1f);
+        titleRt.pivot = new Vector2(0f, 0.5f);
+        titleRt.anchoredPosition = new Vector2(8f, 0f);
+        titleRt.sizeDelta = new Vector2(118f, 0f);
+        var titleTmp = titleGo.GetComponent<TextMeshProUGUI>();
+        titleTmp.font = font;
+        titleTmp.fontSize = 14;
+        titleTmp.fontStyle = FontStyles.Bold;
+        titleTmp.alignment = TextAlignmentOptions.MidlineLeft;
+        titleTmp.color = new Color32(236, 240, 241, 255);
+        titleTmp.text = "H suspicion";
+
+        var sliderGo = new GameObject("Slider", typeof(RectTransform), typeof(Slider));
+        sliderGo.transform.SetParent(row.transform, false);
+        var sliderRt = sliderGo.GetComponent<RectTransform>();
+        sliderRt.anchorMin = new Vector2(0f, 0f);
+        sliderRt.anchorMax = new Vector2(1f, 1f);
+        sliderRt.offsetMin = new Vector2(128f, 8f);
+        sliderRt.offsetMax = new Vector2(-108f, -8f);
+
+        var slider = sliderGo.GetComponent<Slider>();
+        slider.minValue = 0f;
+        slider.maxValue = 100f;
+        slider.wholeNumbers = true;
+        slider.interactable = false;
+        slider.direction = Slider.Direction.LeftToRight;
+
+        var bgGo = new GameObject("Background", typeof(RectTransform), typeof(Image));
+        bgGo.transform.SetParent(sliderGo.transform, false);
+        StretchFull(bgGo.GetComponent<RectTransform>());
+        var bgImg = bgGo.GetComponent<Image>();
+        bgImg.sprite = whiteSprite;
+        bgImg.color = new Color32(30, 40, 50, 200);
+
+        var fillArea = new GameObject("Fill Area", typeof(RectTransform));
+        fillArea.transform.SetParent(sliderGo.transform, false);
+        var fillAreaRt = fillArea.GetComponent<RectTransform>();
+        StretchFull(fillAreaRt);
+        fillAreaRt.offsetMin = new Vector2(4f, 4f);
+        fillAreaRt.offsetMax = new Vector2(-4f, -4f);
+
+        var fill = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+        fill.transform.SetParent(fillArea.transform, false);
+        var fillRt = fill.GetComponent<RectTransform>();
+        fillRt.anchorMin = Vector2.zero;
+        fillRt.anchorMax = Vector2.one;
+        fillRt.offsetMin = Vector2.zero;
+        fillRt.offsetMax = Vector2.zero;
+        var fillImg = fill.GetComponent<Image>();
+        fillImg.sprite = whiteSprite;
+        fillImg.color = new Color32(52, 152, 219, 255);
+
+        slider.targetGraphic = fillImg;
+        slider.fillRect = fillRt;
+
+        var percentGo = new GameObject("Percent", typeof(RectTransform), typeof(TextMeshProUGUI));
+        percentGo.transform.SetParent(row.transform, false);
+        var percentRt = percentGo.GetComponent<RectTransform>();
+        percentRt.anchorMin = new Vector2(1f, 0f);
+        percentRt.anchorMax = new Vector2(1f, 1f);
+        percentRt.pivot = new Vector2(1f, 0.5f);
+        percentRt.anchoredPosition = new Vector2(-8f, 0f);
+        percentRt.sizeDelta = new Vector2(44f, 0f);
+        var percentTmp = percentGo.GetComponent<TextMeshProUGUI>();
+        percentTmp.font = font;
+        percentTmp.fontSize = 14;
+        percentTmp.fontStyle = FontStyles.Bold;
+        percentTmp.alignment = TextAlignmentOptions.MidlineRight;
+        percentTmp.color = Color.white;
+        percentTmp.text = "0%";
+
+        var statusGo = new GameObject("Status", typeof(RectTransform), typeof(TextMeshProUGUI));
+        statusGo.transform.SetParent(row.transform, false);
+        var statusRt = statusGo.GetComponent<RectTransform>();
+        statusRt.anchorMin = new Vector2(1f, 0f);
+        statusRt.anchorMax = new Vector2(1f, 1f);
+        statusRt.pivot = new Vector2(1f, 0.5f);
+        statusRt.anchoredPosition = new Vector2(-54f, 0f);
+        statusRt.sizeDelta = new Vector2(72f, 0f);
+        var statusTmp = statusGo.GetComponent<TextMeshProUGUI>();
+        statusTmp.font = font;
+        statusTmp.fontSize = 12;
+        statusTmp.alignment = TextAlignmentOptions.MidlineRight;
+        statusTmp.color = new Color32(200, 210, 220, 255);
+        statusTmp.text = "Chilled";
+
+        var bar = row.GetComponent<MessengerSuspicionBar>();
+        var barSo = new SerializedObject(bar);
+        barSo.FindProperty("slider").objectReferenceValue = slider;
+        barSo.FindProperty("fillImage").objectReferenceValue = fillImg;
+        barSo.FindProperty("percentText").objectReferenceValue = percentTmp;
+        barSo.FindProperty("statusText").objectReferenceValue = statusTmp;
+        barSo.ApplyModifiedProperties();
+    }
+
+    [MenuItem("Tools/Killer-Complex/Patch ComputerDesktopCanvas prefab (Messenger Suspicion Bar)")]
+    public static void PatchComputerDesktopCanvasPrefabSuspicionBar()
+    {
+        const string prefabPath = "Assets/Prefabs/ComputerDesktopCanvas.prefab";
+        if (!System.IO.File.Exists(prefabPath))
+        {
+            EditorUtility.DisplayDialog("Patch Messenger Suspicion Bar", $"Prefab not found:\n{prefabPath}", "OK");
+            return;
+        }
+
+        var font = TMP_Settings.defaultFontAsset;
+        if (font == null)
+        {
+            EditorUtility.DisplayDialog("Patch Messenger Suspicion Bar", "Import TMP Essential Resources first.", "OK");
+            return;
+        }
+
+        var root = PrefabUtility.LoadPrefabContents(prefabPath);
+        try
+        {
+            Transform chatRoot = null;
+            foreach (var tr in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (tr.name == "ChatRoot")
+                {
+                    chatRoot = tr;
+                    break;
+                }
+            }
+
+            if (chatRoot == null)
+            {
+                EditorUtility.DisplayDialog("Patch Messenger Suspicion Bar", "No ChatRoot under prefab.", "OK");
+                return;
+            }
+
+            var sprite = ComputerDesktopUICreator.CreateWhiteSprite();
+            if (!TryAttachSuspicionBarToExistingChatRoot(chatRoot, sprite, font))
+            {
+                EditorUtility.DisplayDialog("Patch Messenger Suspicion Bar", "SuspicionBarRow already present.", "OK");
+                return;
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            Debug.Log($"Patched {prefabPath} with {SuspicionBarRowName}.");
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
+    }
+
+    static Transform FindChatRootFromSelection()
+    {
+        var sel = Selection.activeTransform;
+        if (sel == null)
+            return null;
+        if (sel.name == "ChatRoot")
+            return sel;
+        var direct = sel.Find("ChatRoot");
+        if (direct != null)
+            return direct;
+        foreach (var t in sel.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name == "ChatRoot")
+                return t;
+        }
+
+        return null;
+    }
+
+    [MenuItem("GameObject/UI/Add Messenger Suspicion Bar (PanelMessenger)", false, 14)]
+    public static void AddSuspicionBarToSelectedMessenger()
+    {
+        var font = TMP_Settings.defaultFontAsset;
+        if (font == null)
+        {
+            EditorUtility.DisplayDialog("Messenger Suspicion Bar", "Import TMP Essential Resources first.", "OK");
+            return;
+        }
+
+        Transform chatRoot = FindChatRootFromSelection();
+
+        if (chatRoot == null)
+        {
+            foreach (var panel in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (panel.name != "PanelMessenger")
+                    continue;
+                chatRoot = panel.Find("ChatRoot");
+                if (chatRoot != null)
+                    break;
+            }
+        }
+
+        if (chatRoot == null)
+        {
+            EditorUtility.DisplayDialog("Messenger Suspicion Bar", "Select PanelMessenger or ChatRoot in the hierarchy.", "OK");
+            return;
+        }
+
+        var sprite = ComputerDesktopUICreator.CreateWhiteSprite();
+        if (!TryAttachSuspicionBarToExistingChatRoot(chatRoot, sprite, font))
+        {
+            EditorUtility.DisplayDialog("Messenger Suspicion Bar", "SuspicionBarRow already exists under ChatRoot.", "OK");
+            return;
+        }
+
+        EditorUtility.SetDirty(chatRoot.gameObject);
+        Debug.Log($"Added {SuspicionBarRowName} under {chatRoot.name}. Save the scene or prefab.");
+    }
+
     static void StretchFull(RectTransform rt)
     {
         rt.anchorMin = Vector2.zero;

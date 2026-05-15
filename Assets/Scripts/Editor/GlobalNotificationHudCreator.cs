@@ -30,7 +30,9 @@ public static class GlobalNotificationHudCreator
             typeof(CanvasScaler),
             typeof(GraphicRaycaster),
             typeof(GlobalNotificationHud),
-            typeof(DeliveryManager));
+            typeof(DeliveryManager),
+            typeof(DeliveryUrgencyTimer),
+            typeof(GameSceneIntroPanel));
 
         Undo.RegisterCreatedObjectUndo(root, "Create Global Notification HUD");
         root.SetActive(true);
@@ -81,11 +83,23 @@ public static class GlobalNotificationHudCreator
         var slotTmp = textGo.GetComponent<TextMeshProUGUI>();
         ApplyPackageDeliveredTmpDefaults(slotTmp, tmpFont);
 
+        var timerSlot = CreateNotificationRow(
+            topLeft.transform,
+            "UrgentDeliveryTimerLabel",
+            new Vector2(0f, -52f),
+            new Color32(92, 46, 46, 235),
+            tmpFont,
+            "Urgent: 90s",
+            FontStyles.Bold);
+
         var hud = root.GetComponent<GlobalNotificationHud>();
         var soHud = new SerializedObject(hud);
         soHud.FindProperty("topLeftContent").objectReferenceValue = tlRt;
         soHud.FindProperty("packageDeliveredLabel").objectReferenceValue = slotTmp;
+        soHud.FindProperty("urgentDeliveryTimerLabel").objectReferenceValue = timerSlot;
         soHud.ApplyModifiedProperties();
+
+        GameIntroPanelUiBuilder.BuildOnHudRoot(root, replaceExisting: true);
 
         if (!AssetDatabase.IsValidFolder("Assets/Prefabs"))
             AssetDatabase.CreateFolder("Assets", "Prefabs");
@@ -125,9 +139,86 @@ public static class GlobalNotificationHudCreator
         }
 
         foreach (var hud in huds)
+        {
             RepairHudPackageLabel(hud, tmpFont);
+            RepairHudUrgentTimerLabel(hud, tmpFont);
+        }
 
-        Debug.Log($"Repair Package Delivered Label: updated {huds.Count} HUD(s).");
+        Debug.Log($"Repair Package Delivered Label: updated {huds.Count} HUD(s) (package + urgent timer rows).");
+    }
+
+    [MenuItem("Tools/Killer-Complex/Build Game Intro Panel UI on GlobalNotificationHUD", false, 201)]
+    public static void BuildGameIntroPanelOnHudPrefab()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+        if (prefab == null)
+        {
+            Debug.LogError($"Prefab not found at {PrefabPath}. Run GameObject → UI → Global Notification HUD first.");
+            return;
+        }
+
+        var root = PrefabUtility.LoadPrefabContents(PrefabPath);
+        var rt = root.GetComponent<RectTransform>();
+        if (rt != null && rt.localScale == Vector3.zero)
+            rt.localScale = Vector3.one;
+
+        if (!GameIntroPanelUiBuilder.BuildOnHudRoot(root, replaceExisting: true))
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+            return;
+        }
+
+        PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+        PrefabUtility.UnloadPrefabContents(root);
+        Debug.Log($"Built GameIntroPanel (Title, Body, Continue) on {PrefabPath}.");
+    }
+
+    [MenuItem("Tools/Killer-Complex/Build Game Intro Panel UI on selected HUD", false, 202)]
+    public static void BuildGameIntroPanelOnSelectedHud()
+    {
+        var huds = CollectNotificationHudsFromSelectionOrScene();
+        if (huds.Count == 0)
+        {
+            EditorUtility.DisplayDialog(
+                "Build Game Intro Panel",
+                "Select GlobalNotificationHUD in the Hierarchy or open a scene that contains it.",
+                "OK");
+            return;
+        }
+
+        foreach (var hud in huds)
+            GameIntroPanelUiBuilder.BuildOnHudRoot(hud.gameObject, replaceExisting: true);
+
+        Debug.Log($"Built GameIntroPanel UI on {huds.Count} HUD(s).");
+    }
+
+    [MenuItem("GameObject/UI/Repair Urgent Delivery Timer Label (add TMP)", false, 13)]
+    public static void RepairUrgentDeliveryTimerLabel()
+    {
+        var tmpFont = TMP_Settings.defaultFontAsset;
+        if (tmpFont == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Repair Urgent Delivery Timer Label",
+                "Import TMP Essential Resources, then run this command again.",
+                "OK");
+            return;
+        }
+
+        var huds = CollectNotificationHudsFromSelectionOrScene();
+        if (huds.Count == 0)
+        {
+            EditorUtility.DisplayDialog(
+                "Repair Urgent Delivery Timer Label",
+                "No GlobalNotificationHud found. Add one to the scene or select its root, then run again.",
+                "OK");
+            return;
+        }
+
+        foreach (var hud in huds)
+            RepairHudUrgentTimerLabel(hud, tmpFont);
+
+        Debug.Log($"Repair Urgent Delivery Timer Label: updated {huds.Count} HUD(s).");
     }
 
     static List<GlobalNotificationHud> CollectNotificationHudsFromSelectionOrScene()
@@ -156,6 +247,104 @@ public static class GlobalNotificationHudCreator
         }
 
         return list;
+    }
+
+    static TextMeshProUGUI CreateNotificationRow(
+        Transform parent,
+        string rowName,
+        Vector2 anchoredPosition,
+        Color32 backgroundColor,
+        TMP_FontAsset tmpFont,
+        string defaultText,
+        FontStyles fontStyle)
+    {
+        var sprite = CreateWhiteSprite();
+
+        var slot = new GameObject(rowName, typeof(RectTransform), typeof(Image));
+        slot.transform.SetParent(parent, false);
+        slot.SetActive(false);
+        var slotRt = slot.GetComponent<RectTransform>();
+        slotRt.anchorMin = new Vector2(0f, 1f);
+        slotRt.anchorMax = new Vector2(1f, 1f);
+        slotRt.pivot = new Vector2(0f, 1f);
+        slotRt.anchoredPosition = anchoredPosition;
+        slotRt.sizeDelta = new Vector2(0f, 44f);
+
+        var slotBg = slot.GetComponent<Image>();
+        slotBg.sprite = sprite;
+        slotBg.type = Image.Type.Simple;
+        slotBg.color = backgroundColor;
+
+        var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textGo.transform.SetParent(slot.transform, false);
+        StretchFull(textGo.GetComponent<RectTransform>());
+        var slotTmp = textGo.GetComponent<TextMeshProUGUI>();
+        slotTmp.font = tmpFont;
+        slotTmp.fontSize = 18;
+        slotTmp.fontStyle = fontStyle;
+        slotTmp.alignment = TextAlignmentOptions.MidlineLeft;
+        slotTmp.color = Color.white;
+        slotTmp.margin = new Vector4(14f, 4f, 14f, 4f);
+        slotTmp.text = defaultText;
+        slotTmp.enableWordWrapping = true;
+        return slotTmp;
+    }
+
+    static void RepairHudUrgentTimerLabel(GlobalNotificationHud hud, TMP_FontAsset tmpFont)
+    {
+        Transform slot = null;
+        foreach (var t in hud.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name != "UrgentDeliveryTimerLabel")
+                continue;
+            slot = t;
+            break;
+        }
+
+        TextMeshProUGUI tmp;
+        if (slot == null)
+        {
+            var topLeft = hud.TopLeftContent;
+            if (topLeft == null)
+            {
+                Debug.LogWarning($"{nameof(GlobalNotificationHud)} on '{hud.name}': no TopLeftContent — cannot add UrgentDeliveryTimerLabel.", hud);
+                return;
+            }
+
+            tmp = CreateNotificationRow(
+                topLeft,
+                "UrgentDeliveryTimerLabel",
+                new Vector2(0f, -52f),
+                new Color32(92, 46, 46, 235),
+                tmpFont,
+                "Urgent: 90s",
+                FontStyles.Bold);
+        }
+        else
+        {
+            tmp = slot.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (tmp == null)
+            {
+                var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+                Undo.RegisterCreatedObjectUndo(textGo, "Add UrgentDeliveryTimerLabel text");
+                textGo.transform.SetParent(slot, false);
+                StretchFull(textGo.GetComponent<RectTransform>());
+                tmp = textGo.GetComponent<TextMeshProUGUI>();
+                tmp.font = tmpFont;
+                tmp.fontSize = 18;
+                tmp.fontStyle = FontStyles.Bold;
+                tmp.alignment = TextAlignmentOptions.MidlineLeft;
+                tmp.color = Color.white;
+                tmp.margin = new Vector4(14f, 4f, 14f, 4f);
+                tmp.text = "Urgent: 90s";
+                tmp.enableWordWrapping = true;
+            }
+        }
+
+        var so = new SerializedObject(hud);
+        so.FindProperty("urgentDeliveryTimerLabel").objectReferenceValue = tmp;
+        so.ApplyModifiedProperties();
+        EditorUtility.SetDirty(hud);
     }
 
     static void RepairHudPackageLabel(GlobalNotificationHud hud, TMP_FontAsset tmpFont)

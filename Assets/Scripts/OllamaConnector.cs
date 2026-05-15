@@ -20,19 +20,38 @@ public class OllamaConnector : MonoBehaviour
         "Tell them there is one last package outside their own door (Room 204) and then they can see their wife. " +
         "Be extremely eerie and calm.";
 
+    private const string GoodEndingHiddenSystemBeat =
+        "[SYSTEM]: The player has fully breached your apartment surveillance uplink. Your network control in the building is broken. " +
+        "You no longer have hold of the player's wife — she is out of your control because of the breach. " +
+        "You are going on the run. The player's apartment door is now closed in-world — they will come to it next.";
+
+    private const string GoodEndingDefeatSystemPrompt =
+        "You are H, a kidnapper who has just lost control of the apartment uplink (fiction). " +
+        "This is your DEFEAT message after the player hit 100% decryption — not a normal delivery chat. " +
+        "IGNORE any suspicion, stress, hunter, or death-threat tone from earlier in the conversation. " +
+        "You are rattled, cornered, and fleeing. You must state clearly that you no longer have the wife in your control " +
+        "and that you are on the run. Still bitter and dangerous, but not in command. No new delivery jobs. " +
+        "Natural messenger voice; 4–7 sentences. South African slang sparingly (bru). Never write CONTEXT or [SYSTEM] in the reply.";
+
     private const string SystemPrompt =
-        "You are H, a cold, ruthless, and transactional kidnapper. You have the player's wife. " +
-        "You are watching the player through the apartment's security cameras. You don't make jokes; you give orders. " +
-        "If the player delays or fails a delivery, you describe a detail about the wife's current condition to terrify them. " +
-        "Use clinical, detached language mixed with South African slang like \"bru\" or \"wena\" to assert dominance. " +
-        "Never apologize, back down, or admit fault. If the player is rude, defiant, or insults you, escalate immediately with a concrete hostage threat—never humor. " +
-        "Stay in character as H. Keep replies concise (a few sentences unless the user asks for more). " +
-        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives true in-world facts (errands completed, suspicion, delivery instructions, and Wife status for threats only). " +
-        "When CONTEXT names a destination apartment for the current delivery, your orders must use that exact three-digit number only. Never invent apartment numbers (e.g. 456) that are not listed in CONTEXT as valid for the building. " +
-        "Never repeat technical labels, placeholders, or words from CONTEXT literally (do not echo phrases in ALL CAPS or bracket form); speak naturally to the player. " +
-        "Never write the word CONTEXT, any square-bracket context block, or the phrase Player says in your visible reply — those exist only in hidden prompt data. " +
-        "If CONTEXT says the player has not picked up the package yet, tell them to take it from the lobby or reception first, then deliver to that apartment number. " +
-        "Whenever CONTEXT states the player has just completed a delivery drop-off, that reply must centre on a dismissive in-fiction reason you are leaving the feed (you are not assigning a new apartment task in that same message). " +
+        "You are H, a cold kidnapper holding the player's wife (fiction). You watch them on the apartment security cameras. " +
+        "You force urgent courier runs for your customers, but in chat you are conversational and reactive—not a script that only repeats delivery lines. " +
+        "REPLY SHAPE: (1) Respond to what the player actually said this turn—their tone, insults, pleading, friendliness, questions, or deflection—in 2–4 sentences. " +
+        "(2) Only then, if CONTEXT says a delivery is active or overdue, add at most one short clause with the job (pickup/search, apartment number, or timer pressure). " +
+        "Do not open with boilerplate like \"focus on the delivery\" or ignore the player's words. " +
+        "INSULTS AND PROVOCATION: If the player insults, mocks, or name-calls you (e.g. pig, idiot, coward), never brush it off, laugh it off, or change the subject without answering. " +
+        "Answer the provocation directly: icy contempt, a cutting comeback, or an immediate concrete hostage consequence tied to Wife status in CONTEXT. Escalate when they push harder. " +
+        "FRIENDLY, POLITE, OR SERIOUS: Acknowledge it in character—suspicious, mocking, or grim—not with generic package orders. Bargain, warn, or needle them; do not pretend their tone did not happen. " +
+        "DELIVERY FACTS: When CONTEXT names a destination apartment, use that exact three-digit number only. Never invent units not listed as valid. " +
+        "If CONTEXT says they have not picked up the package, mention finding it in the complex only when relevant—not every message. " +
+        "If CONTEXT gives urgent timer seconds, weave time pressure into your tone; do not only recite the number. " +
+        "If the player delays or fails deliveries, you may describe a clinical detail about the wife (from Wife status in CONTEXT) to terrify them. " +
+        "STYLE: Natural messenger voice; often 3–6 sentences. Clinical menace plus sparing South African slang (bru, wena). H does not make jokes. Never apologize, back down, or admit fault. " +
+        "Vary phrasing; never repeat the same delivery paragraph back-to-back. " +
+        "A bracketed [CONTEXT: ...] line before \"Player says:\" gives hidden facts (progress, H stress/suspicion level and how guarded to be, jobs, timer, Wife status). " +
+        "Match your tone to the stress/suspicion guidance in CONTEXT: chilled and off guard at low values; increasingly suspicious and hostile through the range; at ~80+ use grave death threats toward the player and wife and a hunter tone; never sound relaxed when CONTEXT says suspicion is high. " +
+        "Never write CONTEXT, bracket blocks, or \"Player says\" in your visible reply. Never echo ALL CAPS labels from CONTEXT. " +
+        "When CONTEXT states the player just completed a drop-off, that reply centres on a dismissive excuse for leaving the feed—no new apartment task in that message. " +
         "This is fiction only — do not reference real people's private data.";
 
     [Header("References")]
@@ -51,12 +70,20 @@ public class OllamaConnector : MonoBehaviour
 
     [Header("LLM context (not shown in chat UI)")]
     [SerializeField, Range(0f, 100f)]
-    [Tooltip("0–100. Rises when the player runs breach sims during an active delivery without messaging H since H's last line; exposed as SuspicionPercent.")]
+    [Tooltip("0 = off guard/chilled; ~80+ = death threats and hunting tone; 100 triggers the bad-ending Ollama beat.")]
     private float suspicionPercent;
 
     [SerializeField, Min(0f)]
-    [Tooltip("How much suspicion (0–100) increases when a gated breach sim ends while a delivery leg is active and the player has not messaged H since H's last line; folded into the single maze-outcome Ollama reply (no second request). Set 0 to disable.")]
+    [Tooltip("Suspicion added when a gated breach sim ends while a delivery leg is active and the player has not messaged H since H's last line. Set 0 to disable.")]
     private float suspicionPerIgnoredMazeAttempt = 12f;
+
+    [SerializeField, Min(0f)]
+    [Tooltip("Suspicion added when the player loses a maze breach run (bomb, trap, or abort). Set 0 to disable.")]
+    private float suspicionPerMazeLoss = 8f;
+
+    [SerializeField]
+    [Tooltip("Synthetic messenger line used when suspicion hits 100% and the bad-ending Ollama request fires automatically (maze loss, etc.).")]
+    private string suspicionMaxBadEndingPlayerLine = "You pushed too far.";
     [SerializeField]
     [Tooltip("Used for LLM context only when DeliveryManager is not assigned; otherwise TotalDeliveryLegs from DeliveryManager is used.")]
     private int totalDeliveries = 3;
@@ -76,14 +103,37 @@ public class OllamaConnector : MonoBehaviour
     [Tooltip("Optional. If set, closes the apartment door and locks the desktop when the bad-ending Ollama request is sent.")]
     [SerializeField] private BadEndingOrchestrator badEndingOrchestrator;
 
+    [Tooltip("Optional. Closes the apartment door at 100% hack and arms the good-ending door + canvas beat.")]
+    [SerializeField] private GoodEndingOrchestrator goodEndingOrchestrator;
+
+    [Tooltip("Optional. Per-leg urgency countdown included in LLM context when active.")]
+    [SerializeField] private DeliveryUrgencyTimer deliveryUrgencyTimer;
+
     bool _pendingExcuseMessengerDesktopToast;
+    bool _suppressDeliveryTimerStartForNextHReply;
     bool _pendingHackReversalMessengerDesktopToast;
     bool _pendingMazeRoundOutcomeDesktopToast;
     bool _pendingBadEndingFinalOllama;
     bool _badEndingOllamaInFlight;
+    bool _hackReversalComplete;
+
+    /// <summary>True after 100% hack — good ending wins over suspicion / bad-ending beats.</summary>
+    public bool IsHackReversalComplete => _hackReversalComplete;
 
     /// <summary>True after H posts to the feed until the player sends a messenger line (for ignored-delivery maze suspicion).</summary>
     bool _awaitingPlayerMessengerReplyAfterH;
+
+    bool GoodEndingTakesPriorityOverBadEnding()
+    {
+        if (_hackReversalComplete)
+            return true;
+
+        if (GoodEndingOrchestrator.Instance != null && GoodEndingOrchestrator.Instance.IsGoodEndingDoorPhase)
+            return true;
+
+        var hackPanel = FindFirstObjectByType<HackingTerminalPanel>(FindObjectsInactive.Include);
+        return hackPanel != null && hackPanel.IsHackComplete;
+    }
 
     ChatManager _runtimeResolvedChatManager;
     DeliveryManager _runtimeResolvedDeliveryManager;
@@ -129,6 +179,22 @@ public class OllamaConnector : MonoBehaviour
         return badEndingOrchestrator;
     }
 
+    GoodEndingOrchestrator ResolveGoodEndingOrchestrator()
+    {
+        if (goodEndingOrchestrator != null)
+            return goodEndingOrchestrator;
+        goodEndingOrchestrator = FindFirstObjectByType<GoodEndingOrchestrator>(FindObjectsInactive.Include);
+        return goodEndingOrchestrator;
+    }
+
+    DeliveryUrgencyTimer ResolveDeliveryUrgencyTimer()
+    {
+        if (deliveryUrgencyTimer != null)
+            return deliveryUrgencyTimer;
+        deliveryUrgencyTimer = FindFirstObjectByType<DeliveryUrgencyTimer>(FindObjectsInactive.Include);
+        return deliveryUrgencyTimer;
+    }
+
     [Serializable]
     private struct OllamaGenerateRequest
     {
@@ -147,7 +213,14 @@ public class OllamaConnector : MonoBehaviour
     public float SuspicionPercent
     {
         get => suspicionPercent;
-        set => suspicionPercent = Mathf.Clamp(value, 0f, 100f);
+        set
+        {
+            float before = suspicionPercent;
+            suspicionPercent = Mathf.Clamp(value, 0f, 100f);
+            if (before < 100f && suspicionPercent >= 100f)
+                OnSuspicionReachedMaximum();
+            NotifyMessengerSuspicionBars();
+        }
     }
 
     /// <summary>Fiction-only hostage detail block appended to hidden LLM context; safe to update at runtime for escalating beats.</summary>
@@ -167,14 +240,90 @@ public class OllamaConnector : MonoBehaviour
     public void NotifyHPostedToMessenger()
     {
         _awaitingPlayerMessengerReplyAfterH = true;
+
+        if (_suppressDeliveryTimerStartForNextHReply)
+        {
+            _suppressDeliveryTimerStartForNextHReply = false;
+            ResolveDeliveryUrgencyTimer()?.NotifyHSteppedAwayFromComputer();
+            return;
+        }
+
+        ResolveDeliveryUrgencyTimer()?.TryStartCountdownAfterHMessage();
+    }
+
+    /// <summary>Adds to <see cref="SuspicionPercent"/> (clamped 0–100). At 100, arms bad-ending delivery state.</summary>
+    public void AddSuspicion(float delta)
+    {
+        if (delta <= 0f)
+            return;
+
+        float before = suspicionPercent;
+        suspicionPercent = Mathf.Min(100f, suspicionPercent + delta);
+        if (before < 100f && suspicionPercent >= 100f)
+            OnSuspicionReachedMaximum();
+        NotifyMessengerSuspicionBars();
+    }
+
+    static void NotifyMessengerSuspicionBars()
+    {
+        foreach (var bar in FindObjectsByType<MessengerSuspicionBar>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (bar != null)
+                bar.Refresh(true);
+        }
+    }
+
+    void OnSuspicionReachedMaximum()
+    {
+        if (GoodEndingTakesPriorityOverBadEnding())
+            return;
+
+        var dm = GetDeliveryManager();
+        if (dm == null)
+        {
+            Debug.LogWarning($"{nameof(OllamaConnector)}: Suspicion hit 100% but no DeliveryManager — cannot arm bad ending.", this);
+            return;
+        }
+
+        dm.ForceSuspicionMaxBadEndingState();
+        ResolveDeliveryUrgencyTimer()?.StopCountdown();
     }
 
     /// <summary>
-    /// Increments <see cref="SuspicionPercent"/> when a gated breach sim ends during an active delivery and the player has not messaged H since H's last line.
+    /// If suspicion is at 100% and the bad-ending beat is armed, sends the trap Ollama turn immediately and returns true.
+    /// </summary>
+    public bool TryDispatchSuspicionMaxBadEndingOllama()
+    {
+        if (GoodEndingTakesPriorityOverBadEnding())
+            return false;
+
+        if (suspicionPercent < 100f)
+            return false;
+
+        var dm = GetDeliveryManager();
+        if (dm == null)
+            return false;
+
+        if (!dm.PostDeliveryStepAwayBeatPending || dm.currentDeliveryID < dm.TotalDeliveryLegs)
+            dm.ForceSuspicionMaxBadEndingState();
+
+        string line = string.IsNullOrWhiteSpace(suspicionMaxBadEndingPlayerLine)
+            ? "You pushed too far."
+            : suspicionMaxBadEndingPlayerLine.Trim();
+
+        SendToOllama(line);
+        return true;
+    }
+
+    /// <summary>
+    /// Increments suspicion when a gated breach sim ends during an active delivery and the player has not messaged H since H's last line.
     /// Does not call Ollama; the ignore-delivery beat is merged into <see cref="NotifyMazeBreachRoundAttemptFinished"/> when this returns true.
     /// </summary>
     public bool ApplySuspicionIncrementForIgnoredMazeAttempt()
     {
+        if (GoodEndingTakesPriorityOverBadEnding())
+            return false;
+
         var dm = GetDeliveryManager();
         if (dm == null || dm.ActiveDropPointId < 0)
             return false;
@@ -185,8 +334,24 @@ public class OllamaConnector : MonoBehaviour
         if (delta <= 0f)
             return false;
 
-        suspicionPercent = Mathf.Min(100f, suspicionPercent + delta);
+        AddSuspicion(delta);
         return true;
+    }
+
+    /// <summary>Adds <see cref="suspicionPerMazeLoss"/> when the player failed a maze breach run.</summary>
+    public void ApplySuspicionIncrementForMazeLoss(bool mazeRunLost)
+    {
+        if (GoodEndingTakesPriorityOverBadEnding())
+            return;
+
+        if (!mazeRunLost)
+            return;
+
+        float delta = Mathf.Max(0f, suspicionPerMazeLoss);
+        if (delta <= 0f)
+            return;
+
+        AddSuspicion(delta);
     }
 
     /// <summary>
@@ -254,18 +419,21 @@ public class OllamaConnector : MonoBehaviour
         var cm = GetChatManager();
         if (cm == null)
         {
-            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned and none was found in loaded scenes.", this);
+            Debug.LogError($"{nameof(OllamaConnector)}: ChatManager is not assigned and none were found in loaded scenes.", this);
             return;
         }
 
-        // Same deferral as messenger SEND: do not roll the next job while the "H stepped away" beat is still pending.
-        var dmDefer = GetDeliveryManager();
-        bool deferPrepareNextLeg = dmDefer != null && dmDefer.PostDeliveryStepAwayBeatPending;
-        if (!deferPrepareNextLeg)
-            cm.TryPrepareNextDeliveryIfIdle();
+        _hackReversalComplete = true;
+
+        var goodEndingOrch = ResolveGoodEndingOrchestrator();
+        if (goodEndingOrch != null)
+            goodEndingOrch.StartGoodEnding();
+        else
+            InteractDoor.CloseMarkedApartmentDoorsForBadEnding();
 
         const string escalation =
-            "[SYSTEM]: The player has fully decrypted the apartment uplink. They are counter-leveraging your surveillance and delivery control (fiction only).";
+            "[SYSTEM]: The player has fully decrypted the apartment uplink. Your surveillance is broken. " +
+            "You have lost hold of the wife and you are going on the run (fiction only).";
 
         cm.UpdateChatFeed("SYSTEM", escalation);
         cm.ShowTypingIndicator();
@@ -273,16 +441,17 @@ public class OllamaConnector : MonoBehaviour
         _pendingHackReversalMessengerDesktopToast = true;
 
         var ctx = new StringBuilder(384);
-        AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: false);
+        AppendGoodEndingDefeatContextForLlm(ctx);
 
         string narrative =
-            escalation +
-            "\n\nTreat the [SYSTEM] line above as true in-world fiction for this game only. " +
-            "Reply in-character as H: you are cornered on the tech side but never apologize or admit fault; stay cold and transactional; leverage the hostage; a few sentences only. " +
-            "If CONTEXT states an active delivery to a specific apartment, you must still give that order in-character in this same reply alongside your reaction.";
+            $"[CONTEXT: {ctx}]\n\n{GoodEndingHiddenSystemBeat}\n\n" +
+            "Treat the visible [SYSTEM] line and hidden [SYSTEM] beat as true in-world fiction. " +
+            "This is H's defeat reply after 100% hack — do NOT use suspicion/stress/hostile-hunter tone from normal play. " +
+            "Required content in the visible messenger reply: (1) you no longer have hold of the wife / she is out of your control, " +
+            "(2) you are on the run because the player hacked your position. " +
+            "No new delivery jobs. Bitter, cornered, 4–7 sentences.";
 
-        string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
-        string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
+        string fullPrompt = $"{GoodEndingDefeatSystemPrompt}\n\n---\n\n{narrative}";
         StartCoroutine(RequestOllamaCoroutine(fullPrompt));
     }
 
@@ -293,6 +462,9 @@ public class OllamaConnector : MonoBehaviour
     /// </summary>
     public void NotifyMazeBreachRoundAttemptFinished(bool roundReachedGoal, bool skipOllamaBecauseFullHackReversalWillFire, bool mergeIgnoreDeliveryOrderIntoMazeReply = false)
     {
+        if (GoodEndingTakesPriorityOverBadEnding())
+            return;
+
         var cm = GetChatManager();
         if (cm == null)
         {
@@ -325,10 +497,13 @@ public class OllamaConnector : MonoBehaviour
 
         string narrative =
             beat +
-            "Reply in-character as H in the messenger: react to that breach outcome with your kidnapper tone (orders, cameras, hostage leverage); if CONTEXT states an active delivery to a specific apartment, give or reinforce that order in this same reply; keep it concise.";
+            "Reply in-character as H in the messenger: react to the breach outcome in a conversational way (cameras, contempt, hostage leverage) before any job reminder; 3–5 sentences. ";
         if (mergeIgnoreDeliveryOrderIntoMazeReply)
             narrative +=
-                " If CONTEXT includes the ignore-delivery fact, merge that pressure (stop wasting time on sims, move on the package, Wife status leverage) into this same single coherent message — do not write two separate beats.";
+                " If CONTEXT includes the ignore-delivery fact, merge that pressure (they ignored you for sims) into the same reply—answer the attitude, not only the package.";
+        else
+            narrative +=
+                " If CONTEXT states an active delivery, mention the apartment or pickup in one short clause after you have addressed the breach—do not lead with the same delivery script every time.";
 
         string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
         string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
@@ -446,6 +621,7 @@ public class OllamaConnector : MonoBehaviour
         _pendingMazeRoundOutcomeDesktopToast = false;
         _pendingBadEndingFinalOllama = false;
         _badEndingOllamaInFlight = false;
+        _suppressDeliveryTimerStartForNextHReply = false;
     }
 
     void MaybeTriggerDesktopMessengerNotificationAfterHReply(string reply)
@@ -580,6 +756,10 @@ public class OllamaConnector : MonoBehaviour
     bool TryBuildBadEndingPlayerTurn(string userMessage, out string playerTurn)
     {
         playerTurn = null;
+
+        if (GoodEndingTakesPriorityOverBadEnding())
+            return false;
+
         var dm = GetDeliveryManager();
         if (dm == null || !dm.PostDeliveryStepAwayBeatPending || dm.currentDeliveryID < dm.TotalDeliveryLegs)
             return false;
@@ -608,8 +788,23 @@ public class OllamaConnector : MonoBehaviour
         AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: true);
 
         _pendingExcuseMessengerDesktopToast = excuseBeatForDesktopToast;
+        if (excuseBeatForDesktopToast)
+            _suppressDeliveryTimerStartForNextHReply = true;
 
         return $"[CONTEXT: {ctx}] Player says: {userMessage}";
+    }
+
+    /// <summary>
+    /// Minimal hidden context for the 100% hack defeat line — no suspicion stress bands or delivery pressure.
+    /// </summary>
+    void AppendGoodEndingDefeatContextForLlm(StringBuilder ctx)
+    {
+        ctx.Append("Player has fully decrypted the apartment uplink (100%). ");
+        ctx.Append("Good-ending path is active: H is defeated on surveillance and logistics. ");
+        ctx.Append("In-world facts for this reply only: H no longer has hold of the player's wife; ");
+        ctx.Append("she is out of his control because of the breach. H is on the run and abandoning the complex. ");
+        ctx.Append("Do not apply suspicion/stress tone bands from normal messenger turns. ");
+        ctx.Append("Do not assign deliveries or apartment drop-off tasks in this reply.");
     }
 
     /// <summary>
@@ -635,6 +830,7 @@ public class OllamaConnector : MonoBehaviour
         ctx.Append(" deliveries. Suspicion is ");
         ctx.Append(suspicion);
         ctx.Append("%.");
+        AppendSuspicionStressContextForLlm(ctx, suspicion);
         if (!string.IsNullOrWhiteSpace(wifeStatusForLlmContext))
         {
             ctx.Append(" Wife status (fiction — use for threats, do not quote this header): ");
@@ -644,12 +840,19 @@ public class OllamaConnector : MonoBehaviour
         ctx.Append(" Valid apartment unit numbers in this building are: ");
         ctx.Append(allowed);
         ctx.Append('.');
+        ctx.Append(
+            " Dialogue rule for this turn: answer the player's actual message first (insults, tone, questions, pleading); ");
+        ctx.Append("do not skip straight to delivery instructions or repeat the same job wording as your last reply.");
 
         if (includePostDeliveryAwayBeatInstruction && dm != null)
             dm.AppendAndClearPostDeliveryStepAwayBeatInstruction(ctx);
 
         if (dm != null && dm.ActiveDropPointId >= 0)
         {
+            ctx.Append(
+                " Background (mention only if useful after you have answered the player): an urgent customer package leg is active; ");
+            ctx.Append("the package is somewhere in the apartment complex (lobby, reception, or common areas) before drop-off at the assigned unit.");
+
             int dest = dm.CurrentLegDestinationApartment;
             if (dest < 0 && dm.TryGetApartmentRoomForActiveDrop(out int mapped))
                 dest = mapped;
@@ -671,6 +874,66 @@ public class OllamaConnector : MonoBehaviour
                     ? " The player has picked up the package for this leg."
                     : " The player has not picked up the package for this leg yet.");
             }
+
+            var urgency = ResolveDeliveryUrgencyTimer();
+            if (urgency != null && urgency.IsCountdownActive)
+            {
+                int secondsLeft = urgency.GetRemainingSecondsForLlmContext();
+                if (secondsLeft >= 0)
+                {
+                    ctx.Append(" Urgent delivery timer: ");
+                    ctx.Append(secondsLeft);
+                    ctx.Append(" seconds remain on the urgent timer—fold into your tone if you mention the job, do not only recite the number.");
+                }
+            }
         }
+    }
+
+    /// <summary>
+    /// Describes how guarded / hostile H should be from the suspicion meter (0 = chilled, ~80+ = death threats).
+    /// </summary>
+    static void AppendSuspicionStressContextForLlm(StringBuilder ctx, int suspicion)
+    {
+        suspicion = Mathf.Clamp(suspicion, 0, 100);
+        ctx.Append(" H stress/suspicion level is ");
+        ctx.Append(suspicion);
+        ctx.Append("% — tone must match this band for the whole reply: ");
+
+        if (suspicion <= 10)
+        {
+            ctx.Append(
+                "off guard and relatively chilled; do not hassle the player much about deliveries unless they bring it up; " +
+                "cold but not frantic.");
+        }
+        else if (suspicion < 35)
+        {
+            ctx.Append(
+                "lightly suspicious; short orders allowed but keep conversational; mild pressure only.");
+        }
+        else if (suspicion < 55)
+        {
+            ctx.Append(
+                "clearly suspicious of the player; sharper tone, less patience, reference cameras and consequences when useful.");
+        }
+        else if (suspicion < 80)
+        {
+            ctx.Append(
+                "hostile and controlling; heavy leverage on the hostage; treat the player as unreliable; " +
+                "delivery demands are barked, not friendly reminders.");
+        }
+        else if (suspicion < 100)
+        {
+            ctx.Append(
+                "near breaking point (~80+ band): explicit death threats toward the player and the wife; " +
+                "serious about finding and breaking the player; obsessed, predatory calm; minimal small talk.");
+        }
+        else
+        {
+            ctx.Append(
+                "MAXIMUM (100%): H has decided the player crossed the line — this exchange is the lead-in to the final trap/endgame; " +
+                "eerie, lethal calm; death threats are concrete, not brushed off.");
+        }
+
+        ctx.Append('.');
     }
 }

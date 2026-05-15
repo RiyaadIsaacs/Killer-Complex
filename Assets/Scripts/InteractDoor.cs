@@ -39,6 +39,13 @@ public class InteractDoor : MonoBehaviour
 
     [SerializeField, Range(0f, 2f)] private float apartmentKnockVolumeScale = 1f;
 
+    [Header("Room numbers")]
+    [Tooltip("Reparents modular letter room numbers under the door pivot and clears Static flags so they rotate with the door.")]
+    [SerializeField] private bool autoFixRoomNumberLabels = true;
+
+    [Tooltip("Optional parent object holding all digit prefabs. If unset, auto-finds children whose names contain \"block number\" or \"number \" under this door.")]
+    [SerializeField] private Transform roomNumbersRoot;
+
     [Header("Compatibility")]
     [Tooltip("Many kit doors use an Animator on the same object as the mesh. That Animator overwrites localRotation every frame and blocks this script. Disable those animators on the pivot and its children so this rotation can apply.")]
     [SerializeField] private bool disableAnimatorsUnderPivot = true;
@@ -53,6 +60,17 @@ public class InteractDoor : MonoBehaviour
     public bool IsOpen => isOpen;
 
     public bool IsMyApartmentDoor => myApartmentDoor;
+
+    /// <summary>Transform that rotates when the door opens (Inspector <c>doorPivot</c> or this object).</summary>
+    public Transform DoorPivotTransform
+    {
+        get
+        {
+            if (doorPivot == null)
+                doorPivot = transform;
+            return doorPivot;
+        }
+    }
 
     /// <summary>
     /// Closes every <see cref="InteractDoor"/> with <see cref="IsMyApartmentDoor"/> (runs when the bad-ending Ollama request starts).
@@ -210,6 +228,67 @@ public class InteractDoor : MonoBehaviour
         fromRotation = initial;
         targetRotation = initial;
         blend = 1f;
+
+        if (autoFixRoomNumberLabels)
+            EnsureRoomNumbersFollowPivot();
+    }
+
+    /// <summary>
+    /// Modular letter prefabs are static by default; static children do not move when the pivot rotates.
+    /// </summary>
+    public void EnsureRoomNumbersFollowPivot()
+    {
+        if (doorPivot == null)
+            doorPivot = transform;
+
+        if (roomNumbersRoot != null)
+        {
+            AttachRoomNumberRoot(roomNumbersRoot);
+            return;
+        }
+
+        var labels = GetComponentsInChildren<DoorRoomNumberLabel>(true);
+        if (labels.Length > 0)
+        {
+            foreach (var label in labels)
+            {
+                if (label != null)
+                    label.Apply();
+            }
+            return;
+        }
+
+        foreach (var t in GetComponentsInChildren<Transform>(true))
+        {
+            if (t == null || t == doorPivot || t.IsChildOf(doorPivot))
+                continue;
+            if (!DoorRoomNumberLabel.NameLooksLikeRoomNumber(t.name))
+                continue;
+            AttachRoomNumberRoot(t);
+        }
+
+        foreach (var t in doorPivot.GetComponentsInChildren<Transform>(true))
+        {
+            if (t == null || t == doorPivot)
+                continue;
+            if (!DoorRoomNumberLabel.NameLooksLikeRoomNumber(t.name))
+                continue;
+            DoorRoomNumberLabel.ClearStaticFlags(t.gameObject);
+        }
+    }
+
+    void AttachRoomNumberRoot(Transform root)
+    {
+        if (root == null)
+            return;
+
+        if (root.GetComponent<DoorRoomNumberLabel>() == null)
+            root.gameObject.AddComponent<DoorRoomNumberLabel>();
+
+        if (root.parent != doorPivot)
+            root.SetParent(doorPivot, true);
+
+        DoorRoomNumberLabel.ClearStaticFlags(root.gameObject);
     }
 
     private void LateUpdate()
@@ -232,6 +311,10 @@ public class InteractDoor : MonoBehaviour
     // Called by PlayerController through SendMessage when the player presses 'interact'.
     public void Interact()
     {
+        if (GoodEndingOrchestrator.Instance != null &&
+            GoodEndingOrchestrator.Instance.TryHandleMyApartmentDoorInteract(this))
+            return;
+
         if (BadEndingOrchestrator.Instance != null &&
             BadEndingOrchestrator.Instance.TryHandleMyApartmentDoorInteract(this))
             return;

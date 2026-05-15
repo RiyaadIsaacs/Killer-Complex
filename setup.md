@@ -35,6 +35,8 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 ## 2b. Hacking maze (UI)
 
 - The **maze breach** minigame (`Assets/Scripts/UI/HackingMazeMinigame.cs`) draws a runtime overlay for the grid and status. **Keyboard instructions** (WASD / arrows, hold-to-repeat, Esc) and **how to play** appear in a **dock to the left** of the hacking terminal panel, not under the maze, so text stays readable at typical desktop resolutions.
+- **Limited vision:** Only a **3×3** area around the player is revealed each step (**`visionRadius`** = 1 on the component). All other cells render as **fog** until the player moves adjacent. The **green uplink** goal is hidden until it enters that window.
+- **Random goal:** After the maze and loop passages are carved, **`PickRandomGoalCell()`** places the green exit on a random walkable floor cell at least **`minGoalDistanceFromStart`** BFS steps from the start (default **6**), instead of a fixed corner tile.
 
 ---
 

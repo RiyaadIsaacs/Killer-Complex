@@ -119,3 +119,13 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify in Editor: assign knock + gunshot clips, orchestrator + canvas, **My apartment door** on the unit **`InteractDoor`**.
 
 ---
+
+## 2026-05-15 — Maze fog of war + random uplink goal
+
+- **Gameplay:** `HackingMazeMinigame` — **`IsCellVisible`** / **`GetRevealedCellColor`** limit the grid to a **3×3** window around the player (**`visionRadius`**, default **1**); unrevealed cells use **`fogColor`**. The green goal is only drawn when inside that window.
+- **Goal placement:** **`PickRandomGoalCell()`** runs after **`CarveRandomLoopPassages()`** and before **`PlaceHazards()`** — random walkable cell with minimum BFS distance from start (**`minGoalDistanceFromStart`**, default **6**). **`IsHazardAt`** null-safe for BFS before hazards exist.
+- **UX copy:** Controls dock and live hint mention limited vision and finding the uplink.
+- **Docs:** `setup.md` §2b, `README.md`, `prompts-used.md`, `RiyaadWork.md`, this file.
+- **AI-assisted:** Cursor; verify in Editor: start maze → only nearby tiles visible; green node appears when explored; goal position changes between runs.
+
+---

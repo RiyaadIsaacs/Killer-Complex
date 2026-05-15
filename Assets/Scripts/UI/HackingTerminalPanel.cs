@@ -31,6 +31,10 @@ public class HackingTerminalPanel : MonoBehaviour
     [SerializeField] private UnityEvent onHackSuccessful;
 
     private bool _hackComplete;
+
+    /// <summary>True after decryption reaches 100% (good-ending path takes priority over bad ending).</summary>
+    public bool IsHackComplete => _hackComplete;
+
     private HackingMazeMinigame _mazeMinigame;
     OllamaConnector _runtimeResolvedOllamaConnector;
     int _completedMazeBreachesSinceLastMessenger;
@@ -202,6 +206,14 @@ public class HackingTerminalPanel : MonoBehaviour
         if (_hackComplete)
             return;
 
+        var ocEarly = GetOllamaConnector();
+        if (ocEarly != null)
+        {
+            ocEarly.ApplySuspicionIncrementForMazeLoss(!roundReachedGoal);
+            if (ocEarly.TryDispatchSuspicionMaxBadEndingOllama())
+                return;
+        }
+
         bool skipMazeOllamaBecauseReversalNext = false;
         if (roundReachedGoal && decryptionSlider != null)
         {
@@ -238,8 +250,16 @@ public class HackingTerminalPanel : MonoBehaviour
     void RunMazeRoundOllamaHooks(bool roundReachedGoal, bool skipMazeOllamaBecauseReversalNext)
     {
         var oc = GetOllamaConnector();
-        bool mergeIgnoreBeat = oc != null && oc.ApplySuspicionIncrementForIgnoredMazeAttempt();
-        InvokeMazeNotify(roundReachedGoal, skipMazeOllamaBecauseReversalNext, mergeIgnoreBeat);
+        if (oc != null)
+        {
+            bool mergeIgnoreBeat = oc.ApplySuspicionIncrementForIgnoredMazeAttempt();
+            if (oc.TryDispatchSuspicionMaxBadEndingOllama())
+                return;
+            InvokeMazeNotify(roundReachedGoal, skipMazeOllamaBecauseReversalNext, mergeIgnoreBeat);
+            return;
+        }
+
+        InvokeMazeNotify(roundReachedGoal, skipMazeOllamaBecauseReversalNext, false);
     }
 
     void InvokeMazeNotify(bool roundReachedGoal, bool skipMazeOllamaBecauseReversalNext, bool mergeIgnoreDeliveryOrderIntoMazeReply)
