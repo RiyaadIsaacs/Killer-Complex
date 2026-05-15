@@ -9,7 +9,7 @@ public class DeliveryManager : MonoBehaviour
     [Header("Job count")]
     [SerializeField, Min(1)]
     [Tooltip("How many delivery legs (pick up → drop off) in a full run.")]
-    private int totalDeliveryLegs = 3;
+    private int totalDeliveryLegs = 7;
 
     [Header("Random drop points")]
     [Tooltip("If true, prepares the first delivery one frame after play starts. Leave false when the first leg should start from the messenger (see ChatManager prepare-on-first-send) or from scripted AI.")]
@@ -18,6 +18,8 @@ public class DeliveryManager : MonoBehaviour
     [Header("Reception / pickup item")]
     [Tooltip("Shown when <see cref=\"PrepareNextDeliveryFromAi\"/> runs (new job ready). When set, the player must use Interact on this item before any <see cref=\"DeliveryZone\"/> will accept a drop-off.")]
     [SerializeField] private DeliveryItem receptionDeliveryItem;
+
+    [SerializeField] private GameObject[] spawnPoints;
 
     bool hasPickedUpCurrentPackage;
 
@@ -166,6 +168,9 @@ public class DeliveryManager : MonoBehaviour
             return;
         if (ActiveDropPointId >= 0)
             return;
+
+        int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
+        receptionDeliveryItem.transform.position = spawnPoints[randomIndex].transform.position;
 
         hasPickedUpCurrentPackage = false;
         RollNextRandomDropPoint();
