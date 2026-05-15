@@ -130,6 +130,18 @@ public class BadEndingOrchestrator : MonoBehaviour
     }
 
     /// <summary>
+    /// Called when a world trap (or similar) catches the player: optional full bad-ending setup, then the overlay.
+    /// </summary>
+    public void TriggerPlayerCaughtByTrap(bool runDoorAndDesktopSetup = true, bool revealOverlay = true)
+    {
+        if (runDoorAndDesktopSetup && !_doorPhaseActive && !_badEndDoorResolved)
+            StartBadEnding();
+
+        if (revealOverlay)
+            RevealBadEndingCanvas();
+    }
+
+    /// <summary>
     /// Shows the bad-ending canvas (if assigned) and plays the configured gunshot stinger. Safe to call multiple times (e.g. re-showing the overlay).
     /// </summary>
     public void RevealBadEndingCanvas()
