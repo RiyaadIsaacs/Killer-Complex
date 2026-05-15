@@ -28,6 +28,7 @@ public class ComputerDesktopUI : MonoBehaviour
     [SerializeField] private ComputerTerminal computerTerminal;
 
     bool _badEndingDesktopMode;
+    bool _badEndingDesktopLockPendingOnSessionClose;
 
     private void Awake()
     {
@@ -138,6 +139,14 @@ public class ComputerDesktopUI : MonoBehaviour
     {
         CloseHackingTerminalPanel();
         SetHackingTerminalIconAvailable(false);
+
+        if (_badEndingDesktopLockPendingOnSessionClose)
+        {
+            _badEndingDesktopLockPendingOnSessionClose = false;
+            _badEndingDesktopMode = true;
+            CloseMessengerPanel();
+            ApplyBadEndingDesktopLayout();
+        }
     }
 
     /// <summary>Shows and enables the hacking terminal icon after H's break / step-away reply (see <c>OllamaConnector</c>).</summary>
@@ -149,11 +158,19 @@ public class ComputerDesktopUI : MonoBehaviour
     }
 
     /// <summary>
-    /// After the final delivery trap message is sent: hide messenger and hacking; only the shutdown control stays available.
+    /// After the final delivery trap message: restrict the desktop to shutdown-only. When <paramref name="deferRestrictedLayoutUntilPlayerClosesComputer"/> is true,
+    /// messenger and icons stay available until the player closes the computer session so the in-flight AI line can appear in chat first.
     /// </summary>
-    public void EnterBadEndingComputerMode()
+    public void EnterBadEndingComputerMode(bool deferRestrictedLayoutUntilPlayerClosesComputer = false)
     {
+        if (deferRestrictedLayoutUntilPlayerClosesComputer)
+        {
+            _badEndingDesktopLockPendingOnSessionClose = true;
+            return;
+        }
+
         _badEndingDesktopMode = true;
+        _badEndingDesktopLockPendingOnSessionClose = false;
         CloseHackingTerminalPanel();
         CloseMessengerPanel();
         ApplyBadEndingDesktopLayout();

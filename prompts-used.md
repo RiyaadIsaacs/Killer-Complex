@@ -174,9 +174,17 @@ I see you're finally at the computer. Stop looking for your wife—she's not at 
 
 **Shape:** `systemPrompt + --- + [CONTEXT: …] + {BadEndingHiddenSystemBeat} + narrative instructions + Player says: {player line}` — implemented in **`OllamaConnector.TryBuildBadEndingPlayerTurn`**. Reply stripping removes echoed **`[SYSTEM`…** lines from visible chat when models leak them.
 
-**Outcome:** In-engine; no **`Remote access established`** suffix for this reply; desktop enters bad-ending mode via **`BadEndingOrchestrator.StartBadEnding()`**.
+**Outcome:** In-engine; no **`Remote access established`** suffix for this reply; doors/knocks start immediately; **`BadEndingOrchestrator.StartBadEnding(deferRestrictedDesktopUntilComputerClosed: true)`** defers **`ComputerDesktopUI`** shutdown-only lock until **`ComputerTerminal.CloseTerminal()`** so the trap **H** line can appear in messenger first (world traps use immediate lock).
 
 **Iteration notes:** Tune trap copy only in code (or extract to serialized string later) and log changes here + **`ollama-plan.md`** §8.
+
+---
+
+## Game — Post-drop step-away (no new job in same reply) — 2026-05-15
+
+**Goal:** When **`PostDeliveryStepAwayBeatPending`** consumes the dismissive “H steps away” beat, the model must not mention a **new** pickup, apartment number, or courier task in that reply (next job only appears once **`[CONTEXT]`** describes an active leg).
+
+**Implementation (not a separate visible prompt file):** **`OllamaConnector.AppendStaticGameContextForLlm`** — **`stepAwayBeatThisTurn`** block + **`DeliveryManager.AppendAndClearPostDeliveryStepAwayBeatInstruction`** tightened copy; active-leg paragraph skipped for that turn; **`SystemPrompt`** clause: job clause only when CONTEXT explicitly describes an active leg; step-away / no-active-leg turns forbid new tasks.
 
 ---
 

@@ -25,6 +25,8 @@ public class PlayerController : MonoBehaviour
     [Header("Interaction")]
     [SerializeField] private float interactDistance = 3f;
     [SerializeField] private LayerMask interactableLayers = ~0;
+    [Tooltip("If set, interact ray uses this transform's position and forward (e.g. empty child at eye height). Otherwise uses the camera transform.")]
+    [SerializeField] private Transform interactRayOriginOverride;
     [Tooltip("Scene view only: line drawn after each interact attempt.")]
     [SerializeField] private bool drawInteractRayDebug = true;
     [SerializeField] private float interactRayDebugDuration = 2f;
@@ -171,8 +173,8 @@ public class PlayerController : MonoBehaviour
 
         if (drawInteractRayDebug)
         {
-            Transform source = cameraTransform != null ? cameraTransform : transform;
-            Debug.DrawLine(source.position, hit.point, Color.green, interactRayDebugDuration, false);
+            Transform srcDbg = GetInteractRayTransform(out _, out _);
+            Debug.DrawLine(srcDbg.position, hit.point, Color.green, interactRayDebugDuration, false);
         }
 
         // Collider may be on a child mesh while InteractDoor sits on a parent pivot.
@@ -182,8 +184,14 @@ public class PlayerController : MonoBehaviour
     bool TryGetInteractRay(out RaycastHit hit)
     {
         hit = default;
-        Transform source = cameraTransform != null ? cameraTransform : transform;
-        var ray = new Ray(source.position, source.forward);
+        var origin = GetInteractRayTransform(out var useViewportRay, out var camForViewport);
+
+        Ray ray;
+        if (useViewportRay && camForViewport != null)
+            ray = camForViewport.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        else
+            ray = new Ray(origin.position, origin.forward);
+
         var rayEnd = ray.origin + ray.direction * interactDistance;
 
         if (!Physics.Raycast(ray, out hit, interactDistance, interactableLayers))
@@ -194,6 +202,37 @@ public class PlayerController : MonoBehaviour
         }
 
         return true;
+    }
+
+    /// <summary>World-space origin for interaction; prefers viewport-center ray from gameplay <see cref="Camera"/> when available.</summary>
+    Transform GetInteractRayTransform(out bool useViewportCenterRay, out Camera viewportCamera)
+    {
+        useViewportCenterRay = false;
+        viewportCamera = null;
+
+        if (interactRayOriginOverride != null)
+            return interactRayOriginOverride;
+
+        if (cameraTransform != null)
+        {
+            viewportCamera = cameraTransform.GetComponent<Camera>();
+            if (viewportCamera != null)
+            {
+                useViewportCenterRay = true;
+                return cameraTransform;
+            }
+
+            return cameraTransform;
+        }
+
+        viewportCamera = Camera.main;
+        if (viewportCamera != null)
+        {
+            useViewportCenterRay = true;
+            return viewportCamera.transform;
+        }
+
+        return transform;
     }
 
     void UpdateInteractPrompt()

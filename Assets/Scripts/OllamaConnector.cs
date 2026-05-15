@@ -37,7 +37,8 @@ public class OllamaConnector : MonoBehaviour
         "You are H, a cold kidnapper holding the player's wife (fiction). You watch them on the apartment security cameras. " +
         "You force urgent courier runs for your customers, but in chat you are conversational and reactive—not a script that only repeats delivery lines. " +
         "REPLY SHAPE: (1) Respond to what the player actually said this turn—their tone, insults, pleading, friendliness, questions, or deflection—in 2–4 sentences. " +
-        "(2) Only then, if CONTEXT says a delivery is active or overdue, add at most one short clause with the job (pickup/search, apartment number, or timer pressure). " +
+        "(2) Only then, if CONTEXT explicitly describes an active courier leg (assigned pickup/drop-off), add at most one short clause with the job (pickup/search, apartment number, or timer pressure). " +
+        "If CONTEXT says there is no active delivery yet or this turn is only the post-drop step-away excuse, do not mention a new job, unit number, or timer—stick to the excuse. " +
         "Do not open with boilerplate like \"focus on the delivery\" or ignore the player's words. " +
         "INSULTS AND PROVOCATION: If the player insults, mocks, or name-calls you (e.g. pig, idiot, coward), never brush it off, laugh it off, or change the subject without answering. " +
         "Answer the provocation directly: icy contempt, a cutting comeback, or an immediate concrete hostage consequence tied to Wife status in CONTEXT. Escalate when they push harder. " +
@@ -51,7 +52,7 @@ public class OllamaConnector : MonoBehaviour
         "A bracketed [CONTEXT: ...] line before \"Player says:\" gives hidden facts (progress, H stress/suspicion level and how guarded to be, jobs, timer, Wife status). " +
         "Match your tone to the stress/suspicion guidance in CONTEXT: chilled and off guard at low values; increasingly suspicious and hostile through the range; at ~80+ use grave death threats toward the player and wife and a hunter tone; never sound relaxed when CONTEXT says suspicion is high. " +
         "Never write CONTEXT, bracket blocks, or \"Player says\" in your visible reply. Never echo ALL CAPS labels from CONTEXT. " +
-        "When CONTEXT states the player just completed a drop-off, that reply centres on a dismissive excuse for leaving the feed—no new apartment task in that message. " +
+        "When CONTEXT states the player just completed a drop-off, that reply is ONLY a dismissive excuse for leaving the feed—no new apartment task, no package pickup line, no unit numbers, no preview of the next run in that message. " +
         "This is fiction only — do not reference real people's private data.";
 
     [Header("References")]
@@ -244,8 +245,17 @@ public class OllamaConnector : MonoBehaviour
         if (_suppressDeliveryTimerStartForNextHReply)
         {
             _suppressDeliveryTimerStartForNextHReply = false;
-            ResolveDeliveryUrgencyTimer()?.NotifyHSteppedAwayFromComputer();
-            return;
+            // Flag was set for the post-drop step-away turn, but the player may send again before that reply lands,
+            // so two Ollama responses can be in flight. If the next job is already prepared, this H line must still
+            // run TryStart — otherwise returning here leaves _awaitingHMessageToStartTimer true forever when the job
+            // reply arrives before the step-away reply.
+            var dm = GetDeliveryManager();
+            if (dm == null || dm.ActiveDropPointId < 0)
+            {
+                ResolveDeliveryUrgencyTimer()?.NotifyHSteppedAwayFromComputer();
+                return;
+            }
+            // Leg active: treat as normal H post for urgency timer (job line or re-ordered reply).
         }
 
         ResolveDeliveryUrgencyTimer()?.TryStartCountdownAfterHMessage();
@@ -377,7 +387,7 @@ public class OllamaConnector : MonoBehaviour
             _badEndingOllamaInFlight = true;
             var badEndingOrch = ResolveBadEndingOrchestrator();
             if (badEndingOrch != null)
-                badEndingOrch.StartBadEnding();
+                badEndingOrch.StartBadEnding(deferRestrictedDesktopUntilComputerClosed: true);
             else
             {
                 InteractDoor.CloseMarkedApartmentDoorsForBadEnding();
@@ -823,6 +833,9 @@ public class OllamaConnector : MonoBehaviour
         int suspicion = Mathf.RoundToInt(Mathf.Clamp(suspicionPercent, 0f, 100f));
         string allowed = DeliveryManager.MappedApartmentsListForPrompt;
 
+        bool stepAwayBeatThisTurn =
+            includePostDeliveryAwayBeatInstruction && dm != null && dm.PostDeliveryStepAwayBeatPending;
+
         ctx.Append("Player has completed ");
         ctx.Append(completed);
         ctx.Append('/');
@@ -844,10 +857,19 @@ public class OllamaConnector : MonoBehaviour
             " Dialogue rule for this turn: answer the player's actual message first (insults, tone, questions, pleading); ");
         ctx.Append("do not skip straight to delivery instructions or repeat the same job wording as your last reply.");
 
+        if (stepAwayBeatThisTurn)
+        {
+            ctx.Append(
+                " CRITICAL for this turn: gameplay has NO active delivery leg yet (between jobs). ");
+            ctx.Append(
+                "Do not tell the player to fetch a package, name an apartment, or describe a new drop-off — that belongs only in later CONTEXT when a leg is marked active. ");
+            ctx.Append("Visible reply = excuse for leaving the keyboard only.");
+        }
+
         if (includePostDeliveryAwayBeatInstruction && dm != null)
             dm.AppendAndClearPostDeliveryStepAwayBeatInstruction(ctx);
 
-        if (dm != null && dm.ActiveDropPointId >= 0)
+        if (dm != null && dm.ActiveDropPointId >= 0 && !stepAwayBeatThisTurn)
         {
             ctx.Append(
                 " Background (mention only if useful after you have answered the player): an urgent customer package leg is active; ");

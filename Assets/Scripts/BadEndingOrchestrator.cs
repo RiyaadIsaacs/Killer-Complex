@@ -68,8 +68,11 @@ public class BadEndingOrchestrator : MonoBehaviour
         return computerDesktopUi;
     }
 
-    /// <summary>Called the moment the bad-ending Ollama HTTP request is started (before the reply returns).</summary>
-    public void StartBadEnding()
+    /// <param name="deferRestrictedDesktopUntilComputerClosed">
+    /// When true (final trap reply while the player may be at the PC), messenger/hack icons stay until
+    /// <see cref="ComputerTerminal.CloseTerminal"/> so the Ollama line can show first. World trap path uses false for immediate lock.
+    /// </param>
+    public void StartBadEnding(bool deferRestrictedDesktopUntilComputerClosed = false)
     {
         if (GoodEndingOrchestrator.Instance != null && GoodEndingOrchestrator.Instance.IsGoodEndingDoorPhase)
         {
@@ -88,7 +91,7 @@ public class BadEndingOrchestrator : MonoBehaviour
         if (repeatApartmentKnocksDuringBadEnding)
             _knockRepeatCoroutine = StartCoroutine(ApartmentKnockRepeatRoutine());
 
-        ResolveDesktop()?.EnterBadEndingComputerMode();
+        ResolveDesktop()?.EnterBadEndingComputerMode(deferRestrictedDesktopUntilComputerClosed);
     }
 
     IEnumerator ApartmentKnockRepeatRoutine()
@@ -141,7 +144,7 @@ public class BadEndingOrchestrator : MonoBehaviour
     public void TriggerPlayerCaughtByTrap(bool runDoorAndDesktopSetup = true, bool revealOverlay = true)
     {
         if (runDoorAndDesktopSetup && !_doorPhaseActive && !_badEndDoorResolved)
-            StartBadEnding();
+            StartBadEnding(deferRestrictedDesktopUntilComputerClosed: false);
 
         if (revealOverlay)
             RevealBadEndingCanvas();

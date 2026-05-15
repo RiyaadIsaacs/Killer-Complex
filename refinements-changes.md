@@ -139,3 +139,16 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify: **H** replies at PC → no countdown until exit; drop-off flow + step-away clears unchanged.
 
 ---
+
+## 2026-05-15 — Timer reliability, maze fixes, step-away CONTEXT, bad-ending messenger defer, DDOL restart
+
+- **Delivery urgency:** Second-leg and reorder fixes — **`TryStartCountdownAfterHMessage`** recovery when a leg is active but the HUD never armed; **`NotifyHPostedToMessenger`** does not drop **`TryStart`** when the suppress flag was meant for an older step-away reply but a job is already active; maze **`HideMazeUi`** → **`TryResumeDeferredCountdownAfterMazeClosed`**; shared **`TryCommitDeferredLegCountdown`** with **`NotifyComputerSessionClosed`**; stale step-away cannot **`StopCountdown`** while **`ActiveDropPointId >= 0`**.
+- **Pause restart:** **`DeliveryManager.ResetRunStateForNewPlaySession`** ( **`StopAllCoroutines`**, reset leg/progress fields) from **`DeliveryUrgencyTimer`** on gameplay/menu load — DDOL manager no longer keeps **`currentDeliveryID`** across **`LoadScene`**; **`prepareFirstDeliveryAfterSceneTick`** defer is queued from that hook instead of **`Start()`** only.
+- **Hacking maze:** Null **`_obstacle` / `_bomb`** at **`GenerateMaze`** start; bounds-safe **`IsHazardAt`**; second **`ApplyMazeChromeLayout`** + deferred **`LayoutRebuilder`** pass after reopen to fix fog/grid misalignment; **`IndexOutOfRangeException`** on tier change prevented.
+- **Interact:** **`PlayerController`** — **`Camera.ViewportPointToRay(0.5,0.5)`** when the look transform has a **`Camera`**; optional **`interactRayOriginOverride`**.
+- **LLM / UX:** Post-drop **step-away** turns — extra **`[CONTEXT]`** guard + system prompt clause so **H** does not assign a new unit/job in that message; **`AppendAndClear`** examples avoid “check the package” priming. **`stepAwayBeatThisTurn`** omits the active-leg paragraph even if state races.
+- **Bad ending:** **`StartBadEnding(deferRestrictedDesktopUntilComputerClosed: true)` from **`OllamaConnector`** — **`ComputerDesktopUI`** arms shutdown-only layout on **`OnComputerSessionClosed`** so the trap **H** line is visible first; **`TriggerPlayerCaughtByTrap`** keeps **immediate** lock.
+- **Docs:** **`setup.md`**, **`prompts-used.md`**, **`ollama-plan.md`** §8, **`RiyaadWork.md`**, this file — updated with this push.
+- **AI-assisted:** Cursor; verify: restart from pause → timer budget resets; final trap line at PC → read messenger → leave desk → icons lock; maze reopen + multi-leg chat.
+
+---

@@ -2062,7 +2062,6 @@ GameObject:
   - component: {fileID: 121421451}
   - component: {fileID: 121421450}
   - component: {fileID: 121421449}
-  - component: {fileID: 121421454}
   m_Layer: 0
   m_Name: Package
   m_TagString: Untagged
@@ -2179,28 +2178,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &121421454
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 121421448}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c4bdc00e583e2d641b12d3b5476d9228, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DeliveryUrgencyTimer
-  initialLegTimeSeconds: 90
-  secondsReducedPerCompletedLeg: 5
-  minimumLegTimeSeconds: 0
-  deliveryManager: {fileID: 1627386561}
-  badEndingOrchestrator: {fileID: 633164256}
-  playerController: {fileID: 1963267871}
-  notificationHud: {fileID: 1627386563}
-  countdownFormat: 'Deliver In: {0:0}s'
-  menuSceneNames:
-  - Main Menu
 --- !u!1001 &123793982
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11030,7 +11007,7 @@ MonoBehaviour:
   requestTimeoutSeconds: 180
   badEndingOrchestrator: {fileID: 633164256}
   goodEndingOrchestrator: {fileID: 633164258}
-  deliveryUrgencyTimer: {fileID: 121421454}
+  deliveryUrgencyTimer: {fileID: 1627386564}
 --- !u!4 &854533274
 Transform:
   m_ObjectHideFlags: 0
@@ -20941,6 +20918,14 @@ PrefabInstance:
       propertyPath: 'spawnPoints.Array.data[7]'
       value: 
       objectReference: {fileID: 1139229053}
+    - target: {fileID: 3847291056283740192, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
+      propertyPath: badEndingOrchestrator
+      value: 
+      objectReference: {fileID: 633164256}
+    - target: {fileID: 3847291056283740192, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
+      propertyPath: playerController
+      value: 
+      objectReference: {fileID: 1963267871}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -20976,6 +20961,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1b2c3d4e5f60718293a4b5c6d7e8f90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GlobalNotificationHud
+--- !u!114 &1627386564 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3847291056283740192, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
+  m_PrefabInstance: {fileID: 1627386560}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 561525803}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4bdc00e583e2d641b12d3b5476d9228, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeliveryUrgencyTimer
 --- !u!1001 &1627790155
 PrefabInstance:
   m_ObjectHideFlags: 0

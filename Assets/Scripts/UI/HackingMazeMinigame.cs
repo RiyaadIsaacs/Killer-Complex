@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -93,6 +94,7 @@ public class HackingMazeMinigame : MonoBehaviour
     private bool _won;
     private bool _runEnded;
     private float _nextAutoMoveTime;
+    private Coroutine _deferredGridLayoutRefresh;
 
     static HackingMazeMinigame s_ActiveOverlay;
 
@@ -145,12 +147,42 @@ public class HackingMazeMinigame : MonoBehaviour
         PickRandomGoalCell();
         PlaceHazards(obstacleCount, bombCount);
 
+        ApplyMazeChromeLayout();
         BuildOrResizeCellGrid();
         RefreshAllCells();
         UpdateHint(tier, obstacleCount, bombCount);
 
+        if (_deferredGridLayoutRefresh != null)
+        {
+            StopCoroutine(_deferredGridLayoutRefresh);
+            _deferredGridLayoutRefresh = null;
+        }
+
+        _deferredGridLayoutRefresh = StartCoroutine(DeferredMazeGridLayoutRefresh());
+
         _host.AppendConsoleLine(
             $"> Breach sim tier {tier}: {_cols}×{_rows} branched maze — {obstacleCount} blocks, {bombCount} bombs (hold WASD / arrows).");
+    }
+
+    IEnumerator DeferredMazeGridLayoutRefresh()
+    {
+        yield return null;
+        if (_overlayRoot == null || !_overlayRoot.activeSelf)
+        {
+            _deferredGridLayoutRefresh = null;
+            yield break;
+        }
+
+        ApplyMazeChromeLayout();
+        LayoutControlsDock();
+        if (_boxRt != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_boxRt);
+        if (_gridRt != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_gridRt);
+
+        BuildOrResizeCellGrid();
+        RefreshAllCells();
+        _deferredGridLayoutRefresh = null;
     }
 
     void ApplyMazeChromeLayout()
@@ -256,6 +288,8 @@ public class HackingMazeMinigame : MonoBehaviour
             _overlayRoot.SetActive(false);
         if (_controlsDockRoot != null)
             _controlsDockRoot.SetActive(false);
+
+        DeliveryUrgencyTimer.TryResumeDeferredCountdownAfterMazeClosed();
     }
 
     private void Update()
@@ -615,6 +649,8 @@ public class HackingMazeMinigame : MonoBehaviour
 
     private void GenerateMaze()
     {
+        _obstacle = null;
+        _bomb = null;
         _walkable = new bool[_cols, _rows];
         for (var x = 0; x < _cols; x++)
         for (var y = 0; y < _rows; y++)
@@ -702,8 +738,16 @@ public class HackingMazeMinigame : MonoBehaviour
         return Mathf.Abs(x - _px) <= visionRadius && Mathf.Abs(y - _py) <= visionRadius;
     }
 
-    bool IsHazardAt(int x, int y) =>
-        (_obstacle != null && _obstacle[x, y]) || (_bomb != null && _bomb[x, y]);
+    bool IsHazardAt(int x, int y)
+    {
+        if (x < 0 || y < 0 || x >= _cols || y >= _rows)
+            return false;
+        if (_obstacle != null && x < _obstacle.GetLength(0) && y < _obstacle.GetLength(1) && _obstacle[x, y])
+            return true;
+        if (_bomb != null && x < _bomb.GetLength(0) && y < _bomb.GetLength(1) && _bomb[x, y])
+            return true;
+        return false;
+    }
 
     /// <summary>
     /// Opens extra floor cells on interior walls that already touch ≥2 corridors, turning the spanning tree into a
@@ -1102,6 +1146,12 @@ public class HackingMazeMinigame : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (_deferredGridLayoutRefresh != null)
+        {
+            StopCoroutine(_deferredGridLayoutRefresh);
+            _deferredGridLayoutRefresh = null;
+        }
+
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
         if (_pixelSprite != null)

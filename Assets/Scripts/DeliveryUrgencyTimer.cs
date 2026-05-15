@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -5,6 +6,9 @@ using UnityEngine.SceneManagement;
 /// Per-leg countdown for urgent package deliveries. Each new leg gets
 /// <see cref="initialLegTimeSeconds"/> minus <see cref="secondsReducedPerCompletedLeg"/> times legs already completed.
 /// Shows the bad-ending (death) canvas when time runs out.
+/// Attach this to a persistent UI root (e.g. with <see cref="GlobalNotificationHud"/>), <b>not</b> on the
+/// <see cref="DeliveryItem"/> / package object — pickup calls <see cref="DeliveryItem.Deactivate"/> which disables that GameObject
+/// and would freeze the countdown.
 /// </summary>
 public class DeliveryUrgencyTimer : MonoBehaviour
 {
@@ -53,6 +57,8 @@ public class DeliveryUrgencyTimer : MonoBehaviour
 
     DeliveryManager _resolvedDeliveryManager;
     GlobalNotificationHud _resolvedNotificationHud;
+    /// <summary>Manager we subscribed to for events — must refresh after scene loads (DDOL timer vs scene-bound manager).</summary>
+    DeliveryManager _subscribedDeliveryManager;
 
     /// <summary>Inspector value for the first leg budget.</summary>
     public float InitialLegTimeSeconds => initialLegTimeSeconds;
@@ -73,13 +79,7 @@ public class DeliveryUrgencyTimer : MonoBehaviour
     void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
-
-        var dm = ResolveDeliveryManager();
-        if (dm != null)
-        {
-            dm.OnDeliveryLegPrepared += HandleDeliveryLegPrepared;
-            dm.OnDeliveryCompleted += HandleDeliveryCompleted;
-        }
+        RefreshDeliveryManagerSubscription();
 
         if (IsMenuScene(SceneManager.GetActiveScene().name))
             EnterMenuScene();
@@ -88,21 +88,52 @@ public class DeliveryUrgencyTimer : MonoBehaviour
     void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-
-        var dm = ResolveDeliveryManager();
-        if (dm != null)
-        {
-            dm.OnDeliveryLegPrepared -= HandleDeliveryLegPrepared;
-            dm.OnDeliveryCompleted -= HandleDeliveryCompleted;
-        }
+        UnsubscribeDeliveryManagerEvents();
     }
+
+    void UnsubscribeDeliveryManagerEvents()
+    {
+        if (_subscribedDeliveryManager == null)
+            return;
+        _subscribedDeliveryManager.OnDeliveryLegPrepared -= HandleDeliveryLegPrepared;
+        _subscribedDeliveryManager.OnDeliveryCompleted -= HandleDeliveryCompleted;
+        _subscribedDeliveryManager = null;
+    }
+
+    void RefreshDeliveryManagerSubscription()
+    {
+        UnsubscribeDeliveryManagerEvents();
+        InvalidateDeliveryManagerCache();
+        var dm = ResolveDeliveryManager();
+        if (dm == null)
+            return;
+        dm.OnDeliveryLegPrepared += HandleDeliveryLegPrepared;
+        dm.OnDeliveryCompleted += HandleDeliveryCompleted;
+        _subscribedDeliveryManager = dm;
+    }
+
+    void InvalidateDeliveryManagerCache() => _resolvedDeliveryManager = null;
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        InvalidateDeliveryManagerCache();
+        RefreshDeliveryManagerSubscription();
+
         if (IsMenuScene(scene.name))
             EnterMenuScene();
         else
-            _timedOut = false;
+            ResetTimerForGameplaySceneLoaded();
+    }
+
+    void ResetTimerForGameplaySceneLoaded()
+    {
+        CancelAllDeferredCountdownState();
+        StopCountdown();
+        _timedOut = false;
+        _currentLegBudgetSeconds = 0f;
+        _pendingTimerCompletedLegCount = 0;
+
+        ResolveDeliveryManager()?.ResetRunStateForNewPlaySession(queueDeferredFirstPrepare: true);
     }
 
     void EnterMenuScene()
@@ -110,6 +141,10 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         CancelPendingTimerStart();
         _timedOut = false;
         StopCountdown();
+        _currentLegBudgetSeconds = 0f;
+        _pendingTimerCompletedLegCount = 0;
+
+        ResolveDeliveryManager()?.ResetRunStateForNewPlaySession(queueDeferredFirstPrepare: false);
     }
 
     void CancelPendingTimerStart() => CancelAllDeferredCountdownState();
@@ -140,7 +175,21 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         foreach (var timer in FindObjectsByType<DeliveryUrgencyTimer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
             if (timer != null)
-                timer.TryStartCountdownAfterComputerSessionClosed();
+                timer.TryCommitDeferredLegCountdown();
+        }
+    }
+
+    /// <summary>
+    /// When H posted during an open desk session, the leg countdown waits until the player leaves focus on the breach
+    /// sim or exits the PC entirely. Call when the maze overlay closes so the timer appears after hacking without
+    /// requiring a full terminal exit.
+    /// </summary>
+    public static void TryResumeDeferredCountdownAfterMazeClosed()
+    {
+        foreach (var timer in FindObjectsByType<DeliveryUrgencyTimer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (timer != null)
+                timer.TryCommitDeferredLegCountdown();
         }
     }
 
@@ -151,7 +200,9 @@ public class DeliveryUrgencyTimer : MonoBehaviour
 
         foreach (var menu in menuSceneNames)
         {
-            if (!string.IsNullOrEmpty(menu) && sceneName == menu)
+            if (string.IsNullOrEmpty(menu))
+                continue;
+            if (string.Equals(sceneName, menu, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
 
@@ -215,27 +266,45 @@ public class DeliveryUrgencyTimer : MonoBehaviour
 
     /// <summary>
     /// Called after <b>H</b> posts to the messenger when a leg is waiting for that reply.
-    /// If the computer session is open, the countdown is deferred until the player closes the PC
-    /// so they can read and keep chatting without losing time. If the PC is already closed, starts immediately.
+    /// If the computer session is open, the countdown is deferred until the player finishes the breach maze
+    /// (<see cref="TryResumeDeferredCountdownAfterMazeClosed"/>) or leaves the computer entirely
+    /// (<see cref="NotifyComputerSessionClosed"/>). If the PC is already closed, starts immediately.
     /// </summary>
     public void TryStartCountdownAfterHMessage()
     {
-        if (!_awaitingHMessageToStartTimer || _timedOut)
+        if (_timedOut)
             return;
 
         if (IsMenuScene(SceneManager.GetActiveScene().name))
         {
-            CancelAllDeferredCountdownState();
+            if (_awaitingHMessageToStartTimer)
+                CancelAllDeferredCountdownState();
             return;
         }
 
         var dm = ResolveDeliveryManager();
-        if (dm == null || dm.ActiveDropPointId < 0 || dm.PostDeliveryStepAwayBeatPending)
+        if (dm == null || dm.ActiveDropPointId < 0)
         {
-            CancelAllDeferredCountdownState();
-            StopCountdown();
+            if (_awaitingHMessageToStartTimer)
+            {
+                CancelAllDeferredCountdownState();
+                StopCountdown();
+            }
             return;
         }
+
+        if (_countdownActive)
+            _awaitingHMessageToStartTimer = false;
+
+        // Normal path: leg prep armed us for the next H line. Recovery: from leg 2 onward, a reorder / suppress /
+        // messenger edge can leave an active job with no countdown and no "awaiting H" flag — still start (or defer)
+        // on any H line while the job exists.
+        bool shouldStartOrDefer =
+            _awaitingHMessageToStartTimer
+            || (!_countdownActive && !_awaitingComputerCloseToStartTimer);
+
+        if (!shouldStartOrDefer)
+            return;
 
         _awaitingHMessageToStartTimer = false;
 
@@ -245,7 +314,7 @@ public class DeliveryUrgencyTimer : MonoBehaviour
             BeginLegCountdown(_pendingTimerCompletedLegCount);
     }
 
-    void TryStartCountdownAfterComputerSessionClosed()
+    void TryCommitDeferredLegCountdown()
     {
         if (!_awaitingComputerCloseToStartTimer || _timedOut)
             return;
@@ -257,7 +326,7 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         }
 
         var dm = ResolveDeliveryManager();
-        if (dm == null || dm.ActiveDropPointId < 0 || dm.PostDeliveryStepAwayBeatPending)
+        if (dm == null || dm.ActiveDropPointId < 0)
         {
             CancelAllDeferredCountdownState();
             StopCountdown();
@@ -271,6 +340,10 @@ public class DeliveryUrgencyTimer : MonoBehaviour
     /// <summary>Called when H's post-drop "step away" line posts — keeps the lull free of an active countdown.</summary>
     public void NotifyHSteppedAwayFromComputer()
     {
+        var dm = ResolveDeliveryManager();
+        if (dm != null && dm.ActiveDropPointId >= 0)
+            return;
+
         CancelAllDeferredCountdownState();
         StopCountdown();
     }
@@ -305,6 +378,9 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         }
 
         _countdownActive = true;
+        if (notificationHud == null)
+            _resolvedNotificationHud = null;
+
         RefreshCountdownLabel();
     }
 

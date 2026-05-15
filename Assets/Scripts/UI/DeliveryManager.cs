@@ -12,7 +12,8 @@ public class DeliveryManager : MonoBehaviour
     private int totalDeliveryLegs = 7;
 
     [Header("Random drop points")]
-    [Tooltip("If true, prepares the first delivery one frame after play starts. Leave false when the first leg should start from the messenger (see ChatManager prepare-on-first-send) or from scripted AI.")]
+    [Tooltip("If true, prepares the first delivery one frame after a gameplay scene load. Hooked from " +
+             nameof(DeliveryUrgencyTimer) + " on load (not Start), since this component may persist on DontDestroyOnLoad.")]
     [SerializeField] private bool prepareFirstDeliveryAfterSceneTick;
 
     [Header("Reception / pickup item")]
@@ -108,10 +109,11 @@ public class DeliveryManager : MonoBehaviour
         _postDeliveryStepAwayBeatPending = false;
         ctx.Append(" The player has just completed a delivery drop-off. ");
         ctx.Append("In this reply H must give a short dismissive excuse for stepping away from the computer ");
-        ctx.Append("(e.g. checking on the package, taking a call, dealing with building security) — tone brusque, treating the player as an irritation. ");
+        ctx.Append("(e.g. someone at the door, a building call, security on the radio, \"back in a minute\") — tone brusque, treating the player as an irritation. ");
         ctx.Append("You may use casual South African brush-off lines such as \"wait a bit\" or \"I'm coming now\" as impatient texture, not warmth. ");
         ctx.Append("This is the in-fiction lull when the player has time alone at their machine; ");
-        ctx.Append("do not assign a new apartment delivery or new task numbers in this reply. ");
+        ctx.Append("do NOT mention a new courier run, pickup, drop-off, apartment unit number, or any fresh task — only the excuse. ");
+        ctx.Append("Do not recap or preview the next job; the next assignment will be CONTEXT on a later turn only when a leg is active.");
     }
 
     /// <summary>Clears the one-shot beat without sending it to the LLM (e.g. no <see cref="OllamaConnector"/> in scene).</summary>
@@ -144,9 +146,26 @@ public class DeliveryManager : MonoBehaviour
         totalDeliveryLegs = Mathf.Max(1, totalDeliveryLegs);
     }
 
-    private void Start()
+    /// <summary>
+    /// Clears job progress when a new session should start. Required because this component lives on the same
+    /// DontDestroyOnLoad object as <see cref="GlobalNotificationHud"/> and survives <c>SceneManager.LoadScene</c>.
+    /// </summary>
+    /// <param name="queueDeferredFirstPrepare">
+    /// When true and <see cref="prepareFirstDeliveryAfterSceneTick"/> is enabled, runs the same one-frame defer as
+    /// <see cref="Start"/> so restarts behave like a cold play (Start is not called again on a persisted component).
+    /// </param>
+    public void ResetRunStateForNewPlaySession(bool queueDeferredFirstPrepare)
     {
-        if (prepareFirstDeliveryAfterSceneTick && Application.isPlaying)
+        StopAllCoroutines();
+
+        currentDeliveryID = 0;
+        ActiveDropPointId = -1;
+        CurrentLegDestinationApartment = -1;
+        hasPickedUpCurrentPackage = false;
+        _postDeliveryStepAwayBeatPending = false;
+        receptionDeliveryItem?.Deactivate();
+
+        if (queueDeferredFirstPrepare && prepareFirstDeliveryAfterSceneTick && Application.isPlaying)
             StartCoroutine(DeferredPrepareFirstDelivery());
     }
 
@@ -183,6 +202,9 @@ public class DeliveryManager : MonoBehaviour
         if (currentDeliveryID >= TotalDeliveryLegs)
             return;
         if (ActiveDropPointId >= 0)
+            return;
+        // Next job must not spawn until the step-away messenger beat is consumed (see ChatManager defer path).
+        if (_postDeliveryStepAwayBeatPending)
             return;
 
         int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);

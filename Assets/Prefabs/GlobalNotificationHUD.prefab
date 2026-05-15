@@ -151,6 +151,7 @@ GameObject:
   - component: {fileID: 6953963525471947851}
   - component: {fileID: 4931153228256165994}
   - component: {fileID: 8959749687944729099}
+  - component: {fileID: 3847291056283740192}
   - component: {fileID: 7053981365485110412}
   m_Layer: 0
   m_Name: GlobalNotificationHUD
@@ -276,6 +277,28 @@ MonoBehaviour:
   receptionDeliveryItem: {fileID: 0}
   spawnPoints: []
   currentDeliveryID: 0
+--- !u!114 &3847291056283740192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3526061774763368385}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4bdc00e583e2d641b12d3b5476d9228, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeliveryUrgencyTimer
+  initialLegTimeSeconds: 90
+  secondsReducedPerCompletedLeg: 5
+  minimumLegTimeSeconds: 0
+  deliveryManager: {fileID: 8959749687944729099}
+  badEndingOrchestrator: {fileID: 0}
+  playerController: {fileID: 0}
+  notificationHud: {fileID: 4931153228256165994}
+  countdownFormat: 'Deliver In: {0:0}s'
+  menuSceneNames:
+  - Main Menu
 --- !u!114 &7053981365485110412
 MonoBehaviour:
   m_ObjectHideFlags: 0

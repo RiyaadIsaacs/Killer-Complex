@@ -121,6 +121,14 @@
 
 ---
 
+## 2026-05-15 — Timer/maze/bad-ending follow-ups (DDOL restart, trap message UX)
+
+- **Systems:** Urgency timer second-leg + suppress reorder + maze **`TryResumeDeferredCountdownAfterMazeClosed`**; **`DeliveryManager.ResetRunStateForNewPlaySession`** on load (pause restart); maze **`IsHazardAt`** / layout refresh; **`PlayerController`** viewport interact ray.
+- **LLM / UX:** Step-away **CONTEXT** hardening; bad-ending trap defers **`ComputerDesktopUI`** lock until **`CloseTerminal`** so **H**’s final line shows in messenger.
+- **Documentation:** **`setup.md`**, **`prompts-used.md`**, **`ollama-plan.md`**, **`refinements-changes.md`**, this file; pushed with code.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*
