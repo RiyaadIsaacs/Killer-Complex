@@ -16,13 +16,14 @@ public class HackingMazeMinigame : MonoBehaviour
     const int MinDim = 7;
     const int MaxDim = 25;
 
-    const float MazeBoxWidth = 960f;
-    const float MazeBoxHeight = 780f;
-    const float GridMinHeight = 440f;
-    const float GridPreferredHeight = 560f;
-    const float MazeHostMargin = 8f;
-    /// <summary>Vertical space reserved in <see cref="MazeBox"/> for title, hint, and abort row (instructions live in <see cref="_controlsDockRoot"/>).</summary>
-    const float MazeChromeVerticalReserve = 230f;
+    const float MazeBoxWidth = 1120f;
+    const float MazeBoxHeight = 860f;
+    const float GridMinHeight = 320f;
+    const float MazeHostMargin = 10f;
+    const float MazeHostFill = 0.97f;
+    /// <summary>Vertical space reserved in <see cref="MazeBox"/> for title, status line, and abort row (instructions live in <see cref="_controlsDockRoot"/>).</summary>
+    const float MazeChromeVerticalReserve = 172f;
+    const float MazeStatusBarHeight = 40f;
     const float ControlsDockWidth = 280f;
     const float ControlsDockGap = 10f;
 
@@ -35,7 +36,7 @@ public class HackingMazeMinigame : MonoBehaviour
     [SerializeField, Range(MinDim, MaxDim)] private int mazeRows = 13;
 
     [Header("Layout")]
-    [Tooltip("If set, the maze dimmer + dialog are parented here (expected: console Viewport under the Hack button). If empty, uses ConsoleScrollView/Viewport under this panel.")]
+    [Tooltip("If set, the maze dimmer + dialog are parented here. If empty, uses PanelHackingTerminal (full terminal), not the layout-driven content area.")]
     [SerializeField] private RectTransform mazeHostOverride;
 
     [Header("Movement (hold keys)")]
@@ -73,6 +74,7 @@ public class HackingMazeMinigame : MonoBehaviour
     private HackingTerminalPanel _host;
     private GameObject _overlayRoot;
     private GameObject _controlsDockRoot;
+    private GameObject _consoleScrollRoot;
     private RectTransform _terminalPanelRt;
     private RectTransform _boxRt;
     private LayoutElement _gridLayoutElement;
@@ -122,11 +124,12 @@ public class HackingMazeMinigame : MonoBehaviour
             return;
 
         EnsureUiBuilt();
+        EnsureOverlayOnMazeHost();
         ApplyMazeChromeLayout();
         LayoutControlsDock();
+        SetConsoleScrollVisible(false);
         _controlsDockRoot?.SetActive(true);
-        _overlayRoot.transform.SetAsLastSibling();
-        _controlsDockRoot?.transform.SetAsLastSibling();
+        BringMazeOverlayToFront();
         _overlayRoot.SetActive(true);
         s_ActiveOverlay = this;
         _won = false;
@@ -173,6 +176,8 @@ public class HackingMazeMinigame : MonoBehaviour
             yield break;
         }
 
+        EnsureOverlayOnMazeHost();
+        BringMazeOverlayToFront();
         ApplyMazeChromeLayout();
         LayoutControlsDock();
         if (_boxRt != null)
@@ -201,8 +206,8 @@ public class HackingMazeMinigame : MonoBehaviour
 
         var aw = Mathf.Max(48f, host.rect.width - MazeHostMargin * 2f);
         var ah = Mathf.Max(48f, host.rect.height - MazeHostMargin * 2f);
-        var boxW = Mathf.Min(MazeBoxWidth, aw);
-        var boxH = Mathf.Min(MazeBoxHeight, ah);
+        var boxW = Mathf.Min(MazeBoxWidth, aw * MazeHostFill);
+        var boxH = Mathf.Min(MazeBoxHeight, ah * MazeHostFill);
 
         _boxRt.anchorMin = new Vector2(0.5f, 0.5f);
         _boxRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -212,9 +217,10 @@ public class HackingMazeMinigame : MonoBehaviour
 
         if (_gridLayoutElement != null)
         {
-            var gridCap = Mathf.Max(120f, boxH - MazeChromeVerticalReserve);
-            _gridLayoutElement.minHeight = Mathf.Min(GridMinHeight, gridCap * 0.98f);
-            _gridLayoutElement.preferredHeight = Mathf.Min(GridPreferredHeight, gridCap);
+            var gridCap = Mathf.Max(GridMinHeight, boxH - MazeChromeVerticalReserve);
+            _gridLayoutElement.minHeight = Mathf.Min(GridMinHeight, gridCap);
+            _gridLayoutElement.preferredHeight = gridCap;
+            _gridLayoutElement.flexibleHeight = 1f;
         }
 
         LayoutControlsDock();
@@ -242,12 +248,55 @@ public class HackingMazeMinigame : MonoBehaviour
         if (mazeHostOverride != null)
             return mazeHostOverride;
 
-        var viewport = transform.Find("ConsoleScrollView/Viewport") as RectTransform;
-        if (viewport != null)
-            return viewport;
+        if (_terminalPanelRt == null)
+            _terminalPanelRt = transform.parent as RectTransform;
+        if (_terminalPanelRt != null)
+            return _terminalPanelRt;
 
-        var scroll = transform.Find("ConsoleScrollView") as RectTransform;
-        return scroll != null ? scroll : GetComponent<RectTransform>();
+        return transform as RectTransform ?? GetComponent<RectTransform>();
+    }
+
+    void EnsureOverlayOnMazeHost()
+    {
+        if (_overlayRoot == null)
+            return;
+
+        var hostRt = GetMazeHostRect();
+        if (hostRt == null)
+            return;
+
+        var overlayRt = _overlayRoot.GetComponent<RectTransform>();
+        if (overlayRt.parent != hostRt)
+        {
+            overlayRt.SetParent(hostRt, false);
+            StretchFull(overlayRt);
+        }
+
+        var layoutElement = _overlayRoot.GetComponent<LayoutElement>();
+        if (layoutElement == null)
+            layoutElement = _overlayRoot.AddComponent<LayoutElement>();
+        layoutElement.ignoreLayout = true;
+
+        BringMazeOverlayToFront();
+    }
+
+    void BringMazeOverlayToFront()
+    {
+        if (_overlayRoot != null)
+            _overlayRoot.transform.SetAsLastSibling();
+    }
+
+    void SetConsoleScrollVisible(bool visible)
+    {
+        if (_consoleScrollRoot == null)
+        {
+            var scroll = transform.Find("ConsoleScrollView");
+            if (scroll != null)
+                _consoleScrollRoot = scroll.gameObject;
+        }
+
+        if (_consoleScrollRoot != null && _consoleScrollRoot.activeSelf != visible)
+            _consoleScrollRoot.SetActive(visible);
     }
 
     static int ToOddClamped(int v)
@@ -288,6 +337,7 @@ public class HackingMazeMinigame : MonoBehaviour
             _overlayRoot.SetActive(false);
         if (_controlsDockRoot != null)
             _controlsDockRoot.SetActive(false);
+        SetConsoleScrollVisible(true);
 
         DeliveryUrgencyTimer.TryResumeDeferredCountdownAfterMazeClosed();
     }
@@ -427,6 +477,9 @@ public class HackingMazeMinigame : MonoBehaviour
         var font = TMP_Settings.defaultFontAsset;
 
         _terminalPanelRt = transform.parent as RectTransform;
+        if (_terminalPanelRt == null)
+            _terminalPanelRt = GetComponent<RectTransform>();
+
         if (_terminalPanelRt != null)
         {
             _controlsDockRoot = new GameObject("MazeControlsDock", typeof(RectTransform), typeof(Image));
@@ -436,7 +489,7 @@ public class HackingMazeMinigame : MonoBehaviour
             dk.sprite = _pixelSprite;
             dk.type = Image.Type.Simple;
             dk.color = new Color32(22, 32, 45, 248);
-            dk.raycastTarget = true;
+            dk.raycastTarget = false;
             CreateControlsSection(_controlsDockRoot.transform, font, dockOutsideTerminal: true);
             _controlsDockRoot.SetActive(false);
         }
@@ -466,7 +519,7 @@ public class HackingMazeMinigame : MonoBehaviour
         boxBg.color = new Color32(30, 40, 55, 250);
 
         var v = box.GetComponent<VerticalLayoutGroup>();
-        v.padding = new RectOffset(18, 18, 16, 16);
+        v.padding = new RectOffset(18, 18, 14, 20);
         v.spacing = 12f;
         v.childAlignment = TextAnchor.UpperCenter;
         v.childControlHeight = true;
@@ -476,7 +529,7 @@ public class HackingMazeMinigame : MonoBehaviour
 
         var titleGo = new GameObject("MazeTitle", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
         titleGo.transform.SetParent(box.transform, false);
-        titleGo.GetComponent<LayoutElement>().preferredHeight = 40f;
+        titleGo.GetComponent<LayoutElement>().preferredHeight = 32f;
         var titleTmp = titleGo.GetComponent<TextMeshProUGUI>();
         if (font != null)
             titleTmp.font = font;
@@ -491,7 +544,7 @@ public class HackingMazeMinigame : MonoBehaviour
         _gridLayoutElement = gridGo.GetComponent<LayoutElement>();
         _gridLayoutElement.flexibleHeight = 1f;
         _gridLayoutElement.minHeight = GridMinHeight;
-        _gridLayoutElement.preferredHeight = GridPreferredHeight;
+        _gridLayoutElement.preferredHeight = 480f;
         _gridRt = gridGo.GetComponent<RectTransform>();
         _gridLayout = gridGo.GetComponent<GridLayoutGroup>();
         _gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
@@ -499,12 +552,11 @@ public class HackingMazeMinigame : MonoBehaviour
         _gridLayout.childAlignment = TextAnchor.UpperLeft;
         _gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
 
-        _hintLabel = CreateTmpLine(box.transform, font, 26f, string.Empty);
-        _hintLabel.gameObject.GetComponent<LayoutElement>().preferredHeight = 52f;
-
         var btnRow = new GameObject("MazeButtonRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
         btnRow.transform.SetParent(box.transform, false);
-        btnRow.GetComponent<LayoutElement>().preferredHeight = 56f;
+        var btnRowLe = btnRow.GetComponent<LayoutElement>();
+        btnRowLe.preferredHeight = 48f;
+        btnRowLe.minHeight = 44f;
         var h = btnRow.GetComponent<HorizontalLayoutGroup>();
         h.childAlignment = TextAnchor.MiddleCenter;
         h.spacing = 12f;
@@ -514,6 +566,9 @@ public class HackingMazeMinigame : MonoBehaviour
 
         CreatePushButton(btnRow.transform, "Abort breach", CloseWithoutSuccess);
 
+        CreateMazeStatusBar(box.transform, font);
+
+        EnsureOverlayOnMazeHost();
         ApplyMazeChromeLayout();
         _overlayRoot.SetActive(false);
     }
@@ -596,6 +651,42 @@ public class HackingMazeMinigame : MonoBehaviour
             StretchFull(wrap.GetComponent<RectTransform>());
     }
 
+    void CreateMazeStatusBar(Transform boxParent, TMP_FontAsset font)
+    {
+        var statusGo = new GameObject("MazeStatusBar", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+        statusGo.transform.SetParent(boxParent, false);
+        var statusLe = statusGo.GetComponent<LayoutElement>();
+        statusLe.preferredHeight = MazeStatusBarHeight;
+        statusLe.minHeight = MazeStatusBarHeight - 4f;
+        statusLe.flexibleHeight = 0f;
+
+        var statusBg = statusGo.GetComponent<Image>();
+        statusBg.sprite = _pixelSprite;
+        statusBg.type = Image.Type.Simple;
+        statusBg.color = new Color32(236, 241, 248, 255);
+        statusBg.raycastTarget = false;
+
+        var hintGo = new GameObject("MazeStatusText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        hintGo.transform.SetParent(statusGo.transform, false);
+        var hintRt = hintGo.GetComponent<RectTransform>();
+        hintRt.anchorMin = Vector2.zero;
+        hintRt.anchorMax = Vector2.one;
+        hintRt.offsetMin = new Vector2(12f, 4f);
+        hintRt.offsetMax = new Vector2(-12f, -4f);
+
+        _hintLabel = hintGo.GetComponent<TextMeshProUGUI>();
+        if (font != null)
+            _hintLabel.font = font;
+        _hintLabel.fontSize = 19;
+        _hintLabel.fontStyle = FontStyles.Normal;
+        _hintLabel.alignment = TextAlignmentOptions.Center;
+        _hintLabel.color = new Color32(16, 20, 24, 255);
+        _hintLabel.enableWordWrapping = false;
+        _hintLabel.overflowMode = TextOverflowModes.Ellipsis;
+        _hintLabel.raycastTarget = false;
+        _hintLabel.text = string.Empty;
+    }
+
     private static TMP_Text CreateTmpLine(Transform parent, TMP_FontAsset font, float fontSize, string text)
     {
         var go = new GameObject("Line", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
@@ -635,6 +726,7 @@ public class HackingMazeMinigame : MonoBehaviour
         tmp.fontStyle = FontStyles.Bold;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
+        tmp.raycastTarget = false;
         tmp.text = label;
     }
 
@@ -1090,8 +1182,17 @@ public class HackingMazeMinigame : MonoBehaviour
         var h = _gridRt.rect.height;
         if (w <= 1f || h <= 1f)
         {
-            w = 680f;
-            h = 520f;
+            var host = GetMazeHostRect();
+            if (host != null && host.rect.height > 1f)
+            {
+                w = Mathf.Max(400f, host.rect.width - 48f);
+                h = Mathf.Max(320f, host.rect.height - MazeChromeVerticalReserve - 48f);
+            }
+            else
+            {
+                w = 820f;
+                h = 620f;
+            }
         }
 
         var cellW = w / _cols;
