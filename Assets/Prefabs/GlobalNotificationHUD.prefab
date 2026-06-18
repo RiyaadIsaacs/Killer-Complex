@@ -320,12 +320,12 @@ MonoBehaviour:
   bodyText: {fileID: 1894267691132448571}
   continueButton: {fileID: 1379841683813544698}
   title: Tonight
-  body: "Your wife is missing. Whoever took her left your apartment computer running\u2014a
-    messenger contact who calls himself H has her held off-site.\n\nHe is forcing
-    you to run urgent package deliveries for his customers across this complex tonight.
-    Pick up each package somewhere in the building, deliver it to the unit he names,
-    and check in on the computer before his patience runs out.\n\nWhen you are ready,
-    head to the computer. He will reach out with your first job."
+  body: "Your wife is missing. Whoever took her left a message.\n\n\"I have your
+    wife with me. She is being held off-site. If you want to see her again, you're
+    going to be doing some deliveries for me around the complex\"\n\nPick up each
+    package hidden somewhere in the building, deliver it to the unit he names, and
+    check in on the computer before his patience runs out.\n\nWhen you are ready,
+    head to the computer in your apartment."
   continueHint: Continue  (click, Space, or Enter)
   playerController: {fileID: 0}
   freezeTimeWhileVisible: 1
@@ -740,12 +740,12 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Your wife is missing. Whoever took her left your apartment computer running\u2014a
-    messenger contact who calls himself H has her held off-site.\n\nHe is forcing
-    you to run urgent package deliveries for his customers across this complex tonight.
-    Pick up each package somewhere in the building, deliver it to the unit he names,
-    and check in on the computer before his patience runs out.\n\nWhen you are ready,
-    head to the computer. He will reach out with your first job."
+  m_text: "Your wife is missing. Whoever took her left a message.\n\n\"I have your
+    wife with me. She is being held off-site. If you want to see her again, you're
+    going to be doing some deliveries for me around the complex\"\n\nPick up each
+    package hidden somewhere in the building, deliver it to the unit he names, and
+    check in on the computer before his patience runs out.\n\nWhen you are ready,
+    head to the computer in your apartment."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

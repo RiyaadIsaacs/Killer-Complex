@@ -15,6 +15,8 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField]private bool isSprinting;
 
+    public bool IsSprinting => isSprinting;
+
     // Camera
     [Header("Camera")]
     [SerializeField] private Transform cameraTransform;
@@ -102,6 +104,9 @@ public class PlayerController : MonoBehaviour
 
         if (GetComponent<InteractPromptHud>() == null)
             gameObject.AddComponent<InteractPromptHud>();
+
+        if (GetComponent<PlayerMovementAudio>() == null)
+            gameObject.AddComponent<PlayerMovementAudio>();
 
         ApplySavedMouseSensitivity();
     }

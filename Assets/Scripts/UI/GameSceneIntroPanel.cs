@@ -16,10 +16,10 @@ public class GameSceneIntroPanel : MonoBehaviour
     public const string DefaultTitle = "Tonight";
 
     public const string DefaultBody =
-        "Your wife is missing. Whoever took her left your apartment computer running—a messenger contact who calls himself H has her held off-site.\n\n" +
-        "He is forcing you to run urgent package deliveries for his customers across this complex tonight. " +
-        "Pick up each package somewhere in the building, deliver it to the unit he names, and check in on the computer before his patience runs out.\n\n" +
-        "When you are ready, head to the computer. He will reach out with your first job.";
+        "Your wife is missing. Whoever took her left a message.\n\n" +
+        "\"I have your wife with me. She is being held off-site. If you want to see her again, you're going to be doing some deliveries for me around the complex\"\n\n" +
+        "Pick up each package hidden somewhere in the building, deliver it to the unit he names, and check in on the computer before his patience runs out.\n\n" +
+        "When you are ready, head to the computer in your apartment.";
 
     [Header("Scenes")]
     [SerializeField] private string[] gameSceneNames = { "Main Game" };
@@ -246,6 +246,25 @@ public class GameSceneIntroPanel : MonoBehaviour
             titleText.text = title;
         if (bodyText != null)
             bodyText.text = body;
+    }
+
+    /// <summary>
+    /// Copies scene-instance intro copy and player wiring onto the persistent HUD before the duplicate is destroyed.
+    /// </summary>
+    internal void MergeFromSceneInstance(GameSceneIntroPanel sceneInstance)
+    {
+        if (sceneInstance == null || sceneInstance == this)
+            return;
+
+        if (!string.IsNullOrEmpty(sceneInstance.title))
+            title = sceneInstance.title;
+        if (!string.IsNullOrEmpty(sceneInstance.body))
+            body = sceneInstance.body;
+        if (sceneInstance.playerController != null)
+            playerController = sceneInstance.playerController;
+
+        ResolvePanelReferences();
+        ApplyCopy();
     }
 
     void WireContinueButton()

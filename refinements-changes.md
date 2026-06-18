@@ -221,3 +221,18 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify: menu round-trip, messenger after hack, timer frozen at desk, settings from pause, one full delivery with Ollama.
 
 ---
+
+## 2026-06-18 (polish) — Intro, computer UX, audio, main-menu load
+
+**Meetup follow-up (Attendee C):** computer discoverability — scene **arrow hints** near desk; **`ComputerTerminal`** hides them on first interact; **`ResetDiscoveryHintsForNewSession`** on gameplay reload.
+
+- **Intro copy:** `GameSceneIntroPanel.DefaultBody` — wife-missing opener + quoted **H** message; prefab + **Main Game** overrides aligned (`GlobalNotificationHUD.prefab`).
+- **Computer HUD:** `GlobalNotificationHud.SetTopLeftNotificationsVisible` — **TopLeftNotifications** (timer, objective, delivery row) hidden while **`ComputerTerminal`** is open; restored on **`CloseTerminal`**.
+- **Main Menu → Play:** `SceneNavigationUtility.PrepareForSceneLoad` clears Editor selection before **`LoadScene`** (avoids Inspector errors when Main Menu unloads); used by **`MainMenuScreen`** and **`PauseScreen`** scene changes. **`GlobalNotificationHud.MergeFromSceneInstance`** copies intro copy/player wiring from duplicate scene HUD.
+- **Delivery SFX:** Successful **`DeliveryZone`** drop-off plays **`Door Knock.mp3`** at the door via **`SoundManager.TryPlayDoorKnockAt`** (fallback clip on **`ComputerDesktopCanvas`** **`SoundManager`**).
+- **Walking SFX:** **`PlayerMovementAudio`** on player (auto-added from **`PlayerController`**) loops **`Walking.mp3`** while grounded and moving; pauses during intro/pause/computer; sprint pitch bump. Clip resolved from **`SoundManager.WalkingLoopClip`** on desktop canvas.
+- **Assets:** `Assets/SFX/Walking.mp3`, `Assets/SFX/Door Knock.mp3` on **`SoundManager`** in **`ComputerDesktopCanvas.prefab`**.
+- **Docs:** `setup.md`, `README.md`, `RiyaadWork.md`, `feedback-summary.md`, this file.
+- **AI-assisted:** Cursor; verify: deliver at door (knock), walk/sprint loop, PC session hides top-left HUD, Main Menu → Play (Editor + build).
+
+---

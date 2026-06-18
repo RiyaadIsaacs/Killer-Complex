@@ -68,8 +68,9 @@ We attended the **Joburg Game Dev Meetup** as our lecturer-approved external eng
 | 14 | Package pickup should spin / highlight so it's easier to spot | C | UX | `DeliveryItem` |
 | 15 | Players forget room number when PC closes — timer + objective HUD | C | UX | Objective + 160s timer |
 | 16 | *(Observed during playtest)* H sometimes says package is in lobby but spawn is randomized | Team | LLM accuracy | `OllamaConnector` CONTEXT vs `DeliveryManager` spawns — **addressed 2026-06-18** (pickup hidden from player; authoritative spawn in CONTEXT only) |
+| 17 | Computer should be more obvious to find | C | UX / onboarding | Scene arrow hints at desk; hidden after first **`ComputerTerminal`** interact — **addressed 2026-06-18 (polish)** |
 
-**Status after 2026-06-18 (continued) push:** Rows **2–4**, **7**, **9–10**, **12–16** targeted in code/docs (DDOL restart, 160s timer, objective HUD, settings, LLM reconnect, timer pause at PC, messenger formatting, pickup/destination sync). Re-test in **Windows build** before final submission video.
+**Status after 2026-06-18 (polish):** Rows **2–4**, **7**, **9–10**, **12–17** targeted in code/docs. Latest: intro copy, PC hides **TopLeftNotifications**, delivery knock + walking SFX, main-menu load stability. Re-test in **Windows build** before final submission video.
 
 ---
 
@@ -86,6 +87,7 @@ We attended the **Joburg Game Dev Meetup** as our lecturer-approved external eng
 | Package discoverability | 14 | Yes | `DeliveryItem` spin/bob |
 | Build / session stability | 2, 3, 4 | Yes | DDOL merge, `GameplaySessionReset`, maze/desktop reset |
 | Hack / messenger UX | 6, 7 | Yes | Timer defer/pause; notification audit |
+| Computer discoverability | 17 | Yes | Arrow hints; hide on first PC use; top-left HUD hidden at PC |
 | Computer-as-hub design | 11 | **Declined** | `critical-feedback.md` — Tab phone out of scope |
 | Player scale / feel | 1 | Deferred | Art pass — backlog |
 

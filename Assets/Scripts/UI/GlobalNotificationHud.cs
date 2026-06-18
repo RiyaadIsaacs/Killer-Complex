@@ -37,6 +37,8 @@ public class GlobalNotificationHud : MonoBehaviour
     Coroutine _centerBannerHideRoutine;
     GameObject _centerBannerRoot;
     TextMeshProUGUI _centerBannerLabel;
+    bool _topLeftHiddenForComputer;
+    bool _topLeftWasActiveBeforeComputer;
 
     public RectTransform TopLeftContent => topLeftContent;
     public TextMeshProUGUI PackageDeliveredLabel => packageDeliveredLabel;
@@ -63,8 +65,19 @@ public class GlobalNotificationHud : MonoBehaviour
 
     private void OnValidate()
     {
+        TryResolveTopLeftContent();
         TryAutoAssignLabel(ref packageDeliveredLabel, "PackageDeliveredLabel");
         TryAutoAssignLabel(ref urgentDeliveryTimerLabel, "UrgentDeliveryTimerLabel");
+    }
+
+    void TryResolveTopLeftContent()
+    {
+        if (topLeftContent != null)
+            return;
+
+        var found = transform.Find("TopLeftNotifications");
+        if (found != null)
+            topLeftContent = found as RectTransform;
     }
 
     void TryAutoAssignLabel(ref TextMeshProUGUI field, string rowName)
@@ -90,6 +103,8 @@ public class GlobalNotificationHud : MonoBehaviour
 
     private void Awake()
     {
+        TryResolveTopLeftContent();
+
         if (GetComponent<GameSceneIntroPanel>() == null)
             gameObject.AddComponent<GameSceneIntroPanel>();
 
@@ -162,7 +177,11 @@ public class GlobalNotificationHud : MonoBehaviour
             return;
 
         GetComponent<DeliveryManager>()?.CopySceneBindingsFrom(sceneHud.GetComponent<DeliveryManager>());
+        GetComponent<GameSceneIntroPanel>()?.MergeFromSceneInstance(sceneHud.GetComponent<GameSceneIntroPanel>());
         EnsureRootActiveForSession();
+
+        if (sceneHud.gameObject.activeSelf)
+            sceneHud.gameObject.SetActive(false);
     }
 
     private void OnDestroy()
@@ -237,6 +256,37 @@ public class GlobalNotificationHud : MonoBehaviour
 
         return null;
     }
+
+    /// <summary>
+    /// Hides or restores <c>TopLeftNotifications</c> (timer, objective, delivery toasts) while the computer is open.
+    /// </summary>
+    public void SetTopLeftNotificationsVisible(bool visible)
+    {
+        TryResolveTopLeftContent();
+        if (topLeftContent == null)
+            return;
+
+        if (!visible)
+        {
+            if (!_topLeftHiddenForComputer)
+            {
+                _topLeftWasActiveBeforeComputer = topLeftContent.gameObject.activeSelf;
+                _topLeftHiddenForComputer = true;
+            }
+
+            topLeftContent.gameObject.SetActive(false);
+            return;
+        }
+
+        if (!_topLeftHiddenForComputer)
+            return;
+
+        topLeftContent.gameObject.SetActive(_topLeftWasActiveBeforeComputer);
+        _topLeftHiddenForComputer = false;
+    }
+
+    public static void SetTopLeftNotificationsVisibleOnHud(bool visible) =>
+        FindHud()?.SetTopLeftNotificationsVisible(visible);
 
     /// <summary>Persistent <see cref="DeliveryManager"/> on the DontDestroyOnLoad HUD (if present).</summary>
     public static DeliveryManager FindDeliveryManager()

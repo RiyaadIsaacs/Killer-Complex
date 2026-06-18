@@ -72,6 +72,7 @@ Sprint is **toggle**: press once to sprint, press again to stop.
 - **Universal Render Pipeline (URP)**  
 - **Input System** — `Assets/InputSystem_Actions.inputactions`  
 - **CharacterController** — `Assets/Scripts/PlayerController.cs`  
+- **Audio** — `SoundManager` on desktop canvas (`Door Knock`, walking loop, messenger notification); `PlayerMovementAudio` on player  
 - **Ollama** — local HTTP **`/api/generate`** via `Assets/Scripts/OllamaConnector.cs` (see `ollama-plan.md` for prompt contract and context block)
 
 ---

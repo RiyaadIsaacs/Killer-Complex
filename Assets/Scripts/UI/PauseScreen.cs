@@ -234,21 +234,21 @@ public class PauseScreen : MonoBehaviour
     /// <summary>Hook to Restart button.</summary>
     public void RestartGame()
     {
-        Time.timeScale = 1f;
+        SceneNavigationUtility.PrepareForSceneLoad();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     /// <summary>Hook to Main Menu button.</summary>
     public void GoToMainMenu()
     {
-        Time.timeScale = 1f;
+        SceneNavigationUtility.PrepareForSceneLoad();
         SceneManager.LoadScene(mainMenuSceneName);
     }
 
     /// <summary>Hook to Quit Game button. Stops Play mode in the Editor; closes the build on a standalone player.</summary>
     public void QuitGame()
     {
-        Time.timeScale = 1f;
+        SceneNavigationUtility.PrepareForSceneLoad();
 #if UNITY_EDITOR
         EditorApplication.isPlaying = false;
 #else

@@ -31,8 +31,13 @@ public static class GameplaySessionReset
 
         foreach (var terminal in Object.FindObjectsByType<ComputerTerminal>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            if (terminal != null && terminal.IsOpen)
+            if (terminal == null)
+                continue;
+
+            if (terminal.IsOpen)
                 terminal.CloseTerminal();
+
+            terminal.ResetDiscoveryHintsForNewSession();
         }
 
         GlobalNotificationHud.ResetTransientNotificationsForSessionOnHud();

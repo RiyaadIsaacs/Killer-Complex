@@ -27,6 +27,11 @@ public class DeliveryZone : MonoBehaviour
     [SerializeField] private TextMeshProUGUI packageDeliveredLabel;
     [SerializeField, Min(0.25f)] private float notificationDisplaySeconds = 2.5f;
 
+    [Header("Delivery knock SFX")]
+    [Tooltip("Played at this door on successful drop-off. If unset, uses SoundManager Door Knock clip.")]
+    [SerializeField] private AudioClip deliveryKnockClip;
+    [SerializeField, Range(0f, 2f)] private float deliveryKnockVolumeScale = 1f;
+
     private Coroutine _hideNotificationRoutine;
 
     private void OnEnable()
@@ -134,9 +139,18 @@ public class DeliveryZone : MonoBehaviour
         ShowPackageDeliveredNotification();
     }
 
+    void PlayDeliveryKnockSound()
+    {
+        var col = GetComponent<Collider>();
+        var pos = col != null ? col.bounds.center : transform.position;
+        SoundManager.TryPlayDoorKnockAt(pos, deliveryKnockClip, deliveryKnockVolumeScale);
+    }
+
     private void ShowPackageDeliveredNotification()
     {
         const string message = "Package Delivered";
+
+        PlayDeliveryKnockSound();
 
         var hudLabel = GlobalNotificationHud.FindPackageDeliveredLabel();
         GlobalNotificationHud.ShowDeliveryFeedback(message, notificationDisplaySeconds);

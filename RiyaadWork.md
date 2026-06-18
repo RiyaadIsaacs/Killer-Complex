@@ -156,6 +156,16 @@
 
 ---
 
+## 2026-06-18 (polish) — Intro, computer UX, audio, main-menu load
+
+- **Intro:** `GameSceneIntroPanel` body — wife missing + quoted **H** threat; prefab + scene overrides.
+- **Computer UX (Attendee C):** Arrow hints at desk; `ComputerTerminal` hides hints on first interact; `TopLeftNotifications` hidden while PC open.
+- **Main menu:** `SceneNavigationUtility` + intro merge on DDOL HUD reload; Editor Inspector selection cleared before scene load.
+- **Audio:** `DeliveryZone` door knock on successful delivery; `PlayerMovementAudio` + `SoundManager.WalkingLoopClip` (`Assets/SFX/Walking.mp3`, `Door Knock.mp3` on desktop canvas).
+- **Documentation:** `refinements-changes.md`, `setup.md`, `README.md`, `feedback-summary.md`, this file.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

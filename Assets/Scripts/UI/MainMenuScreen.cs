@@ -24,14 +24,14 @@ public class MainMenuScreen : MonoBehaviour
     /// <summary>Hook to Play / Start button On Click.</summary>
     public void PlayGame()
     {
-        Time.timeScale = 1f;
+        SceneNavigationUtility.PrepareForSceneLoad();
         SceneManager.LoadScene(gameSceneName);
     }
 
     /// <summary>Hook to Quit button On Click.</summary>
     public void QuitGame()
     {
-        Time.timeScale = 1f;
+        SceneNavigationUtility.PrepareForSceneLoad();
 #if UNITY_EDITOR
         EditorApplication.isPlaying = false;
 #else

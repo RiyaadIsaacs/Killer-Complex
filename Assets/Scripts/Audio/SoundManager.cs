@@ -18,6 +18,12 @@ public class SoundManager : MonoBehaviour
     [Tooltip("Volume scale for PlayDoorKnockWorld and for InteractDoor fallback knocks.")]
     private float doorKnockVolumeScale = 1f;
 
+    [Header("Player movement")]
+    [Tooltip("Looped while the player walks. Used by PlayerMovementAudio when its clip is unset.")]
+    [SerializeField] private AudioClip walkingLoopClip;
+
+    [SerializeField, Range(0f, 1f)] private float walkingLoopVolume = 0.45f;
+
     AudioSource audioSource;
     bool warnedMissingClip;
 
@@ -26,6 +32,14 @@ public class SoundManager : MonoBehaviour
 
     /// <inheritdoc cref="doorKnockVolumeScale"/>
     public float DoorKnockVolumeScale => doorKnockVolumeScale;
+
+    public AudioClip WalkingLoopClip => walkingLoopClip;
+
+    public float WalkingLoopVolume => walkingLoopVolume;
+
+    /// <summary>First <see cref="SoundManager"/> in loaded scenes (desktop canvas, etc.).</summary>
+    public static SoundManager FindInstance() =>
+        Object.FindFirstObjectByType<SoundManager>(FindObjectsInactive.Include);
 
     void Awake()
     {
@@ -65,6 +79,38 @@ public class SoundManager : MonoBehaviour
     public void PlayDoorKnockWorld(Vector3 worldPosition)
     {
         PlayOneShotWorld(doorKnockClip, worldPosition, doorKnockVolumeScale);
+    }
+
+    /// <summary>Resolves the first <see cref="SoundManager"/> and plays its door knock at <paramref name="worldPosition"/>.</summary>
+    public static void TryPlayDoorKnockAt(Vector3 worldPosition)
+    {
+        var sm = Object.FindFirstObjectByType<SoundManager>(FindObjectsInactive.Include);
+        if (sm == null)
+            return;
+
+        sm.PlayDoorKnockWorld(worldPosition);
+    }
+
+    /// <summary>
+    /// Plays a door knock at <paramref name="worldPosition"/> using <paramref name="clipOverride"/> or the first SoundManager fallback.
+    /// </summary>
+    public static void TryPlayDoorKnockAt(Vector3 worldPosition, AudioClip clipOverride, float volumeScale = 1f)
+    {
+        var clip = clipOverride;
+        SoundManager sm = null;
+        var vol = Mathf.Clamp(volumeScale, 0f, 2f);
+
+        if (clip == null)
+        {
+            sm = Object.FindFirstObjectByType<SoundManager>(FindObjectsInactive.Include);
+            if (sm != null)
+            {
+                clip = sm.DoorKnockClip;
+                vol *= sm.DoorKnockVolumeScale;
+            }
+        }
+
+        PlayOneShotWorld(clip, worldPosition, vol);
     }
 
     /// <summary>

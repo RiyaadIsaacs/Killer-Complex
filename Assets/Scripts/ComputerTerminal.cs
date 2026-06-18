@@ -1,22 +1,39 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 // Computer terminal: when the player interacts, opens a UI screen and disables player movement until closed.
 public class ComputerTerminal : MonoBehaviour
 {
+    static readonly string[] DefaultArrowHintNames = { "Arrow", "Arrow (2)", "Arrow(1)" };
+
     [Header("References")]
     [SerializeField] private PlayerController player;
     [SerializeField] private GameObject computerScreenRoot;
+
+    [Header("Discovery hints")]
+    [Tooltip("World objects (e.g. arrows) hidden after the player uses this computer.")]
+    [SerializeField] private GameObject[] discoveryHints;
+    [Tooltip("When no hints are assigned, finds root objects named Arrow / Arrow (2) / Arrow(1) near this terminal.")]
+    [SerializeField] private bool autoFindNamedArrowHints = true;
+    [SerializeField] private float autoFindMaxDistance = 20f;
 
     [Header("Cursor")]
     [Tooltip("When opening the terminal, unlock the cursor and show it; restore previous state on close.")]
     [SerializeField] private bool unlockCursorWhenOpen = true;
 
     private bool isOpen;
+    private bool discoveryHintsHidden;
     private CursorLockMode savedLockMode;
     private bool savedCursorVisible;
 
     public bool IsOpen => isOpen;
+
+    private void Awake()
+    {
+        ResolveDiscoveryHints();
+    }
 
     private void Update()
     {
@@ -63,9 +80,87 @@ public class ComputerTerminal : MonoBehaviour
         computerScreenRoot.SetActive(true);
 
         DeliveryUrgencyTimer.NotifyComputerSessionOpened();
+        GlobalNotificationHud.SetTopLeftNotificationsVisibleOnHud(false);
 
         var desktopUi = computerScreenRoot.GetComponentInChildren<ComputerDesktopUI>(true);
         desktopUi?.OnComputerSessionOpened();
+
+        HideDiscoveryHints();
+    }
+
+    public void ResetDiscoveryHintsForNewSession()
+    {
+        ResolveDiscoveryHints();
+        discoveryHintsHidden = false;
+
+        if (discoveryHints == null)
+            return;
+
+        foreach (var hint in discoveryHints)
+        {
+            if (hint != null)
+                hint.SetActive(true);
+        }
+    }
+
+    void HideDiscoveryHints()
+    {
+        if (discoveryHintsHidden)
+            return;
+
+        ResolveDiscoveryHints();
+        if (discoveryHints == null || discoveryHints.Length == 0)
+            return;
+
+        foreach (var hint in discoveryHints)
+        {
+            if (hint != null)
+                hint.SetActive(false);
+        }
+
+        discoveryHintsHidden = true;
+    }
+
+    void ResolveDiscoveryHints()
+    {
+        if (discoveryHints != null && discoveryHints.Length > 0)
+            return;
+
+        if (!autoFindNamedArrowHints)
+            return;
+
+        var found = new List<GameObject>();
+        var maxSq = autoFindMaxDistance * autoFindMaxDistance;
+        var origin = transform.position;
+        var scene = gameObject.scene;
+
+        if (!scene.IsValid())
+            scene = SceneManager.GetActiveScene();
+
+        foreach (var root in scene.GetRootGameObjects())
+        {
+            if (!IsDefaultArrowHintName(root.name))
+                continue;
+
+            if ((root.transform.position - origin).sqrMagnitude > maxSq)
+                continue;
+
+            found.Add(root);
+        }
+
+        if (found.Count > 0)
+            discoveryHints = found.ToArray();
+    }
+
+    static bool IsDefaultArrowHintName(string objectName)
+    {
+        for (var i = 0; i < DefaultArrowHintNames.Length; i++)
+        {
+            if (objectName == DefaultArrowHintNames[i])
+                return true;
+        }
+
+        return false;
     }
 
     public void CloseTerminal()
@@ -94,5 +189,6 @@ public class ComputerTerminal : MonoBehaviour
         }
 
         DeliveryUrgencyTimer.NotifyComputerSessionClosed();
+        GlobalNotificationHud.SetTopLeftNotificationsVisibleOnHud(true);
     }
 }
