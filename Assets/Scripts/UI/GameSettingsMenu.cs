@@ -14,9 +14,30 @@ public class GameSettingsMenu : MonoBehaviour
     [SerializeField] private TMP_Text mouseSensitivityValueLabel;
     [SerializeField] private PlayerController player;
 
-    bool _isOpen;
+    GameObject _pauseMenuRoot;
+    Button _templateButton;
+    Image _panelBackground;
+    PauseScreen _pauseScreen;
+    bool _built;
 
-    public bool IsOpen => _isOpen;
+    public bool IsOpen { get; private set; }
+
+    public void Initialize(GameObject pauseMenuRoot, Button menuButtonTemplate, PauseScreen pauseScreen)
+    {
+        _pauseMenuRoot = pauseMenuRoot;
+        _pauseScreen = pauseScreen;
+        _templateButton = menuButtonTemplate != null
+            ? menuButtonTemplate
+            : PauseMenuUiFactory.FindMenuButtonStyleSource(pauseMenuRoot != null ? pauseMenuRoot.transform : null);
+        if (_pauseMenuRoot != null)
+        {
+            var panelTransform = _pauseMenuRoot.transform.Find("Panel");
+            if (panelTransform != null)
+                _panelBackground = panelTransform.GetComponent<Image>();
+        }
+
+        EnsureBuilt();
+    }
 
     void Awake()
     {
@@ -27,9 +48,6 @@ public class GameSettingsMenu : MonoBehaviour
         }
 
         Instance = this;
-
-        if (settingsPanel == null)
-            BuildDefaultPanel();
 
         if (settingsPanel != null)
             settingsPanel.SetActive(false);
@@ -46,11 +64,14 @@ public class GameSettingsMenu : MonoBehaviour
 
     public void OpenSettings()
     {
+        EnsureBuilt();
         if (settingsPanel == null)
             return;
 
-        _isOpen = true;
+        IsOpen = true;
+        _pauseScreen?.SetPauseMenuChromeVisible(false);
         settingsPanel.SetActive(true);
+        settingsPanel.transform.SetAsLastSibling();
 
         if (mouseSensitivitySlider != null)
         {
@@ -61,9 +82,12 @@ public class GameSettingsMenu : MonoBehaviour
 
     public void CloseSettings()
     {
-        _isOpen = false;
+        IsOpen = false;
         if (settingsPanel != null)
             settingsPanel.SetActive(false);
+
+        if (_pauseScreen != null && _pauseScreen.IsPaused)
+            _pauseScreen.SetPauseMenuChromeVisible(true);
     }
 
     public void OnApplyClicked()
@@ -80,6 +104,18 @@ public class GameSettingsMenu : MonoBehaviour
 
     public void OnBackClicked() => CloseSettings();
 
+    void EnsureBuilt()
+    {
+        if (_built || settingsPanel != null)
+            return;
+
+        _built = true;
+        BuildDefaultPanel();
+
+        if (settingsPanel != null)
+            settingsPanel.SetActive(false);
+    }
+
     void OnSensitivitySliderChanged(float value) => UpdateSensitivityLabel(value);
 
     void UpdateSensitivityLabel(float multiplier)
@@ -91,123 +127,170 @@ public class GameSettingsMenu : MonoBehaviour
 
     void BuildDefaultPanel()
     {
-        var sprite = Sprite.Create(
-            Texture2D.whiteTexture,
-            new Rect(0f, 0f, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height),
-            new Vector2(0.5f, 0.5f),
-            100f);
+        var whiteSprite = PauseMenuUiFactory.GetWhiteSprite();
+        var panelSprite = _panelBackground != null && _panelBackground.sprite != null
+            ? _panelBackground.sprite
+            : whiteSprite;
 
         var root = new GameObject("SettingsPanel", typeof(RectTransform), typeof(Image));
         root.transform.SetParent(transform, false);
         settingsPanel = root;
 
         var rootRt = root.GetComponent<RectTransform>();
-        rootRt.anchorMin = Vector2.zero;
-        rootRt.anchorMax = Vector2.one;
-        rootRt.offsetMin = Vector2.zero;
-        rootRt.offsetMax = Vector2.zero;
+        StretchFull(rootRt);
 
         var dimmer = root.GetComponent<Image>();
-        dimmer.sprite = sprite;
-        dimmer.color = new Color32(0, 0, 0, 160);
+        dimmer.sprite = panelSprite;
+        dimmer.color = _panelBackground != null
+            ? _panelBackground.color
+            : new Color32(0, 0, 0, 160);
+        dimmer.raycastTarget = true;
 
         var box = new GameObject("SettingsBox", typeof(RectTransform), typeof(Image));
         box.transform.SetParent(root.transform, false);
         var boxRt = box.GetComponent<RectTransform>();
         boxRt.anchorMin = boxRt.anchorMax = new Vector2(0.5f, 0.5f);
-        boxRt.sizeDelta = new Vector2(420f, 280f);
+        boxRt.sizeDelta = new Vector2(520f, 340f);
         var boxImg = box.GetComponent<Image>();
-        boxImg.sprite = sprite;
-        boxImg.color = new Color32(40, 52, 68, 250);
+        boxImg.sprite = panelSprite;
+        boxImg.color = Color.white;
+        boxImg.raycastTarget = true;
 
-        var font = TMP_Settings.defaultFontAsset;
+        var font = GetPauseMenuFont();
 
-        var titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
-        titleGo.transform.SetParent(box.transform, false);
+        var titleGo = CreateLabel(box.transform, "Title", "Settings", 28, TextAlignmentOptions.Center);
         var titleRt = titleGo.GetComponent<RectTransform>();
         titleRt.anchorMin = new Vector2(0f, 1f);
         titleRt.anchorMax = new Vector2(1f, 1f);
         titleRt.pivot = new Vector2(0.5f, 1f);
-        titleRt.anchoredPosition = new Vector2(0f, -20f);
-        titleRt.sizeDelta = new Vector2(-40f, 40f);
-        var titleTmp = titleGo.GetComponent<TextMeshProUGUI>();
-        if (font != null) titleTmp.font = font;
-        titleTmp.text = "Settings";
-        titleTmp.fontSize = 28;
-        titleTmp.alignment = TextAlignmentOptions.Center;
+        titleRt.anchoredPosition = new Vector2(0f, -24f);
+        titleRt.sizeDelta = new Vector2(-48f, 48f);
+        titleGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
-        var labelGo = new GameObject("MouseLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelGo.transform.SetParent(box.transform, false);
+        var labelGo = CreateLabel(box.transform, "MouseLabel", "Mouse sensitivity", 22, TextAlignmentOptions.Left);
         var labelRt = labelGo.GetComponent<RectTransform>();
-        labelRt.anchorMin = new Vector2(0f, 0.55f);
-        labelRt.anchorMax = new Vector2(1f, 0.55f);
-        labelRt.sizeDelta = new Vector2(-48f, 32f);
-        var labelTmp = labelGo.GetComponent<TextMeshProUGUI>();
-        if (font != null) labelTmp.font = font;
-        labelTmp.text = "Mouse sensitivity";
-        labelTmp.fontSize = 20;
-        labelTmp.alignment = TextAlignmentOptions.Left;
+        labelRt.anchorMin = new Vector2(0f, 0.58f);
+        labelRt.anchorMax = new Vector2(1f, 0.58f);
+        labelRt.sizeDelta = new Vector2(-64f, 32f);
 
-        var sliderGo = new GameObject("MouseSlider", typeof(RectTransform), typeof(Slider));
-        sliderGo.transform.SetParent(box.transform, false);
-        var sliderRt = sliderGo.GetComponent<RectTransform>();
-        sliderRt.anchorMin = new Vector2(0.1f, 0.42f);
-        sliderRt.anchorMax = new Vector2(0.9f, 0.42f);
-        sliderRt.sizeDelta = new Vector2(0f, 24f);
-        mouseSensitivitySlider = sliderGo.GetComponent<Slider>();
+        mouseSensitivitySlider = CreateSensitivitySlider(box.transform, whiteSprite);
+        var sliderRt = mouseSensitivitySlider.GetComponent<RectTransform>();
+        sliderRt.anchorMin = new Vector2(0.08f, 0.44f);
+        sliderRt.anchorMax = new Vector2(0.92f, 0.44f);
+        sliderRt.sizeDelta = new Vector2(0f, 28f);
         mouseSensitivitySlider.minValue = 0.5f;
         mouseSensitivitySlider.maxValue = 3f;
         mouseSensitivitySlider.wholeNumbers = false;
         mouseSensitivitySlider.onValueChanged.AddListener(OnSensitivitySliderChanged);
 
-        var valueGo = new GameObject("MouseValue", typeof(RectTransform), typeof(TextMeshProUGUI));
-        valueGo.transform.SetParent(box.transform, false);
-        var valueRt = valueGo.GetComponent<RectTransform>();
-        valueRt.anchorMin = new Vector2(0f, 0.32f);
-        valueRt.anchorMax = new Vector2(1f, 0.32f);
-        valueRt.sizeDelta = new Vector2(-48f, 28f);
+        var valueGo = CreateLabel(box.transform, "MouseValue", "1.0×", 20, TextAlignmentOptions.Center);
         mouseSensitivityValueLabel = valueGo.GetComponent<TextMeshProUGUI>();
-        if (font != null) mouseSensitivityValueLabel.font = font;
-        mouseSensitivityValueLabel.fontSize = 18;
-        mouseSensitivityValueLabel.alignment = TextAlignmentOptions.Center;
+        var valueRt = valueGo.GetComponent<RectTransform>();
+        valueRt.anchorMin = new Vector2(0f, 0.34f);
+        valueRt.anchorMax = new Vector2(1f, 0.34f);
+        valueRt.sizeDelta = new Vector2(-64f, 28f);
 
-        CreateButton(box.transform, "ApplyButton", "Apply", new Vector2(-110f, 40f), OnApplyClicked);
-        CreateButton(box.transform, "BackButton", "Back", new Vector2(110f, 40f), OnBackClicked);
+        CreateStyledButton(box.transform, "ApplyButton", "Apply", new Vector2(-140f, 56f), OnApplyClicked);
+        CreateStyledButton(box.transform, "BackButton", "Back", new Vector2(140f, 56f), OnBackClicked);
     }
 
-    void CreateButton(Transform parent, string name, string label, Vector2 pos, UnityEngine.Events.UnityAction onClick)
+    GameObject CreateLabel(Transform parent, string name, string text, int fontSize, TextAlignmentOptions alignment)
     {
-        var sprite = Sprite.Create(
-            Texture2D.whiteTexture,
-            new Rect(0f, 0f, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height),
-            new Vector2(0.5f, 0.5f),
-            100f);
-
-        var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+        var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(parent, false);
-        var rt = go.GetComponent<RectTransform>();
+        var tmp = go.GetComponent<TextMeshProUGUI>();
+        var font = GetPauseMenuFont();
+        if (font != null)
+            tmp.font = font;
+        tmp.text = text;
+        tmp.fontSize = fontSize;
+        tmp.alignment = alignment;
+        tmp.color = new Color32(50, 50, 50, 255);
+        tmp.raycastTarget = false;
+        return go;
+    }
+
+    void CreateStyledButton(Transform parent, string name, string label, Vector2 pos, UnityEngine.Events.UnityAction onClick)
+    {
+        var btn = PauseMenuUiFactory.CreateTextButton(
+            parent,
+            name,
+            label,
+            pos,
+            new Vector2(220f, 64f),
+            _templateButton,
+            onClick);
+
+        var rt = btn.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
         rt.anchoredPosition = pos;
-        rt.sizeDelta = new Vector2(160f, 44f);
-        var img = go.GetComponent<Image>();
-        img.sprite = sprite;
-        img.color = new Color32(70, 95, 120, 255);
-        var btn = go.GetComponent<Button>();
-        btn.onClick.AddListener(onClick);
+    }
 
-        var font = TMP_Settings.defaultFontAsset;
-        var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
-        textGo.transform.SetParent(go.transform, false);
-        var textRt = textGo.GetComponent<RectTransform>();
-        textRt.anchorMin = Vector2.zero;
-        textRt.anchorMax = Vector2.one;
-        textRt.offsetMin = Vector2.zero;
-        textRt.offsetMax = Vector2.zero;
-        var tmp = textGo.GetComponent<TextMeshProUGUI>();
-        if (font != null) tmp.font = font;
-        tmp.text = label;
-        tmp.fontSize = 20;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color = Color.white;
+    Slider CreateSensitivitySlider(Transform parent, Sprite sprite)
+    {
+        var root = new GameObject("MouseSlider", typeof(RectTransform), typeof(Slider));
+        root.transform.SetParent(parent, false);
+
+        var bg = new GameObject("Background", typeof(RectTransform), typeof(Image));
+        bg.transform.SetParent(root.transform, false);
+        StretchFull(bg.GetComponent<RectTransform>());
+        var bgImg = bg.GetComponent<Image>();
+        bgImg.sprite = sprite;
+        bgImg.color = new Color32(40, 55, 71, 220);
+
+        var fillArea = new GameObject("Fill Area", typeof(RectTransform));
+        fillArea.transform.SetParent(root.transform, false);
+        StretchFull(fillArea.GetComponent<RectTransform>());
+
+        var fill = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+        fill.transform.SetParent(fillArea.transform, false);
+        var fillRt = fill.GetComponent<RectTransform>();
+        fillRt.anchorMin = Vector2.zero;
+        fillRt.anchorMax = new Vector2(0f, 1f);
+        fillRt.pivot = new Vector2(0f, 0.5f);
+        fillRt.offsetMin = Vector2.zero;
+        fillRt.offsetMax = Vector2.zero;
+        var fillImg = fill.GetComponent<Image>();
+        fillImg.sprite = sprite;
+        fillImg.color = new Color32(39, 174, 96, 255);
+
+        var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
+        handleArea.transform.SetParent(root.transform, false);
+        StretchFull(handleArea.GetComponent<RectTransform>());
+
+        var handle = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+        handle.transform.SetParent(handleArea.transform, false);
+        var handleRt = handle.GetComponent<RectTransform>();
+        handleRt.sizeDelta = new Vector2(20f, 0f);
+        var handleImg = handle.GetComponent<Image>();
+        handleImg.sprite = sprite;
+        handleImg.color = Color.white;
+
+        var slider = root.GetComponent<Slider>();
+        slider.fillRect = fillRt;
+        slider.handleRect = handleRt;
+        slider.targetGraphic = handleImg;
+        slider.direction = Slider.Direction.LeftToRight;
+        return slider;
+    }
+
+    TMP_FontAsset GetPauseMenuFont()
+    {
+        if (_templateButton != null)
+        {
+            var tmp = _templateButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (tmp != null && tmp.font != null)
+                return tmp.font;
+        }
+
+        return TMP_Settings.defaultFontAsset;
+    }
+
+    static void StretchFull(RectTransform rt)
+    {
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
     }
 }

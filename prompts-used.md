@@ -158,7 +158,39 @@ I see you're finally at the computer. Stop looking for your wife—she's not at 
 
 **Outcome:** In-engine; re-test with insults, friendly, and serious player lines after `ollama pull` / Play.
 
-**Iteration notes:** Local **mistral:7b-instruct** may still be stiff—raise temperature in Ollama options later if needed. **2026-06-18:** Shipped default **`llama3.2:3b`** per Joburg Game Dev Meetup feedback (see **`feedback-summary.md`**).
+**Iteration notes:** Local **mistral:7b-instruct** may still be stiff—raise temperature in Ollama options later if needed. **2026-06-18:** Shipped default **`llama3.2:3b`** per Joburg Game Dev Meetup feedback (see **`feedback-summary.md`**). **2026-06-18 (continued):** greeting/hostage-pronoun/messenger-UI rules added — see **Game — H persona polish — 2026-06-18** below.
+
+---
+
+## Game — H persona polish — 2026-06-18
+
+**Goal:** Meetup follow-up — **H** must state **destination apartment** in orders; never friendly greeting tone; never quest-log replies (`Job: Deliver…`); never **`my wife`** (hostage is the **player’s** wife); strip leaked **`[CONTEXT]`** from visible chat; messenger UI shows **bold `H:`** (not model-prefixed `[H]:`).
+
+**Prompt (system — paraphrase; exact string in `OllamaConnector.SystemPrompt`):**
+
+- **GREETINGS:** No “is everything ok” / polite small talk — coercive captor only.
+- **HOSTAGE PRONOUNS:** Always **your wife** / **she** / **the hostage** — never **my wife**.
+- **DELIVERY:** State exact **three-digit destination** when giving orders; tell player to search the **complex** for pickup (do not name pickup room to player).
+- **MESSENGER UI:** Do not prefix with `[H]:`, `H:`, `Job:`, `Objective:` — UI labels sender.
+- **CONTEXT:** Never echo bracket blocks or suspicion metadata in visible reply.
+
+**Hidden CONTEXT additions (`AppendStaticGameContextForLlm`):**
+
+- `Hostage pronoun rule: always "your wife" / "she" — never "my wife" in H's lines.`
+- `PendingDestinationAnnouncementForLlm` — one-shot nudge to include apartment number after new leg.
+- Pickup location in CONTEXT is **hidden** from player-facing orders (spawn label authoritative for model only).
+
+**Post-process (`NormalizeMessengerReplyForDisplay`, `FixHostagePronounSlips`, `StripEchoedContextFromModelReply`):**
+
+- Strip `Job:`, `[CONTEXT…]`, `H:` echoes; regex **`my wife` → `your wife`**.
+
+**Messenger display (`ChatManager.FormatLine`):** `<b>H</b>: <noparse>{body}</noparse>`.
+
+**Maze breach narrative (`NotifyMazeBreachRoundAttemptFinished`):** In-character breach reaction first; UI labels sender; no quest-log headers.
+
+**Outcome:** In-engine; re-test after **Main Menu → Play** and after maze breach Ollama reply.
+
+**Iteration notes:** Source of truth is **`Assets/Scripts/OllamaConnector.cs`** + **`ChatManager.cs`**.
 
 ---
 

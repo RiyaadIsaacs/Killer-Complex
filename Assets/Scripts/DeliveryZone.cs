@@ -16,6 +16,10 @@ public class DeliveryZone : MonoBehaviour
 
     [SerializeField] private DeliveryManager deliveryManager;
 
+    DeliveryManager _registeredManager;
+
+    public int DropPointId => dropPointId;
+
     [Header("Package Delivered UI")]
     [Tooltip("Optional root GameObject (e.g. toast panel) toggled on for a few seconds after a successful drop-off.")]
     [SerializeField] private GameObject packageDeliveredNotificationRoot;
@@ -27,20 +31,43 @@ public class DeliveryZone : MonoBehaviour
 
     private void OnEnable()
     {
-        if (deliveryManager != null)
-            deliveryManager.RegisterDropPoint(dropPointId);
+        var dm = ResolveDeliveryManager();
+        if (dm == null)
+            return;
+
+        dm.RegisterDropPoint(dropPointId);
+        _registeredManager = dm;
     }
 
     private void OnDisable()
     {
-        if (deliveryManager != null)
-            deliveryManager.UnregisterDropPoint(dropPointId);
+        if (_registeredManager != null)
+        {
+            _registeredManager.UnregisterDropPoint(dropPointId);
+            _registeredManager = null;
+        }
 
         if (_hideNotificationRoutine != null)
         {
             StopCoroutine(_hideNotificationRoutine);
             _hideNotificationRoutine = null;
         }
+    }
+
+    DeliveryManager ResolveDeliveryManager()
+    {
+        var persistent = GlobalNotificationHud.FindDeliveryManager();
+        if (persistent != null)
+        {
+            deliveryManager = persistent;
+            return persistent;
+        }
+
+        if (deliveryManager != null)
+            return deliveryManager;
+
+        deliveryManager = FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
+        return deliveryManager;
     }
 
     private void Reset()
@@ -59,21 +86,22 @@ public class DeliveryZone : MonoBehaviour
         if (col != null)
             worldPos = col.bounds.center + Vector3.up * 0.15f;
 
-        if (deliveryManager == null)
+        var dm = ResolveDeliveryManager();
+        if (dm == null)
         {
             text = "[E] Door";
             return true;
         }
 
-        if (deliveryManager.GetDeliveryDropFailureReason(dropPointId) == null)
+        if (dm.GetDeliveryDropFailureReason(dropPointId) == null)
         {
             text = "[E] Deliver package";
             return true;
         }
 
-        if (deliveryManager.ActiveDropPointId >= 0 && dropPointId != deliveryManager.ActiveDropPointId)
+        if (dm.ActiveDropPointId >= 0 && dropPointId != dm.ActiveDropPointId)
             text = "[E] Wrong apartment";
-        else if (deliveryManager.RequiresPhysicalPickup && !deliveryManager.HasPickedUpCurrentPackage)
+        else if (dm.RequiresPhysicalPickup && !dm.HasPickedUpCurrentPackage)
             text = "[E] Get package first";
         else
             text = "[E] Door";
@@ -83,20 +111,21 @@ public class DeliveryZone : MonoBehaviour
 
     public void Interact()
     {
-        if (deliveryManager == null)
+        var dm = ResolveDeliveryManager();
+        if (dm == null)
         {
             GlobalNotificationHud.ShowDeliveryFeedback("Delivery: assign Delivery Manager on this zone.", notificationDisplaySeconds);
             return;
         }
 
-        string failReason = deliveryManager.GetDeliveryDropFailureReason(dropPointId);
+        string failReason = dm.GetDeliveryDropFailureReason(dropPointId);
         if (failReason != null)
         {
             GlobalNotificationHud.ShowDeliveryFeedback(failReason, notificationDisplaySeconds);
             return;
         }
 
-        if (!deliveryManager.TryCompleteDeliveryAtDropPoint(dropPointId))
+        if (!dm.TryCompleteDeliveryAtDropPoint(dropPointId))
         {
             GlobalNotificationHud.ShowDeliveryFeedback("Could not complete delivery.", notificationDisplaySeconds);
             return;

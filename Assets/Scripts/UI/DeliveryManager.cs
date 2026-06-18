@@ -97,6 +97,95 @@ public class DeliveryManager : MonoBehaviour
     private readonly HashSet<int> _registeredDropPointIds = new HashSet<int>();
 
     bool _postDeliveryStepAwayBeatPending;
+    bool _pendingDestinationAnnouncementForLlm;
+
+    /// <summary>True until H's next messenger reply after a new leg is rolled — forces drop-off apartment into LLM CONTEXT.</summary>
+    public bool PendingDestinationAnnouncementForLlm => _pendingDestinationAnnouncementForLlm;
+
+    public void ClearPendingDestinationAnnouncementForLlm() => _pendingDestinationAnnouncementForLlm = false;
+
+    /// <summary>Copies scene-bound pickup/spawn references from a freshly loaded HUD instance.</summary>
+    public void CopySceneBindingsFrom(DeliveryManager sceneInstance)
+    {
+        if (sceneInstance == null || sceneInstance == this)
+            return;
+
+        if (sceneInstance.receptionDeliveryItem != null)
+        {
+            receptionDeliveryItem = sceneInstance.receptionDeliveryItem;
+            receptionDeliveryItem.BindDeliveryManager(this);
+        }
+
+        if (sceneInstance.spawnPoints != null && sceneInstance.spawnPoints.Length > 0)
+            spawnPoints = sceneInstance.spawnPoints;
+    }
+
+    void TryRebindSceneReferencesIfNeeded()
+    {
+        if (receptionDeliveryItem == null)
+        {
+            foreach (var item in FindObjectsByType<DeliveryItem>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (item != null && item.IsAssignedTo(this))
+                {
+                    receptionDeliveryItem = item;
+                    break;
+                }
+            }
+        }
+
+        if (NeedsSpawnPointRebind())
+        {
+            var pickupPoints = FindObjectsByType<DeliveryPickupSpawnPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (pickupPoints.Length > 0)
+            {
+                spawnPoints = new GameObject[pickupPoints.Length];
+                for (var i = 0; i < pickupPoints.Length; i++)
+                    spawnPoints[i] = pickupPoints[i].gameObject;
+            }
+        }
+    }
+
+    bool NeedsSpawnPointRebind()
+    {
+        if (spawnPoints == null || spawnPoints.Length == 0)
+            return true;
+
+        foreach (var point in spawnPoints)
+        {
+            if (point == null)
+                return true;
+        }
+
+        return false;
+    }
+
+    void SafeDeactivateReceptionItem()
+    {
+        if (receptionDeliveryItem != null)
+            receptionDeliveryItem.Deactivate();
+    }
+
+    void ClearSceneBindings()
+    {
+        receptionDeliveryItem = null;
+        spawnPoints = System.Array.Empty<GameObject>();
+    }
+
+    /// <summary>Re-scans scene <see cref="DeliveryZone"/> objects after reload (DDOL manager survives; zones re-enable in the new scene).</summary>
+    public void RefreshDropPointRegistrationsFromScene()
+    {
+        _registeredDropPointIds.Clear();
+        foreach (var zone in FindObjectsByType<DeliveryZone>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (zone == null)
+                continue;
+
+            int id = zone.DropPointId;
+            if (id >= 0)
+                RegisterDropPoint(id);
+        }
+    }
 
     /// <summary>True before the next messenger turn consumes the one-shot "H steps away" LLM beat (see <see cref="AppendAndClearPostDeliveryStepAwayBeatInstruction"/>).</summary>
     public bool PostDeliveryStepAwayBeatPending => _postDeliveryStepAwayBeatPending;
@@ -141,8 +230,9 @@ public class DeliveryManager : MonoBehaviour
         CurrentLegDestinationApartment = -1;
         CurrentPickupLocationLabel = string.Empty;
         hasPickedUpCurrentPackage = false;
-        receptionDeliveryItem?.Deactivate();
+        SafeDeactivateReceptionItem();
         _postDeliveryStepAwayBeatPending = true;
+        _pendingDestinationAnnouncementForLlm = false;
     }
 
     void OnValidate()
@@ -161,6 +251,7 @@ public class DeliveryManager : MonoBehaviour
     public void ResetRunStateForNewPlaySession(bool queueDeferredFirstPrepare)
     {
         StopAllCoroutines();
+        GlobalNotificationHud.ResetTransientNotificationsForSessionOnHud();
 
         currentDeliveryID = 0;
         ActiveDropPointId = -1;
@@ -168,7 +259,16 @@ public class DeliveryManager : MonoBehaviour
         CurrentPickupLocationLabel = string.Empty;
         hasPickedUpCurrentPackage = false;
         _postDeliveryStepAwayBeatPending = false;
-        receptionDeliveryItem?.Deactivate();
+        _pendingDestinationAnnouncementForLlm = false;
+        SafeDeactivateReceptionItem();
+
+        if (queueDeferredFirstPrepare)
+        {
+            TryRebindSceneReferencesIfNeeded();
+            RefreshDropPointRegistrationsFromScene();
+        }
+        else
+            ClearSceneBindings();
 
         if (queueDeferredFirstPrepare && prepareFirstDeliveryAfterSceneTick && Application.isPlaying)
             StartCoroutine(DeferredPrepareFirstDelivery());
@@ -212,17 +312,40 @@ public class DeliveryManager : MonoBehaviour
         if (_postDeliveryStepAwayBeatPending)
             return;
 
+        TryRebindSceneReferencesIfNeeded();
+        RefreshDropPointRegistrationsFromScene();
+
+        if (receptionDeliveryItem == null || spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogWarning(
+                $"{nameof(DeliveryManager)} on {name}: Cannot prepare delivery — reception package or spawn points are missing. " +
+                "Ensure the gameplay scene wires them on the HUD prefab instance.",
+                this);
+            return;
+        }
+
         int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
         var spawnGo = spawnPoints[randomIndex];
+        if (spawnGo == null)
+        {
+            Debug.LogWarning($"{nameof(DeliveryManager)} on {name}: Selected spawn point was destroyed.", this);
+            return;
+        }
+
         receptionDeliveryItem.transform.position = spawnGo.transform.position;
         CurrentPickupLocationLabel = ResolvePickupLabel(spawnGo);
 
         hasPickedUpCurrentPackage = false;
         RollNextRandomDropPoint();
-        receptionDeliveryItem?.ActivateForDelivery();
+        if (receptionDeliveryItem != null)
+            receptionDeliveryItem.ActivateForDelivery();
 
         if (ActiveDropPointId >= 0)
+        {
+            if (CurrentLegDestinationApartment >= 0)
+                _pendingDestinationAnnouncementForLlm = true;
             OnDeliveryLegPrepared?.Invoke();
+        }
     }
 
     public bool TryRegisterPackagePickup(DeliveryItem item)
@@ -265,6 +388,7 @@ public class DeliveryManager : MonoBehaviour
         ActiveDropPointId = -1;
         CurrentLegDestinationApartment = -1;
         CurrentPickupLocationLabel = string.Empty;
+        _pendingDestinationAnnouncementForLlm = false;
 
         CompleteCurrentDeliveryStep();
         return true;

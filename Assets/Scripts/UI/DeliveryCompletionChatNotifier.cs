@@ -19,8 +19,12 @@ public class DeliveryCompletionChatNotifier : MonoBehaviour
 
     private void OnEnable()
     {
-        if (deliveryManager != null)
-            deliveryManager.OnDeliveryCompleted += OnDeliveryCompleted;
+        var dm = ResolveDeliveryManager();
+        if (dm == null)
+            return;
+
+        dm.OnDeliveryCompleted += OnDeliveryCompleted;
+        deliveryManager = dm;
     }
 
     private void OnDisable()
@@ -29,16 +33,29 @@ public class DeliveryCompletionChatNotifier : MonoBehaviour
             deliveryManager.OnDeliveryCompleted -= OnDeliveryCompleted;
     }
 
+    DeliveryManager ResolveDeliveryManager()
+    {
+        var persistent = GlobalNotificationHud.FindDeliveryManager();
+        if (persistent != null)
+            return persistent;
+
+        if (deliveryManager != null)
+            return deliveryManager;
+
+        return FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
+    }
+
     private void OnDeliveryCompleted(int completedDeliveryId)
     {
-        if (chatManager == null || deliveryManager == null)
+        var dm = ResolveDeliveryManager();
+        if (chatManager == null || dm == null)
             return;
 
         if (string.IsNullOrWhiteSpace(messageWhenMoreDeliveriesRemain))
             return;
 
         // After completion, currentDeliveryID is already the next step (or TotalDeliveryLegs when the quota is finished).
-        if (deliveryManager.currentDeliveryID >= deliveryManager.TotalDeliveryLegs)
+        if (dm.currentDeliveryID >= dm.TotalDeliveryLegs)
             return;
 
         chatManager.UpdateChatFeed(hackerSenderName, messageWhenMoreDeliveriesRemain.Trim());

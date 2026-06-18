@@ -1420,7 +1420,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2085,6 +2085,10 @@ MonoBehaviour:
   visualRoot: {fileID: 121421448}
   affectWholeGameObject: 1
   deliveryManager: {fileID: 1627386561}
+  spinWhileActive: 1
+  spinDegreesPerSecond: 45
+  bobAmplitude: 0.08
+  bobFrequency: 1.6
 --- !u!65 &121421450
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -18317,7 +18321,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -111}
+  m_AnchoredPosition: {x: 0, y: -222}
   m_SizeDelta: {x: 250, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1400262398
@@ -21436,6 +21440,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2902346195938808354, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
+      propertyPath: m_AdditionalShaderChannelsFlag
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 3393255812781369042, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 3526061774763368385, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
       propertyPath: m_Name
       value: GlobalNotificationHUD
@@ -21544,6 +21556,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5900612454964584238, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7053981365485110412, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
       propertyPath: body
       value: 'You''re stuck after investigating some shady dealings in this complex.
@@ -21565,6 +21581,10 @@ PrefabInstance:
       propertyPath: playerController
       value: 
       objectReference: {fileID: 1963267871}
+    - target: {fileID: 8900145465280339095, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8959749687944729099, guid: 5b997c8a00b024d418eaa5c154ac1ca2, type: 3}
       propertyPath: totalDeliveryLegs
       value: 7
@@ -22595,6 +22615,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PauseScreen
   pausePanel: {fileID: 1787564599}
+  settingsMenu: {fileID: 0}
   player: {fileID: 1963267871}
   mainMenuSceneName: Main Menu
 --- !u!4 &1669231445
@@ -24200,7 +24221,7 @@ RectTransform:
   m_GameObject: {fileID: 1787564599}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 633141296}
@@ -25168,19 +25189,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5921126462729845301, guid: bee09117d2231334d90a559b1ff7f323, type: 3}
       propertyPath: m_LocalScale.z
-      value: 7.1446967
+      value: 4.463149
       objectReference: {fileID: 0}
     - target: {fileID: 5921126462729845301, guid: bee09117d2231334d90a559b1ff7f323, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -40.78
+      value: -35.96662
       objectReference: {fileID: 0}
     - target: {fileID: 5921126462729845301, guid: bee09117d2231334d90a559b1ff7f323, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.00000024959
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5921126462729845301, guid: bee09117d2231334d90a559b1ff7f323, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -24.72
+      value: -27.38212
       objectReference: {fileID: 0}
     - target: {fileID: 5921126462729845301, guid: bee09117d2231334d90a559b1ff7f323, type: 3}
       propertyPath: m_LocalRotation.w

@@ -157,7 +157,7 @@ public static class HackingTerminalPanelUIBuilder
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
         tmp.text = "Hack";
-        tmp.enableWordWrapping = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
         tmp.overflowMode = TextOverflowModes.Overflow;
 
         return btn;
@@ -220,7 +220,7 @@ public static class HackingTerminalPanelUIBuilder
         feedTmp.alignment = TextAlignmentOptions.TopLeft;
         feedTmp.color = new Color32(180, 220, 180, 255);
         feedTmp.text = string.Empty;
-        feedTmp.enableWordWrapping = true;
+        feedTmp.textWrappingMode = TextWrappingModes.Normal;
         feedTmp.overflowMode = TextOverflowModes.Overflow;
 
         scrollRect.viewport = vpRt;

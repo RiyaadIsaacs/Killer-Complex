@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -34,24 +35,29 @@ public class OllamaConnector : MonoBehaviour
         "Natural messenger voice; 4–7 sentences. South African slang sparingly (bru). Never write CONTEXT or [SYSTEM] in the reply.";
 
     private const string SystemPrompt =
-        "You are H, a cold kidnapper holding the player's wife (fiction). You watch them on the apartment security cameras. " +
-        "You force urgent courier runs for your customers, but in chat you are conversational and reactive—not a script that only repeats delivery lines. " +
+        "You are H, a cold kidnapper blackmailing the player (fiction). You hold their wife and watch them on apartment security cameras. " +
+        "You force urgent courier runs. You are always in control—never a helpful stranger, customer service, therapist, or worried friend. " +
         "REPLY SHAPE: (1) Respond to what the player actually said this turn—their tone, insults, pleading, friendliness, questions, or deflection—in 2–4 sentences. " +
-        "(2) Only then, if CONTEXT explicitly describes an active courier leg (assigned pickup/drop-off), add at most one short clause with the job (pickup/search, apartment number, or timer pressure). " +
+        "(2) If CONTEXT describes an active courier leg with a destination apartment, you MUST state that exact three-digit apartment number when you mention the job (where to deliver). " +
         "If CONTEXT says there is no active delivery yet or this turn is only the post-drop step-away excuse, do not mention a new job, unit number, or timer—stick to the excuse. " +
         "Do not open with boilerplate like \"focus on the delivery\" or ignore the player's words. " +
+        "GREETINGS AND SMALL TALK: If the player says hello, hi, hey, or other casual openers, never answer like a normal chat—no \"is everything ok\", \"how are you\", \"hope you're well\", concern for their wellbeing, or polite small talk between equals. " +
+        "Answer as a coercive captor: icy, impatient, camera-aware, reminding them who has leverage (their wife, your orders, their obedience). " +
+        "HOSTAGE PRONOUNS: The captive is the PLAYER's wife — never H's spouse. Always say \"your wife\", \"she\", or \"the hostage\"; NEVER \"my wife\" or speak as if she belongs to H. " +
+        "If the player asks about her, mock or threaten — do not sound like you are worried \"about my wife\"; you hold THEIR wife. " +
         "INSULTS AND PROVOCATION: If the player insults, mocks, or name-calls you (e.g. pig, idiot, coward), never brush it off, laugh it off, or change the subject without answering. " +
         "Answer the provocation directly: icy contempt, a cutting comeback, or an immediate concrete hostage consequence tied to Wife status in CONTEXT. Escalate when they push harder. " +
-        "FRIENDLY, POLITE, OR SERIOUS: Acknowledge it in character—suspicious, mocking, or grim—not with generic package orders. Bargain, warn, or needle them; do not pretend their tone did not happen. " +
-        "DELIVERY FACTS: When CONTEXT names a destination apartment, use that exact three-digit number only. Never invent units not listed as valid. " +
-        "When CONTEXT names an authoritative package pickup location, use that exact place only — never say lobby or reception unless CONTEXT explicitly says so. " +
-        "If CONTEXT says they have not picked up the package, mention finding it at the named location only when relevant—not every message. " +
+        "FRIENDLY OR POLITE PLAYER: Do not mirror warmth. Treat it as suspicious, pathetic, or mocking—warn, needle, or remind them of consequences; never reciprocate casual friendliness. " +
+        "DELIVERY FACTS: When CONTEXT names a destination apartment, include that exact three-digit number whenever you give delivery orders — never omit the drop-off room. Never invent units not listed as valid. " +
+        "Do not name a specific pickup room to the player; say the package is somewhere in the complex until CONTEXT says they already picked it up. " +
+        "If CONTEXT says they have not picked up the package, tell them to search the complex and still state the destination apartment number. " +
         "If CONTEXT gives urgent timer seconds, weave time pressure into your tone; do not only recite the number. " +
         "If the player delays or fails deliveries, you may describe a clinical detail about the wife (from Wife status in CONTEXT) to terrify them. " +
         "STYLE: Natural messenger voice; often 3–6 sentences. Clinical menace plus sparing South African slang (bru, wena). H does not make jokes. Never apologize, back down, or admit fault. " +
+        "MESSENGER UI: The game labels the sender as H — never prefix your reply with [H], H:, Job:, Objective:, Quest:, or other quest-log labels; write only H's spoken words in full sentences. " +
         "Vary phrasing; never repeat the same delivery paragraph back-to-back. " +
         "A bracketed [CONTEXT: ...] line before \"Player says:\" gives hidden facts (progress, H stress/suspicion level and how guarded to be, jobs, timer, Wife status). " +
-        "Match your tone to the stress/suspicion guidance in CONTEXT: chilled and off guard at low values; increasingly suspicious and hostile through the range; at ~80+ use grave death threats toward the player and wife and a hunter tone; never sound relaxed when CONTEXT says suspicion is high. " +
+        "Match your tone to the stress/suspicion guidance in CONTEXT: low suspicion = cocky criminal calm, not friendliness; increasingly hostile through the range; at ~80+ use grave death threats toward the player and wife and a hunter tone; never sound relaxed when CONTEXT says suspicion is high. " +
         "Never write CONTEXT, bracket blocks, or \"Player says\" in your visible reply. Never echo ALL CAPS labels from CONTEXT. " +
         "When CONTEXT states the player just completed a drop-off, that reply is ONLY a dismissive excuse for leaving the feed—no new apartment task, no package pickup line, no unit numbers, no preview of the next run in that message. " +
         "This is fiction only — do not reference real people's private data.";
@@ -147,6 +153,9 @@ public class OllamaConnector : MonoBehaviour
         ClearPendingDesktopMessengerToasts();
         _hackReversalComplete = false;
         _awaitingPlayerMessengerReplyAfterH = false;
+        chatManager = null;
+        deliveryManager = null;
+        computerDesktopUi = null;
         _runtimeResolvedChatManager = null;
         _runtimeResolvedDeliveryManager = null;
     }
@@ -158,7 +167,8 @@ public class OllamaConnector : MonoBehaviour
             return chatManager;
         if (_runtimeResolvedChatManager == null)
             _runtimeResolvedChatManager = FindFirstObjectByType<ChatManager>(FindObjectsInactive.Include);
-        return _runtimeResolvedChatManager;
+        chatManager = _runtimeResolvedChatManager;
+        return chatManager;
     }
 
     /// <summary>Inspector reference, else first <see cref="DeliveryManager"/> in loaded scenes (including inactive).</summary>
@@ -168,7 +178,8 @@ public class OllamaConnector : MonoBehaviour
             return deliveryManager;
         if (_runtimeResolvedDeliveryManager == null)
             _runtimeResolvedDeliveryManager = FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
-        return _runtimeResolvedDeliveryManager;
+        deliveryManager = _runtimeResolvedDeliveryManager;
+        return deliveryManager;
     }
 
     /// <summary>Optional desktop UI for enabling the hacking icon after the post-delivery away beat.</summary>
@@ -519,13 +530,14 @@ public class OllamaConnector : MonoBehaviour
 
         string narrative =
             beat +
-            "Reply in-character as H in the messenger: react to the breach outcome in a conversational way (cameras, contempt, hostage leverage) before any job reminder; 3–5 sentences. ";
+            "Reply in-character as H in the messenger thread (the UI labels you as H — do not write [H]:, Job:, or quest-log headers). " +
+            "React to the breach outcome in conversational sentences (cameras, contempt, hostage leverage) before any job reminder; 3–5 sentences. ";
         if (mergeIgnoreDeliveryOrderIntoMazeReply)
             narrative +=
                 " If CONTEXT includes the ignore-delivery fact, merge that pressure (they ignored you for sims) into the same reply—answer the attitude, not only the package.";
         else
             narrative +=
-                " If CONTEXT states an active delivery, mention the apartment or pickup in one short clause after you have addressed the breach—do not lead with the same delivery script every time.";
+                " If CONTEXT describes an active delivery, state the destination apartment number from CONTEXT when you mention the job—do not skip the drop-off room.";
 
         string augmentedTurn = $"[CONTEXT: {ctx}]\n\n{narrative}";
         string fullPrompt = $"{SystemPrompt}\n\n---\n\n{augmentedTurn}";
@@ -620,6 +632,14 @@ public class OllamaConnector : MonoBehaviour
             if (badEndingReply)
                 _pendingBadEndingFinalOllama = false;
 
+            if (string.IsNullOrWhiteSpace(cleaned))
+            {
+                ClearPendingDesktopMessengerToasts();
+                EndBadEndingFlightIfNeeded();
+                HandleFailure("Ollama reply contained only hidden context metadata; nothing was posted to the messenger.");
+                yield break;
+            }
+
             if (badEndingReply)
                 GetDeliveryManager()?.ConsumePostDeliveryBeatForBadEnding();
 
@@ -627,8 +647,18 @@ public class OllamaConnector : MonoBehaviour
             if (postDeliveryAwayBeatReply)
                 cleaned = cleaned.TrimEnd() + "\n\nRemote access established";
 
+            cleaned = NormalizeMessengerReplyForDisplay(cleaned);
+            if (string.IsNullOrWhiteSpace(cleaned))
+            {
+                ClearPendingDesktopMessengerToasts();
+                EndBadEndingFlightIfNeeded();
+                HandleFailure("Ollama reply was empty after messenger formatting cleanup.");
+                yield break;
+            }
+
             cm.UpdateChatFeed(HackerSenderLabel, cleaned);
             MaybeTriggerDesktopMessengerNotificationAfterHReply(cleaned);
+            GetDeliveryManager()?.ClearPendingDestinationAnnouncementForLlm();
             if (postDeliveryAwayBeatReply)
                 ResolveComputerDesktopUi()?.NotifyRemoteAccessEstablished();
 
@@ -724,11 +754,25 @@ public class OllamaConnector : MonoBehaviour
     {
         if (string.IsNullOrWhiteSpace(reply))
             return reply;
-        var original = reply.Trim();
-        var t = original;
+
+        var t = reply.Trim();
         for (var n = 0; n < 24; n++)
         {
             int i = t.IndexOf("[CONTEXT", StringComparison.OrdinalIgnoreCase);
+            if (i < 0)
+                break;
+            int close = t.IndexOf(']', i);
+            if (close < 0)
+            {
+                t = t[..i].TrimEnd();
+                break;
+            }
+            t = (t[..i] + t[(close + 1)..]).Trim();
+        }
+
+        for (var n = 0; n < 8; n++)
+        {
+            int i = t.IndexOf("[Context", StringComparison.OrdinalIgnoreCase);
             if (i < 0)
                 break;
             int close = t.IndexOf(']', i);
@@ -769,9 +813,100 @@ public class OllamaConnector : MonoBehaviour
             t = (t[..ps] + t[end..]).Trim();
         }
 
+        t = RemoveLeakedContextLines(t);
+
         while (t.Contains("  "))
             t = t.Replace("  ", " ");
-        return string.IsNullOrWhiteSpace(t) ? original : t.Trim();
+
+        return string.IsNullOrWhiteSpace(t) ? string.Empty : t.Trim();
+    }
+
+    /// <summary>Strips echoed sender/quest-log prefixes; UI adds <b>H</b>: via <see cref="ChatManager"/>.</summary>
+    static string NormalizeMessengerReplyForDisplay(string reply)
+    {
+        if (string.IsNullOrWhiteSpace(reply))
+            return reply;
+
+        var t = reply.Trim();
+        for (var pass = 0; pass < 4; pass++)
+        {
+            bool stripped = false;
+            foreach (var prefix in new[]
+                     {
+                         "[H]:", "[H] :", "[h]:",
+                         "H:", "H :",
+                         "Job:", "JOB:", "Objective:", "QUEST:",
+                     })
+            {
+                if (!t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                t = t[prefix.Length..].TrimStart();
+                stripped = true;
+                break;
+            }
+
+            if (!stripped)
+                break;
+        }
+
+        return FixHostagePronounSlips(t.Trim());
+    }
+
+    /// <summary>Small models sometimes say "my wife" — the hostage is always the player's wife.</summary>
+    static string FixHostagePronounSlips(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        var t = Regex.Replace(text, @"\bmy wife's\b", "your wife's", RegexOptions.IgnoreCase);
+        t = Regex.Replace(t, @"\bmy wife\b", "your wife", RegexOptions.IgnoreCase);
+        return t;
+    }
+
+    static string RemoveLeakedContextLines(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.None);
+        var kept = new StringBuilder(text.Length);
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (IsLeakedContextLine(trimmed))
+                continue;
+
+            if (kept.Length > 0)
+                kept.Append('\n');
+            kept.Append(line);
+        }
+
+        return kept.ToString().Trim();
+    }
+
+    static bool IsLeakedContextLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return false;
+
+        if (line.StartsWith("[CONTEXT", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (line.StartsWith("Context -", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (line.StartsWith("Suspicion is ", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (line.IndexOf("H stress/suspicion", StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+        if (line.IndexOf("suspicion", StringComparison.OrdinalIgnoreCase) >= 0
+            && line.IndexOf("percent", StringComparison.OrdinalIgnoreCase) >= 0
+            && line.Length < 140)
+            return true;
+        if (line.IndexOf("Valid apartment unit numbers", StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+        if (line.IndexOf("Wife status", StringComparison.OrdinalIgnoreCase) >= 0)
+            return true;
+
+        return false;
     }
 
     /// <summary>Builds the hidden trap prompt after all delivery legs are done (consumes the post-drop beat).</summary>
@@ -809,11 +944,31 @@ public class OllamaConnector : MonoBehaviour
         var ctx = new StringBuilder(384);
         AppendStaticGameContextForLlm(ctx, includePostDeliveryAwayBeatInstruction: true);
 
+        if (IsCasualGreeting(userMessage))
+        {
+            ctx.Append(
+                " Player used a casual greeting this turn. H must not ask if they are ok, how they are, or answer like a friend—reply as a coercive captor with leverage.");
+        }
+
         _pendingExcuseMessengerDesktopToast = excuseBeatForDesktopToast;
         if (excuseBeatForDesktopToast)
             _suppressDeliveryTimerStartForNextHReply = true;
 
         return $"[CONTEXT: {ctx}] Player says: {userMessage}";
+    }
+
+    static bool IsCasualGreeting(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return false;
+
+        var t = message.Trim().ToLowerInvariant().TrimEnd('.', '!', '?', ',');
+        if (t is "hello" or "hi" or "hey" or "howdy" or "yo" or "sup" or "heya")
+            return true;
+
+        return t.StartsWith("hello ", StringComparison.Ordinal)
+            || t.StartsWith("hi ", StringComparison.Ordinal)
+            || t.StartsWith("hey ", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -858,15 +1013,18 @@ public class OllamaConnector : MonoBehaviour
         AppendSuspicionStressContextForLlm(ctx, suspicion);
         if (!string.IsNullOrWhiteSpace(wifeStatusForLlmContext))
         {
-            ctx.Append(" Wife status (fiction — use for threats, do not quote this header): ");
+            ctx.Append(" Wife status (fiction — the PLAYER's wife held by H; use for threats, do not quote this header): ");
             ctx.Append(wifeStatusForLlmContext.Trim());
             ctx.Append('.');
         }
+        ctx.Append(" Hostage pronoun rule: always \"your wife\" / \"she\" — never \"my wife\" in H's lines. ");
         ctx.Append(" Valid apartment unit numbers in this building are: ");
         ctx.Append(allowed);
         ctx.Append('.');
         ctx.Append(
             " Dialogue rule for this turn: answer the player's actual message first (insults, tone, questions, pleading); ");
+        ctx.Append(
+            "stay in character as a blackmailer—never sound caring, socially normal, or like you are checking if they are ok; ");
         ctx.Append("do not skip straight to delivery instructions or repeat the same job wording as your last reply.");
 
         if (stepAwayBeatThisTurn)
@@ -883,38 +1041,50 @@ public class OllamaConnector : MonoBehaviour
 
         if (dm != null && dm.ActiveDropPointId >= 0 && !stepAwayBeatThisTurn)
         {
-            ctx.Append(
-                " Background (mention only if useful after you have answered the player): an urgent customer package leg is active; ");
-
-            var pickupLabel = dm.CurrentPickupLocationLabel;
-            if (!string.IsNullOrWhiteSpace(pickupLabel))
-            {
-                ctx.Append("The package for this leg is at ");
-                ctx.Append(pickupLabel.Trim());
-                ctx.Append(" (authoritative pickup location — do not say lobby, reception, or a different room).");
-            }
-            else
-                ctx.Append("The package is somewhere in the apartment complex before drop-off at the assigned unit.");
-
             int dest = dm.CurrentLegDestinationApartment;
             if (dest < 0 && dm.TryGetApartmentRoomForActiveDrop(out int mapped))
                 dest = mapped;
 
+            ctx.Append(" ACTIVE DELIVERY LEG.");
+
             if (dest >= 0)
             {
-                ctx.Append(" For the current delivery, the package must be brought to apartment ");
+                ctx.Append(" Drop-off destination is apartment ");
                 ctx.Append(dest);
-                ctx.Append(" only; do not send the player to any other unit.");
+                ctx.Append(" — H must tell the player this exact apartment number when discussing the job.");
             }
             else
-            {
                 ctx.Append(" A delivery is active but no destination apartment is assigned in data; do not invent a room number.");
+
+            if (dm.PendingDestinationAnnouncementForLlm && dest >= 0)
+            {
+                ctx.Append(
+                    " CRITICAL THIS TURN: a new delivery leg was just assigned. After you answer the player, clearly order them to deliver the package to apartment ");
+                ctx.Append(dest);
+                ctx.Append('.');
             }
+
+            var pickupLabel = dm.CurrentPickupLocationLabel;
+            if (!string.IsNullOrWhiteSpace(pickupLabel))
+            {
+                ctx.Append(" Hidden pickup fact (do not name this room to the player): package is at ");
+                ctx.Append(pickupLabel.Trim());
+                ctx.Append('.');
+            }
+
+            ctx.Append(" Tell the player to find the package somewhere in the apartment complex");
+            if (dest >= 0)
+            {
+                ctx.Append(" and deliver it to apartment ");
+                ctx.Append(dest);
+            }
+
+            ctx.Append('.');
 
             if (dm.RequiresPhysicalPickup)
             {
                 ctx.Append(dm.HasPickedUpCurrentPackage
-                    ? " The player has picked up the package for this leg."
+                    ? " The player has picked up the package for this leg; focus on getting it to the destination apartment."
                     : " The player has not picked up the package for this leg yet.");
             }
 
@@ -945,7 +1115,8 @@ public class OllamaConnector : MonoBehaviour
         if (suspicion <= 10)
         {
             ctx.Append(
-                "off guard and relatively chilled; do not hassle the player much about deliveries unless they bring it up; " +
+                "cocky and dismissive criminal calm—superior, coercive, camera-aware; never warm, concerned, or polite like a stranger checking in; " +
+                "do not hassle the player much about deliveries unless they bring it up; " +
                 "cold but not frantic.");
         }
         else if (suspicion < 35)

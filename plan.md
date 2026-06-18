@@ -30,6 +30,7 @@ First-person thriller: an **Ollama-driven** online persona (**H**, kidnapper fic
 | M4 | Hacking vertical slice (maze breach UI: controls dock beside terminal — `refinements-changes.md`) | TBD |
 | M5 | Endings + polish + Windows build | TBD |
 | M6 | Videos + ARC zip | TBD |
+| **Part 3** | Meetup feedback + DDOL restart / LLM stability (**`refinements-changes.md` 2026-06-18**) | In progress |
 
 ---
 

@@ -74,7 +74,7 @@ public static class MessengerChatUIBuilder
         feedTmp.alignment = TextAlignmentOptions.TopLeft;
         feedTmp.color = new Color32(44, 62, 80, 255);
         feedTmp.text = string.Empty;
-        feedTmp.enableWordWrapping = true;
+        feedTmp.textWrappingMode = TextWrappingModes.Normal;
         feedTmp.overflowMode = TextOverflowModes.Overflow;
         scrollRect.viewport = vpRt;
         scrollRect.content = contentRt;
@@ -124,7 +124,7 @@ public static class MessengerChatUIBuilder
         inputTextTmp.fontSize = 20;
         inputTextTmp.color = new Color32(44, 62, 80, 255);
         inputTextTmp.alignment = TextAlignmentOptions.Left;
-        inputTextTmp.enableWordWrapping = false;
+        inputTextTmp.textWrappingMode = TextWrappingModes.NoWrap;
         inputTextTmp.overflowMode = TextOverflowModes.Overflow;
         tmpInput.textViewport = taRt;
         tmpInput.textComponent = inputTextTmp;

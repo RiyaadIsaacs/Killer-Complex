@@ -128,7 +128,7 @@ public static class ComputerDesktopUICreator
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
         tmp.text = "Shutdown";
-        tmp.enableWordWrapping = false;
+        tmp.textWrappingMode = TextWrappingModes.NoWrap;
         tmp.overflowMode = TextOverflowModes.Overflow;
 
         return btn;
@@ -234,7 +234,7 @@ public static class ComputerDesktopUICreator
         tmpLabel.alignment = TextAlignmentOptions.Center;
         tmpLabel.color = Color.white;
         tmpLabel.text = label;
-        tmpLabel.enableWordWrapping = false;
+        tmpLabel.textWrappingMode = TextWrappingModes.NoWrap;
         tmpLabel.overflowMode = TextOverflowModes.Overflow;
 
         var img = go.GetComponent<Image>();
@@ -288,7 +288,7 @@ public static class ComputerDesktopUICreator
         titleTmp.alignment = TextAlignmentOptions.Left;
         titleTmp.color = Color.white;
         titleTmp.text = title;
-        titleTmp.enableWordWrapping = false;
+        titleTmp.textWrappingMode = TextWrappingModes.NoWrap;
         titleTmp.overflowMode = TextOverflowModes.Overflow;
 
         var closeGo = new GameObject("BtnClose", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -319,7 +319,7 @@ public static class ComputerDesktopUICreator
         xTmp.alignment = TextAlignmentOptions.Center;
         xTmp.color = Color.white;
         xTmp.text = "X";
-        xTmp.enableWordWrapping = false;
+        xTmp.textWrappingMode = TextWrappingModes.NoWrap;
         xTmp.overflowMode = TextOverflowModes.Overflow;
 
         if (includeBodyPlaceholder)
@@ -413,7 +413,7 @@ public static class ComputerDesktopUICreator
         t.color = Color.white;
         t.text = "New Message";
         t.margin = new Vector4(14f, 4f, 14f, 4f);
-        t.enableWordWrapping = true;
+        t.textWrappingMode = TextWrappingModes.Normal;
         t.overflowMode = TextOverflowModes.Ellipsis;
 
         return row;

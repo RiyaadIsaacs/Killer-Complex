@@ -115,6 +115,15 @@ public class GameSceneIntroPanel : MonoBehaviour
             return;
 
         CancelScheduledShow();
+
+        GlobalNotificationHud.FindHud()?.EnsureRootActiveForSession();
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        if (!isActiveAndEnabled)
+            return;
+
         _showIntroRoutine = StartCoroutine(ShowIntroNextFrame());
     }
 

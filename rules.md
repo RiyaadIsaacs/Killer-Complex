@@ -14,6 +14,7 @@
 2. **`refinements-changes.md`** — One dated entry for this session: scope changes, bug fixes, what was AI-assisted vs hand-written.
 3. **`ollama-plan.md`** — Update if model, endpoint, parsing, data flow, or prompt **contract** changed.
 4. **`README.md`** — Bump if install steps, controls, or dependencies changed.
+5. **`feedback-summary.md`** — Note which meetup items were addressed when closing feedback loops.
 
 If a file did not change this session, note “no change” in `refinements-changes.md` or skip only when truly nothing documentation-relevant happened.
 

@@ -145,6 +145,17 @@
 
 ---
 
+## 2026-06-18 (continued) — DDOL restart, settings, LLM & timer polish
+
+- **DDOL / scene reload:** `GlobalNotificationHud.MergeSceneInstanceReferences`, `DeliveryManager.CopySceneBindingsFrom` / `RefreshDropPointRegistrationsFromScene`, `DeliveryZone.ResolveDeliveryManager`, `GameplaySessionReset` + `ResetTransientNotificationsForSessionOnHud`; `OllamaConnector.ResetSessionStateForSceneLoad` clears stale refs; `ChatManager.ResolveOllamaConnector`.
+- **Bugs fixed:** Main-menu retry — destroyed delivery refs, missing drop points, LLM disconnect, stale package-delivered toast, intro coroutine on inactive HUD.
+- **UX:** `DeliveryObjectiveHud` under timer; timer **pauses** at open PC (`DeliveryUrgencyTimer` + `ComputerTerminal.NotifyComputerSessionOpened`); pause **Settings** menu (`GameSettingsMenu`, `PauseMenuUiFactory`, editor setup menu).
+- **LLM:** Greeting/hostage-pronoun/quest-log rules in `SystemPrompt`; CONTEXT destination announcement; reply strip/normalize; bold **H:** messenger labels.
+- **Input:** `BpsMouseInput.cs` + 15 BPS scripts for Unity 6 Input System.
+- **Documentation:** All team docs updated; pushed to **`origin/main`** with code.
+
+---
+
 ## Backlog (personal)
 
 - [ ] *(Add tasks you own next.)*

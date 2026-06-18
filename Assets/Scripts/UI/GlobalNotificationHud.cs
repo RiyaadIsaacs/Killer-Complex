@@ -104,12 +104,64 @@ public class GlobalNotificationHud : MonoBehaviour
 
         if (_instance != null && _instance != this)
         {
+            _instance.MergeSceneInstanceReferences(this);
             Destroy(gameObject);
             return;
         }
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        EnsureRootActiveForSession();
+    }
+
+    public void EnsureRootActiveForSession()
+    {
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        var hudRect = transform as RectTransform;
+        if (hudRect != null && hudRect.localScale == Vector3.zero)
+            hudRect.localScale = Vector3.one;
+    }
+
+    /// <summary>Clears timed delivery toasts/banners so a prior run cannot flash after reload.</summary>
+    public void ResetTransientNotificationsForSession()
+    {
+        if (_deliveryRowHideRoutine != null)
+        {
+            StopCoroutine(_deliveryRowHideRoutine);
+            _deliveryRowHideRoutine = null;
+        }
+
+        if (_centerBannerHideRoutine != null)
+        {
+            StopCoroutine(_centerBannerHideRoutine);
+            _centerBannerHideRoutine = null;
+        }
+
+        SetPackageDeliveredLabelVisible(false);
+        HideUrgentDeliveryTimer();
+
+        if (_centerBannerRoot != null)
+            _centerBannerRoot.SetActive(false);
+
+        if (packageDeliveredLabel != null)
+            packageDeliveredLabel.text = string.Empty;
+    }
+
+    public static void ResetTransientNotificationsForSessionOnHud() =>
+        FindHud()?.ResetTransientNotificationsForSession();
+
+    /// <summary>
+    /// Copies scene-only references from a duplicate HUD instance before it is destroyed on reload.
+    /// </summary>
+    internal void MergeSceneInstanceReferences(GlobalNotificationHud sceneHud)
+    {
+        if (sceneHud == null || sceneHud == this)
+            return;
+
+        GetComponent<DeliveryManager>()?.CopySceneBindingsFrom(sceneHud.GetComponent<DeliveryManager>());
+        EnsureRootActiveForSession();
     }
 
     private void OnDestroy()
@@ -183,6 +235,13 @@ public class GlobalNotificationHud : MonoBehaviour
         }
 
         return null;
+    }
+
+    /// <summary>Persistent <see cref="DeliveryManager"/> on the DontDestroyOnLoad HUD (if present).</summary>
+    public static DeliveryManager FindDeliveryManager()
+    {
+        var hud = FindHud();
+        return hud != null ? hud.GetComponent<DeliveryManager>() : null;
     }
 
     public void SetUrgentDeliveryTimerVisible(bool visible)
@@ -282,6 +341,7 @@ public class GlobalNotificationHud : MonoBehaviour
             _deliveryRowHideRoutine = null;
         }
 
+        EnsureRootActiveForSession();
         EnsureActiveHierarchy(gameObject);
 
         packageDeliveredLabel.text = message;

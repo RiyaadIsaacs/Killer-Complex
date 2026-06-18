@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -49,19 +50,52 @@ public class PauseScreen : MonoBehaviour
         if (player == null)
             player = FindFirstObjectByType<PlayerController>();
 
+        EnsurePauseCanvasScale();
+
         if (pausePanel != null)
             pausePanel.SetActive(false);
 
+        EnsureSettingsMenu();
+        EnsurePauseSettingsButton();
+    }
+
+    void EnsureSettingsMenu()
+    {
+        if (pausePanel == null)
+            return;
+
         if (settingsMenu == null)
-            settingsMenu = GetComponentInChildren<GameSettingsMenu>(true);
+            settingsMenu = pausePanel.GetComponentInChildren<GameSettingsMenu>(true);
+
         if (settingsMenu == null)
         {
             var settingsGo = new GameObject("GameSettingsMenu", typeof(RectTransform), typeof(GameSettingsMenu));
-            settingsGo.transform.SetParent(transform, false);
+            settingsGo.transform.SetParent(pausePanel.transform, false);
+            var settingsRt = settingsGo.GetComponent<RectTransform>();
+            settingsRt.anchorMin = Vector2.zero;
+            settingsRt.anchorMax = Vector2.one;
+            settingsRt.offsetMin = Vector2.zero;
+            settingsRt.offsetMax = Vector2.zero;
             settingsMenu = settingsGo.GetComponent<GameSettingsMenu>();
         }
 
-        EnsurePauseSettingsButton();
+        var styleSource = PauseMenuUiFactory.FindMenuButtonStyleSource(pausePanel.transform);
+        settingsMenu.Initialize(pausePanel, styleSource, this);
+    }
+
+    /// <summary>Hides pause dimmer and buttons while the settings overlay is open.</summary>
+    public void SetPauseMenuChromeVisible(bool visible)
+    {
+        if (pausePanel == null)
+            return;
+
+        foreach (Transform child in pausePanel.transform)
+        {
+            if (child.name == "GameSettingsMenu")
+                continue;
+
+            child.gameObject.SetActive(visible);
+        }
     }
 
     void EnsurePauseSettingsButton()
@@ -69,42 +103,74 @@ public class PauseScreen : MonoBehaviour
         if (pausePanel == null)
             return;
 
-        if (pausePanel.transform.Find("BtnSettings") != null)
+        CleanupLegacySettingsButtons();
+
+        var styleSource = PauseMenuUiFactory.FindMenuButtonStyleSource(pausePanel.transform);
+        if (styleSource == null)
             return;
 
-        var sprite = Sprite.Create(
-            Texture2D.whiteTexture,
-            new Rect(0f, 0f, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height),
-            new Vector2(0.5f, 0.5f),
-            100f);
+        RepositionMainMenuButton();
 
-        var btnGo = new GameObject("BtnSettings", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
-        btnGo.transform.SetParent(pausePanel.transform, false);
-        var rt = btnGo.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.35f);
-        rt.sizeDelta = new Vector2(220f, 44f);
+        var existing = pausePanel.transform.Find("Settings");
+        if (existing != null)
+        {
+            PauseMenuUiFactory.RewireButton(existing.GetComponent<Button>(), OpenSettings);
+            PauseMenuUiFactory.ApplyButtonLabel(existing, "Settings", styleSource);
+            return;
+        }
 
-        var img = btnGo.GetComponent<UnityEngine.UI.Image>();
-        img.sprite = sprite;
-        img.color = new Color32(70, 95, 120, 255);
+        PauseMenuUiFactory.CreateTextButton(
+            pausePanel.transform,
+            "Settings",
+            "Settings",
+            new Vector2(0f, -111f),
+            new Vector2(250f, 80f),
+            styleSource,
+            OpenSettings);
+    }
 
-        var btn = btnGo.GetComponent<UnityEngine.UI.Button>();
-        btn.onClick.AddListener(OpenSettings);
+    void CleanupLegacySettingsButtons()
+    {
+        foreach (Transform child in pausePanel.transform)
+        {
+            if (child.name != "BtnSettings")
+                continue;
 
-        var font = TMPro.TMP_Settings.defaultFontAsset;
-        var textGo = new GameObject("Text", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
-        textGo.transform.SetParent(btnGo.transform, false);
-        var textRt = textGo.GetComponent<RectTransform>();
-        textRt.anchorMin = Vector2.zero;
-        textRt.anchorMax = Vector2.one;
-        textRt.offsetMin = Vector2.zero;
-        textRt.offsetMax = Vector2.zero;
-        var tmp = textGo.GetComponent<TMPro.TextMeshProUGUI>();
-        if (font != null) tmp.font = font;
-        tmp.text = "Settings";
-        tmp.fontSize = 22;
-        tmp.alignment = TMPro.TextAlignmentOptions.Center;
-        tmp.color = Color.white;
+            Destroy(child.gameObject);
+        }
+
+        var settings = pausePanel.transform.Find("Settings");
+        if (settings == null)
+            return;
+
+        var image = settings.GetComponent<Image>();
+        if (image == null || image.sprite == null)
+            return;
+
+        var resume = pausePanel.transform.Find("Resume")?.GetComponent<Image>();
+        if (resume != null && image.sprite == resume.sprite)
+            Destroy(settings.gameObject);
+    }
+
+    void RepositionMainMenuButton()
+    {
+        var mainMenu = pausePanel.transform.Find("Main Menu");
+        if (mainMenu == null)
+            return;
+
+        var mainMenuRt = mainMenu.GetComponent<RectTransform>();
+        if (mainMenuRt != null && mainMenuRt.anchoredPosition.y > -150f)
+            mainMenuRt.anchoredPosition = new Vector2(mainMenuRt.anchoredPosition.x, -222f);
+    }
+
+    void EnsurePauseCanvasScale()
+    {
+        if (pausePanel == null)
+            return;
+
+        var rt = pausePanel.transform as RectTransform;
+        if (rt != null && rt.localScale == Vector3.zero)
+            rt.localScale = Vector3.one;
     }
 
     void OnDestroy()
@@ -151,10 +217,13 @@ public class PauseScreen : MonoBehaviour
         IsPaused = false;
         Time.timeScale = 1f;
 
-        if (pausePanel != null)
-            pausePanel.SetActive(false);
-
         settingsMenu?.CloseSettings();
+
+        if (pausePanel != null)
+        {
+            SetPauseMenuChromeVisible(true);
+            pausePanel.SetActive(false);
+        }
 
         if (player != null)
             player.enabled = true;
@@ -193,6 +262,8 @@ public class PauseScreen : MonoBehaviour
     {
         if (IsPaused)
             return;
+
+        EnsurePauseCanvasScale();
 
         IsPaused = true;
         Time.timeScale = 0f;

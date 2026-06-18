@@ -205,3 +205,19 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify in Editor/build: restart, objective HUD, settings, one full delivery leg with Ollama.
 
 ---
+
+## 2026-06-18 (continued) — DDOL restart, pause/settings, LLM polish, timer at PC
+
+**Follow-up after meetup push (`0c732e7`)** — playtest loop **Main Game → Main Menu → Main Game**, hacking messenger replies, and in-editor settings.
+
+- **DDOL session reset:** `GlobalNotificationHud` merges scene `DeliveryManager` bindings (package + spawn points) before destroying duplicate HUD instances; `DeliveryZone` / `DeliveryCompletionChatNotifier` always register with persistent `DeliveryManager`; `RefreshDropPointRegistrationsFromScene()` on gameplay load; `OllamaConnector` + `ChatManager` re-resolve connectors/managers after reload; `GameplaySessionReset` clears transient HUD toasts.
+- **Main menu retry bugs:** Fixed `MissingReferenceException` on destroyed `DeliveryItem`; `NullReferenceException` in `PrepareNextDeliveryFromAi`; false **Package Delivered** toast after restart (`ResetTransientNotificationsForSession`); intro coroutine on inactive HUD (`GameSceneIntroPanel` + `EnsureRootActiveForSession`).
+- **Delivery objective HUD:** `DeliveryObjectiveHud` stacked under urgent timer; pickup copy **“Find the package in the complex.”** (no room); visible only while `DeliveryUrgencyTimer.IsCountdownActive`.
+- **Timer at computer:** Active countdown **pauses** while any `ComputerTerminal` session is open (`NotifyComputerSessionOpened` / `Update` guard), not only deferred start on first **H** line.
+- **Pause / settings:** `GameSettingsMenu` on pause canvas (mouse sensitivity via `PlayerPrefs`); `PauseMenuUiFactory` + editor **Killer Complex → UI → Setup Pause Settings Menu**; pause chrome hides when settings overlay open.
+- **LLM / messenger:** Stronger **H** tone (greetings, destination apartment in orders, hidden pickup in CONTEXT only); `StripEchoedContextFromModelReply` + `NormalizeMessengerReplyForDisplay` (no `Job:` / `[CONTEXT]` leaks); **hostage pronouns** (`my wife` → `your wife` in prompt + post-process); `ChatManager` shows **bold `H:`** via TMP (`<noparse>` body).
+- **Input System:** `BpsMouseInput` + BPS interact scripts use **Input System** mouse (`Mouse.current`) instead of legacy `Input.GetMouseButtonDown`.
+- **Docs:** `prompts-used.md`, `ollama-plan.md`, `setup.md`, `README.md`, `feedback-summary.md`, `RiyaadWork.md`, `plan.md`, this file.
+- **AI-assisted:** Cursor; verify: menu round-trip, messenger after hack, timer frozen at desk, settings from pause, one full delivery with Ollama.
+
+---

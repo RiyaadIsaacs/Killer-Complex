@@ -628,7 +628,7 @@ public class HackingMazeMinigame : MonoBehaviour
         titleTmp.alignment = TextAlignmentOptions.TopLeft;
         titleTmp.color = new Color32(210, 220, 235, 255);
         titleTmp.text = "Controls";
-        titleTmp.enableWordWrapping = false;
+        titleTmp.textWrappingMode = TextWrappingModes.NoWrap;
 
         var bodyGo = new GameObject("ControlsBody", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
         bodyGo.transform.SetParent(wrap.transform, false);
@@ -651,7 +651,7 @@ public class HackingMazeMinigame : MonoBehaviour
         bodyTmp.fontSize = dockOutsideTerminal ? 17 : 19;
         bodyTmp.alignment = TextAlignmentOptions.TopLeft;
         bodyTmp.color = new Color32(175, 198, 218, 255);
-        bodyTmp.enableWordWrapping = true;
+        bodyTmp.textWrappingMode = TextWrappingModes.Normal;
         bodyTmp.lineSpacing = 6f;
         bodyTmp.text =
             "• Move: WASD or arrow keys — hold to slide along corridors\n" +
@@ -695,7 +695,7 @@ public class HackingMazeMinigame : MonoBehaviour
         _hintLabel.fontStyle = FontStyles.Normal;
         _hintLabel.alignment = TextAlignmentOptions.Center;
         _hintLabel.color = new Color32(16, 20, 24, 255);
-        _hintLabel.enableWordWrapping = false;
+        _hintLabel.textWrappingMode = TextWrappingModes.NoWrap;
         _hintLabel.overflowMode = TextOverflowModes.Ellipsis;
         _hintLabel.raycastTarget = false;
         _hintLabel.text = string.Empty;
@@ -711,7 +711,7 @@ public class HackingMazeMinigame : MonoBehaviour
         tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = new Color32(195, 215, 235, 255);
-        tmp.enableWordWrapping = true;
+        tmp.textWrappingMode = TextWrappingModes.Normal;
         tmp.text = text;
         return tmp;
     }

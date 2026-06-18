@@ -62,6 +62,8 @@ public class ComputerTerminal : MonoBehaviour
         player.enabled = false;
         computerScreenRoot.SetActive(true);
 
+        DeliveryUrgencyTimer.NotifyComputerSessionOpened();
+
         var desktopUi = computerScreenRoot.GetComponentInChildren<ComputerDesktopUI>(true);
         desktopUi?.OnComputerSessionOpened();
     }

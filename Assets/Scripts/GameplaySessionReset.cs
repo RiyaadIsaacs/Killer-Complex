@@ -34,5 +34,7 @@ public static class GameplaySessionReset
             if (terminal != null && terminal.IsOpen)
                 terminal.CloseTerminal();
         }
+
+        GlobalNotificationHud.ResetTransientNotificationsForSessionOnHud();
     }
 }

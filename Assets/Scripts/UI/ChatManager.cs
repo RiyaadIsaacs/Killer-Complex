@@ -74,6 +74,8 @@ public class ChatManager : MonoBehaviour
 
     private void OnEnable()
     {
+        ResolveOllamaConnector();
+
         if (_openingMessageShown || string.IsNullOrWhiteSpace(openingMessage))
             return;
 
@@ -183,8 +185,9 @@ public class ChatManager : MonoBehaviour
         AppendLine(line);
         if (IsHSender(senderName))
         {
-            if (ollamaConnector != null)
-                ollamaConnector.NotifyHPostedToMessenger();
+            var connector = ResolveOllamaConnector();
+            if (connector != null)
+                connector.NotifyHPostedToMessenger();
             else
                 TryStartDeliveryUrgencyTimerAfterHMessage();
         }
@@ -207,8 +210,9 @@ public class ChatManager : MonoBehaviour
         if (string.IsNullOrEmpty(text))
             return;
 
-        if (ollamaConnector != null)
-            ollamaConnector.NotifyPlayerMessengerSend();
+        var connector = ResolveOllamaConnector();
+        if (connector != null)
+            connector.NotifyPlayerMessengerSend();
 
         AppendLine(FormatLine(PlayerLabel, text));
         chatInputField.text = string.Empty;
@@ -220,8 +224,8 @@ public class ChatManager : MonoBehaviour
         if (!deferPrepareNextLeg)
             MaybePrepareDeliveryWhenMessengerSendIfIdle();
 
-        if (ollamaConnector != null)
-            ollamaConnector.SendToOllama(text);
+        if (connector != null)
+            connector.SendToOllama(text);
         else if (deferPrepareNextLeg && dm != null)
             dm.AbandonPostDeliveryStepAwayBeat();
 
@@ -254,11 +258,28 @@ public class ChatManager : MonoBehaviour
 
     DeliveryManager ResolveDeliveryManager()
     {
+        var persistent = GlobalNotificationHud.FindDeliveryManager();
+        if (persistent != null)
+        {
+            deliveryManager = persistent;
+            return persistent;
+        }
+
         if (deliveryManager != null)
             return deliveryManager;
-        if (_cachedDeliveryManager == null)
-            _cachedDeliveryManager = UnityEngine.Object.FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
-        return _cachedDeliveryManager;
+
+        _cachedDeliveryManager = UnityEngine.Object.FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
+        deliveryManager = _cachedDeliveryManager;
+        return deliveryManager;
+    }
+
+    OllamaConnector ResolveOllamaConnector()
+    {
+        if (ollamaConnector != null)
+            return ollamaConnector;
+
+        ollamaConnector = UnityEngine.Object.FindFirstObjectByType<OllamaConnector>(FindObjectsInactive.Include);
+        return ollamaConnector;
     }
 
     static void TryStartDeliveryUrgencyTimerAfterHMessage()
@@ -272,7 +293,14 @@ public class ChatManager : MonoBehaviour
 
     private static string FormatLineStatic(string senderName, string body)
     {
-        return $"[{senderName}]: {body}";
+        string sender = string.IsNullOrWhiteSpace(senderName) ? "H" : senderName.Trim();
+        string text = string.IsNullOrWhiteSpace(body) ? string.Empty : body.Trim();
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        // Bold sender + noparse body: avoids TMP eating [H] sprite tags and prevents model <tags> breaking layout.
+        string safeBody = text.Replace("</noparse>", string.Empty, StringComparison.OrdinalIgnoreCase);
+        return $"<b>{sender}</b>: <noparse>{safeBody}</noparse>";
     }
 
     private static string FormatLine(string senderName, string body)

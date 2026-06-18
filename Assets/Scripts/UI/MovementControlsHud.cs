@@ -104,7 +104,7 @@ public class MovementControlsHud : MonoBehaviour
         tmp.fontSize = 20;
         tmp.alignment = TextAlignmentOptions.TopLeft;
         tmp.color = new Color32(195, 215, 235, 255);
-        tmp.enableWordWrapping = true;
+        tmp.textWrappingMode = TextWrappingModes.Normal;
         tmp.lineSpacing = 4f;
         tmp.text = string.IsNullOrWhiteSpace(controlsText) ? DefaultControlsText : controlsText;
     }

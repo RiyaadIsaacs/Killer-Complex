@@ -15,6 +15,14 @@ public class DeliveryItem : MonoBehaviour
     [Tooltip("Same manager that references this item as its reception package (required for Interact pickup).")]
     [SerializeField] private DeliveryManager deliveryManager;
 
+    public bool IsAssignedTo(DeliveryManager manager) => deliveryManager == manager;
+
+    public void BindDeliveryManager(DeliveryManager manager)
+    {
+        if (manager != null)
+            deliveryManager = manager;
+    }
+
     [Header("Highlight while active")]
     [SerializeField] private bool spinWhileActive = true;
     [SerializeField] private float spinDegreesPerSecond = 45f;

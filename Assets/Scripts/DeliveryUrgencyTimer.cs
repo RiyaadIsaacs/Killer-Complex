@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 /// Per-leg countdown for urgent package deliveries. Each new leg gets
 /// <see cref="initialLegTimeSeconds"/> minus <see cref="secondsReducedPerCompletedLeg"/> times legs already completed.
 /// Shows the bad-ending (death) canvas when time runs out.
+/// The countdown pauses while any <see cref="ComputerTerminal"/> session is open (messenger, hacking, etc.).
 /// Attach this to a persistent UI root (e.g. with <see cref="GlobalNotificationHud"/>), <b>not</b> on the
 /// <see cref="DeliveryItem"/> / package object — pickup calls <see cref="DeliveryItem.Deactivate"/> which disables that GameObject
 /// and would freeze the countdown.
@@ -51,7 +52,7 @@ public class DeliveryUrgencyTimer : MonoBehaviour
     bool _countdownActive;
     bool _timedOut;
     bool _awaitingHMessageToStartTimer;
-    /// <summary>True after H posted for the active leg while the PC was open — countdown starts on <see cref="TryStartCountdownAfterComputerSessionClosed"/>.</summary>
+    /// <summary>True after H posted for the active leg while the PC was open — countdown starts on <see cref="TryCommitDeferredLegCountdown"/>.</summary>
     bool _awaitingComputerCloseToStartTimer;
     int _pendingTimerCompletedLegCount;
 
@@ -122,10 +123,10 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         if (IsMenuScene(scene.name))
             EnterMenuScene();
         else
-            ResetTimerForGameplaySceneLoaded();
+            ResetTimerForGameplaySceneLoaded(scene);
     }
 
-    void ResetTimerForGameplaySceneLoaded()
+    void ResetTimerForGameplaySceneLoaded(Scene scene)
     {
         CancelAllDeferredCountdownState();
         StopCountdown();
@@ -168,8 +169,21 @@ public class DeliveryUrgencyTimer : MonoBehaviour
     }
 
     /// <summary>
+    /// Call when the player opens the computer (<see cref="ComputerTerminal.Interact"/>).
+    /// An active leg countdown keeps its remaining time but does not tick until the session ends.
+    /// </summary>
+    public static void NotifyComputerSessionOpened()
+    {
+        foreach (var timer in FindObjectsByType<DeliveryUrgencyTimer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (timer != null)
+                timer.OnComputerSessionOpened();
+        }
+    }
+
+    /// <summary>
     /// Call when the player leaves the computer (<see cref="ComputerTerminal.CloseTerminal"/>).
-    /// Starts the leg countdown if it was deferred while H's reply arrived during an open session.
+    /// Resumes a paused countdown or starts one that was deferred while H's reply arrived during an open session.
     /// </summary>
     public static void NotifyComputerSessionClosed()
     {
@@ -216,9 +230,20 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         StopCountdown();
     }
 
+    void OnComputerSessionOpened()
+    {
+        if (!_countdownActive || _timedOut)
+            return;
+
+        RefreshCountdownLabel();
+    }
+
     void Update()
     {
         if (!_countdownActive || _timedOut)
+            return;
+
+        if (IsAnyComputerSessionOpen())
             return;
 
         _remainingSeconds -= Time.deltaTime;
@@ -267,9 +292,9 @@ public class DeliveryUrgencyTimer : MonoBehaviour
 
     /// <summary>
     /// Called after <b>H</b> posts to the messenger when a leg is waiting for that reply.
-    /// If the computer session is open, the countdown is deferred until the player finishes the breach maze
-    /// (<see cref="TryResumeDeferredCountdownAfterMazeClosed"/>) or leaves the computer entirely
-    /// (<see cref="NotifyComputerSessionClosed"/>). If the PC is already closed, starts immediately.
+    /// If the computer session is open, the countdown is deferred until the player leaves the computer
+    /// (<see cref="NotifyComputerSessionClosed"/>). An already-running countdown pauses for the same session.
+    /// If the PC is already closed, starts immediately.
     /// </summary>
     public void TryStartCountdownAfterHMessage()
     {
@@ -475,8 +500,17 @@ public class DeliveryUrgencyTimer : MonoBehaviour
 
     DeliveryManager ResolveDeliveryManager()
     {
+        var persistent = GlobalNotificationHud.FindDeliveryManager();
+        if (persistent != null)
+        {
+            deliveryManager = persistent;
+            _resolvedDeliveryManager = persistent;
+            return persistent;
+        }
+
         if (deliveryManager != null)
             return deliveryManager;
+
         if (_resolvedDeliveryManager == null)
             _resolvedDeliveryManager = FindFirstObjectByType<DeliveryManager>(FindObjectsInactive.Include);
         return _resolvedDeliveryManager;

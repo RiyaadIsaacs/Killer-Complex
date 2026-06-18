@@ -83,7 +83,7 @@ public static class GameIntroPanelUiLayout
         bodyText.fontSize = 20;
         bodyText.alignment = TextAlignmentOptions.TopLeft;
         bodyText.color = new Color32(210, 218, 226, 255);
-        bodyText.enableWordWrapping = true;
+        bodyText.textWrappingMode = TextWrappingModes.Normal;
         bodyText.lineSpacing = 4f;
         bodyText.text = GameSceneIntroPanel.DefaultBody;
 

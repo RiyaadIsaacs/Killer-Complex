@@ -82,7 +82,7 @@ public static class GoodEndingCanvasCreator
         subTmp.fontSize = 28f;
         subTmp.alignment = TextAlignmentOptions.Center;
         subTmp.color = new Color32(200, 215, 205, 255);
-        subTmp.enableWordWrapping = true;
+        subTmp.textWrappingMode = TextWrappingModes.Normal;
         subTmp.raycastTarget = false;
 
         if (!AssetDatabase.IsValidFolder("Assets/Prefabs"))

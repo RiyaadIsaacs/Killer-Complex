@@ -92,6 +92,15 @@ public static class GlobalNotificationHudCreator
             "Urgent: 160s",
             FontStyles.Bold);
 
+        CreateNotificationRow(
+            topLeft.transform,
+            "DeliveryObjectiveLabel",
+            new Vector2(0f, -104f),
+            new Color32(45, 58, 72, 230),
+            tmpFont,
+            "Find the package in the complex.",
+            FontStyles.Bold);
+
         var hud = root.GetComponent<GlobalNotificationHud>();
         var soHud = new SerializedObject(hud);
         soHud.FindProperty("topLeftContent").objectReferenceValue = tlRt;
@@ -286,7 +295,7 @@ public static class GlobalNotificationHudCreator
         slotTmp.color = Color.white;
         slotTmp.margin = new Vector4(14f, 4f, 14f, 4f);
         slotTmp.text = defaultText;
-        slotTmp.enableWordWrapping = true;
+        slotTmp.textWrappingMode = TextWrappingModes.Normal;
         return slotTmp;
     }
 
@@ -337,7 +346,7 @@ public static class GlobalNotificationHudCreator
                 tmp.color = Color.white;
                 tmp.margin = new Vector4(14f, 4f, 14f, 4f);
                 tmp.text = "Urgent: 90s";
-                tmp.enableWordWrapping = true;
+                tmp.textWrappingMode = TextWrappingModes.Normal;
             }
         }
 
@@ -392,7 +401,7 @@ public static class GlobalNotificationHudCreator
         slotTmp.color = Color.white;
         slotTmp.margin = new Vector4(14f, 4f, 14f, 4f);
         slotTmp.text = "Package delivered";
-        slotTmp.enableWordWrapping = true;
+        slotTmp.textWrappingMode = TextWrappingModes.Normal;
     }
 
     static Sprite CreateWhiteSprite()

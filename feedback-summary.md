@@ -35,7 +35,9 @@
 | 13 | Package delivered popup more noticeable (center, bigger) | C | UI | `GlobalNotificationHud` |
 | 14 | Package pickup should spin / highlight so it's easier to spot | C | UX | `DeliveryItem` |
 | 15 | Players forget room number when PC closes — timer + objective HUD | C | UX | Objective + 160s timer |
-| 16 | *(Observed during playtest)* H sometimes says package is in lobby but spawn is randomized | Team | LLM accuracy | `OllamaConnector` CONTEXT vs `DeliveryManager` spawns |
+| 16 | *(Observed during playtest)* H sometimes says package is in lobby but spawn is randomized | Team | LLM accuracy | `OllamaConnector` CONTEXT vs `DeliveryManager` spawns — **addressed 2026-06-18** (pickup hidden from player; authoritative spawn in CONTEXT only) |
+
+**Status after 2026-06-18 (continued) push:** Rows **2–4**, **7**, **9–10**, **12–16** targeted in code/docs (DDOL restart, 160s timer, objective HUD, settings, LLM reconnect, timer pause at PC, messenger formatting, pickup/destination sync). Re-test in **Windows build** before final submission video.
 
 ---
 
