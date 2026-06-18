@@ -1,6 +1,6 @@
 # Individual contribution log — Riyaad
 
-**Module:** GADS7331 — Game Design 3A (Part 2)  
+**Module:** GADS7331 — Game Design 3A (Part 2 + Part 3)  
 **Repo:** Killer Complex (pair project — partner should maintain a parallel file)
 
 ---
@@ -126,6 +126,22 @@
 - **Systems:** Urgency timer second-leg + suppress reorder + maze **`TryResumeDeferredCountdownAfterMazeClosed`**; **`DeliveryManager.ResetRunStateForNewPlaySession`** on load (pause restart); maze **`IsHazardAt`** / layout refresh; **`PlayerController`** viewport interact ray.
 - **LLM / UX:** Step-away **CONTEXT** hardening; bad-ending trap defers **`ComputerDesktopUI`** lock until **`CloseTerminal`** so **H**’s final line shows in messenger.
 - **Documentation:** **`setup.md`**, **`prompts-used.md`**, **`ollama-plan.md`**, **`refinements-changes.md`**, this file; pushed with code.
+
+---
+
+## 2026-06-18 — Part 3: Joburg Game Dev Meetup feedback integration
+
+- **Event:** Joburg Game Dev Meetup (lecturer-approved) — live demo to 3 external attendees (3D artist, hobbyist, programmer); feedback captured in **`feedback-summary.md`**; critical analysis in **`critical-feedback.md`**; reflection scaffold **`part3-reflection.md`**.
+- **Timer:** **`DeliveryUrgencyTimer`** — per-leg base budget **160s** (was 90s); **`GlobalNotificationHUD.prefab`** + **`GlobalNotificationHudCreator`** placeholder text updated.
+- **Objective HUD:** **`DeliveryObjectiveHud.cs`** — top-center “Find package” / “Deliver to: Room …” while a leg is active; auto-added on **`GlobalNotificationHud`**.
+- **LLM pickup sync:** **`DeliveryPickupSpawnPoint.cs`**, **`DeliveryManager.CurrentPickupLocationLabel`**; **`OllamaConnector`** CONTEXT uses authoritative pickup site (removed lobby/reception default); system prompt rule against inventing lobby.
+- **Model:** Default **`llama3.2:3b`** on **`OllamaConnector`**, **`Main Game.unity`**, **`setup.md`**, **`ollama-plan.md`** §2 (meetup feedback: faster/smaller local model).
+- **Settings:** **`GameSettingsMenu.cs`** + **`PauseScreen`** — **Esc → Pause → Settings** (runtime **Settings** button if missing); **`PlayerController`** mouse sensitivity via **`PlayerPrefs`** (0.5×–3×).
+- **UX polish:** **`GlobalNotificationHud`** center-screen package-delivered banner; **`DeliveryItem`** spin/bob highlight while active.
+- **Restart / build stability:** **`GameplaySessionReset.cs`** on gameplay scene load — **`HackingMazeMinigame.ForceCloseForSessionReset`**, **`ComputerDesktopUI.ResetForNewGameplaySession`**, **`OllamaConnector.ResetSessionStateForSceneLoad`**; **`DeliveryUrgencyTimer.TryCommitDeferredLegCountdown`** waits if PC session still open after maze.
+- **Declined (documented):** Tab-phone terminal — conflicts with computer-as-hub design; see **`critical-feedback.md`**.
+- **Documentation:** **`feedback-summary.md`**, **`critical-feedback.md`**, **`part3-reflection.md`**, **`refinements-changes.md`**, **`README.md`**, **`setup.md`**, **`ollama-plan.md`**, **`prompts-used.md`**, this file.
+- **Pushed:** Commit **`0c732e7`** (Part 3 refinements) + this **`RiyaadWork.md`** update to **`origin/main`**.
 
 ---
 
