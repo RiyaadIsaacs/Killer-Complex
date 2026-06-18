@@ -21,8 +21,10 @@ This prototype includes **pressure / coercion / thriller** themes (fiction: **ho
 | [setup.md](setup.md) | Unity + Ollama install, troubleshooting |
 | [rules.md](rules.md) | Git discipline, **pre-push checklist** (includes `prompts-used.md`) |
 | [refinements-changes.md](refinements-changes.md) | Dated changelog and AI-assisted decisions |
-| [feedback-summary.md](feedback-summary.md) | **Part 3** — meetup feedback log |
-| [critical-feedback.md](critical-feedback.md) | **Part 3** — critical engagement (~600 words) |
+| [feedback-summary.md](feedback-summary.md) | **Part 3** — meetup feedback log + attendance evidence |
+| [critical-feedback.md](critical-feedback.md) | **Part 3** — critical engagement (rubric-depth analysis) |
+| [part3-poe-checklist.md](part3-poe-checklist.md) | **Part 3** — submission checklist vs module rubric |
+| [part3-reflection.md](part3-reflection.md) | **Part 3** — final reflection draft (600–800 words) |
 | [prompts-used.md](prompts-used.md) | **All prompts tested** — update before every push |
 | [RiyaadWork.md](RiyaadWork.md) | Riyaad’s contribution log *(partner: add your own file)* |
 
