@@ -89,7 +89,7 @@ public static class GlobalNotificationHudCreator
             new Vector2(0f, -52f),
             new Color32(92, 46, 46, 235),
             tmpFont,
-            "Urgent: 90s",
+            "Urgent: 160s",
             FontStyles.Bold);
 
         var hud = root.GetComponent<GlobalNotificationHud>();
@@ -317,7 +317,7 @@ public static class GlobalNotificationHudCreator
                 new Vector2(0f, -52f),
                 new Color32(92, 46, 46, 235),
                 tmpFont,
-                "Urgent: 90s",
+                "Urgent: 160s",
                 FontStyles.Bold);
         }
         else

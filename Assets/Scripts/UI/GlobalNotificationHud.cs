@@ -25,9 +25,17 @@ public class GlobalNotificationHud : MonoBehaviour
     [Tooltip("If true, only one HUD survives scene loads (typical for global toasts).")]
     [SerializeField] private bool persistAcrossScenes = true;
 
+    [Header("Center delivery banner")]
+    [SerializeField] private bool useCenterScreenDeliveryBanner = true;
+    [SerializeField] private float centerBannerFontSize = 36f;
+    [SerializeField] private float centerBannerDisplaySeconds = 3f;
+
     private static GlobalNotificationHud _instance;
 
     Coroutine _deliveryRowHideRoutine;
+    Coroutine _centerBannerHideRoutine;
+    GameObject _centerBannerRoot;
+    TextMeshProUGUI _centerBannerLabel;
 
     public RectTransform TopLeftContent => topLeftContent;
     public TextMeshProUGUI PackageDeliveredLabel => packageDeliveredLabel;
@@ -84,6 +92,9 @@ public class GlobalNotificationHud : MonoBehaviour
         if (GetComponent<GameSceneIntroPanel>() == null)
             gameObject.AddComponent<GameSceneIntroPanel>();
 
+        if (GetComponent<DeliveryObjectiveHud>() == null)
+            gameObject.AddComponent<DeliveryObjectiveHud>();
+
         var hudRect = transform as RectTransform;
         if (hudRect != null && hudRect.localScale == Vector3.zero)
             hudRect.localScale = Vector3.one;
@@ -107,6 +118,12 @@ public class GlobalNotificationHud : MonoBehaviour
         {
             StopCoroutine(_deliveryRowHideRoutine);
             _deliveryRowHideRoutine = null;
+        }
+
+        if (_centerBannerHideRoutine != null)
+        {
+            StopCoroutine(_centerBannerHideRoutine);
+            _centerBannerHideRoutine = null;
         }
 
         if (_instance == this)
@@ -247,6 +264,8 @@ public class GlobalNotificationHud : MonoBehaviour
         }
 
         hud.ShowTimedDeliveryRowMessage(message, displaySeconds);
+        if (hud.useCenterScreenDeliveryBanner)
+            hud.ShowCenterDeliveryBanner(message, hud.centerBannerDisplaySeconds);
     }
 
     void ShowTimedDeliveryRowMessage(string message, float displaySeconds)
@@ -274,6 +293,73 @@ public class GlobalNotificationHud : MonoBehaviour
         }
 
         _deliveryRowHideRoutine = StartCoroutine(HideDeliveryRowAfter(row, Mathf.Max(0.25f, displaySeconds)));
+    }
+
+    void ShowCenterDeliveryBanner(string message, float displaySeconds)
+    {
+        EnsureCenterBannerBuilt();
+        if (_centerBannerRoot == null || _centerBannerLabel == null)
+            return;
+
+        if (_centerBannerHideRoutine != null)
+        {
+            StopCoroutine(_centerBannerHideRoutine);
+            _centerBannerHideRoutine = null;
+        }
+
+        EnsureActiveHierarchy(gameObject);
+        _centerBannerLabel.text = message;
+        _centerBannerRoot.SetActive(true);
+        _centerBannerHideRoutine = StartCoroutine(HideCenterBannerAfter(Mathf.Max(0.5f, displaySeconds)));
+    }
+
+    void EnsureCenterBannerBuilt()
+    {
+        if (_centerBannerRoot != null)
+            return;
+
+        var sprite = Sprite.Create(
+            Texture2D.whiteTexture,
+            new Rect(0f, 0f, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height),
+            new Vector2(0.5f, 0.5f),
+            100f);
+
+        _centerBannerRoot = new GameObject("CenterDeliveryBanner", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+        _centerBannerRoot.transform.SetParent(transform, false);
+
+        var rt = _centerBannerRoot.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(720f, 120f);
+
+        var img = _centerBannerRoot.GetComponent<UnityEngine.UI.Image>();
+        img.sprite = sprite;
+        img.color = new Color32(25, 35, 48, 235);
+
+        var font = TMP_Settings.defaultFontAsset;
+        var textGo = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textGo.transform.SetParent(_centerBannerRoot.transform, false);
+        var textRt = textGo.GetComponent<RectTransform>();
+        textRt.anchorMin = Vector2.zero;
+        textRt.anchorMax = Vector2.one;
+        textRt.offsetMin = new Vector2(20f, 12f);
+        textRt.offsetMax = new Vector2(-20f, -12f);
+
+        _centerBannerLabel = textGo.GetComponent<TextMeshProUGUI>();
+        if (font != null)
+            _centerBannerLabel.font = font;
+        _centerBannerLabel.fontSize = centerBannerFontSize;
+        _centerBannerLabel.fontStyle = FontStyles.Bold;
+        _centerBannerLabel.alignment = TextAlignmentOptions.Center;
+        _centerBannerLabel.color = new Color32(230, 245, 255, 255);
+        _centerBannerRoot.SetActive(false);
+    }
+
+    IEnumerator HideCenterBannerAfter(float seconds)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        if (_centerBannerRoot != null)
+            _centerBannerRoot.SetActive(false);
+        _centerBannerHideRoutine = null;
     }
 
     static void EnsureActiveHierarchy(GameObject leaf) => EnsureActiveHierarchyStatic(leaf);

@@ -15,6 +15,16 @@ public class DeliveryItem : MonoBehaviour
     [Tooltip("Same manager that references this item as its reception package (required for Interact pickup).")]
     [SerializeField] private DeliveryManager deliveryManager;
 
+    [Header("Highlight while active")]
+    [SerializeField] private bool spinWhileActive = true;
+    [SerializeField] private float spinDegreesPerSecond = 45f;
+    [SerializeField] private float bobAmplitude = 0.08f;
+    [SerializeField] private float bobFrequency = 1.6f;
+
+    Transform _highlightTransform;
+    Vector3 _baseLocalPosition;
+    bool _highlightActive;
+
     private void Awake()
     {
         if (startInactive)
@@ -28,15 +38,37 @@ public class DeliveryItem : MonoBehaviour
 
         if (visualRoot != null)
             visualRoot.SetActive(true);
+
+        _highlightTransform = visualRoot != null ? visualRoot.transform : transform;
+        _baseLocalPosition = _highlightTransform.localPosition;
+        _highlightActive = true;
     }
 
     public void Deactivate()
     {
+        _highlightActive = false;
+
         if (visualRoot != null)
             visualRoot.SetActive(false);
 
         if (affectWholeGameObject)
             gameObject.SetActive(false);
+    }
+
+    void Update()
+    {
+        if (!_highlightActive || _highlightTransform == null)
+            return;
+
+        if (spinWhileActive)
+            _highlightTransform.Rotate(Vector3.up, spinDegreesPerSecond * Time.deltaTime, Space.World);
+
+        if (bobAmplitude > 0f)
+        {
+            var p = _baseLocalPosition;
+            p.y += Mathf.Sin(Time.time * bobFrequency * Mathf.PI * 2f) * bobAmplitude;
+            _highlightTransform.localPosition = p;
+        }
     }
 
     // Sends a message via a raycast to call interact.

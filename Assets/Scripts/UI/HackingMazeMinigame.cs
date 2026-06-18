@@ -331,6 +331,20 @@ public class HackingMazeMinigame : MonoBehaviour
         _host?.AppendConsoleLine("> Breach sim aborted.");
     }
 
+    /// <summary>Scene restart / load — close overlay without maze outcome side effects.</summary>
+    public void ForceCloseForSessionReset()
+    {
+        _won = true;
+        _runEnded = true;
+        if (_overlayRoot != null)
+            _overlayRoot.SetActive(false);
+        if (_controlsDockRoot != null)
+            _controlsDockRoot.SetActive(false);
+        SetConsoleScrollVisible(true);
+        if (s_ActiveOverlay == this)
+            s_ActiveOverlay = null;
+    }
+
     void HideMazeUi()
     {
         if (_overlayRoot != null)

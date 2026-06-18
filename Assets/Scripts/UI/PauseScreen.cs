@@ -18,6 +18,8 @@ public class PauseScreen : MonoBehaviour
     [Tooltip("Panel (dimmer + buttons) shown while paused. Keep this object on an always-active parent so this script still receives Escape.")]
     [SerializeField] private GameObject pausePanel;
 
+    [SerializeField] private GameSettingsMenu settingsMenu;
+
     [Header("Gameplay")]
     [SerializeField] private PlayerController player;
 
@@ -49,6 +51,60 @@ public class PauseScreen : MonoBehaviour
 
         if (pausePanel != null)
             pausePanel.SetActive(false);
+
+        if (settingsMenu == null)
+            settingsMenu = GetComponentInChildren<GameSettingsMenu>(true);
+        if (settingsMenu == null)
+        {
+            var settingsGo = new GameObject("GameSettingsMenu", typeof(RectTransform), typeof(GameSettingsMenu));
+            settingsGo.transform.SetParent(transform, false);
+            settingsMenu = settingsGo.GetComponent<GameSettingsMenu>();
+        }
+
+        EnsurePauseSettingsButton();
+    }
+
+    void EnsurePauseSettingsButton()
+    {
+        if (pausePanel == null)
+            return;
+
+        if (pausePanel.transform.Find("BtnSettings") != null)
+            return;
+
+        var sprite = Sprite.Create(
+            Texture2D.whiteTexture,
+            new Rect(0f, 0f, Texture2D.whiteTexture.width, Texture2D.whiteTexture.height),
+            new Vector2(0.5f, 0.5f),
+            100f);
+
+        var btnGo = new GameObject("BtnSettings", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+        btnGo.transform.SetParent(pausePanel.transform, false);
+        var rt = btnGo.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.35f);
+        rt.sizeDelta = new Vector2(220f, 44f);
+
+        var img = btnGo.GetComponent<UnityEngine.UI.Image>();
+        img.sprite = sprite;
+        img.color = new Color32(70, 95, 120, 255);
+
+        var btn = btnGo.GetComponent<UnityEngine.UI.Button>();
+        btn.onClick.AddListener(OpenSettings);
+
+        var font = TMPro.TMP_Settings.defaultFontAsset;
+        var textGo = new GameObject("Text", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+        textGo.transform.SetParent(btnGo.transform, false);
+        var textRt = textGo.GetComponent<RectTransform>();
+        textRt.anchorMin = Vector2.zero;
+        textRt.anchorMax = Vector2.one;
+        textRt.offsetMin = Vector2.zero;
+        textRt.offsetMax = Vector2.zero;
+        var tmp = textGo.GetComponent<TMPro.TextMeshProUGUI>();
+        if (font != null) tmp.font = font;
+        tmp.text = "Settings";
+        tmp.fontSize = 22;
+        tmp.alignment = TMPro.TextAlignmentOptions.Center;
+        tmp.color = Color.white;
     }
 
     void OnDestroy()
@@ -64,6 +120,12 @@ public class PauseScreen : MonoBehaviour
 
         if (IsPaused)
         {
+            if (settingsMenu != null && settingsMenu.IsOpen)
+            {
+                settingsMenu.CloseSettings();
+                return;
+            }
+
             Resume();
             return;
         }
@@ -91,6 +153,8 @@ public class PauseScreen : MonoBehaviour
 
         if (pausePanel != null)
             pausePanel.SetActive(false);
+
+        settingsMenu?.CloseSettings();
 
         if (player != null)
             player.enabled = true;
@@ -141,6 +205,15 @@ public class PauseScreen : MonoBehaviour
 
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+    }
+
+    /// <summary>Hook to Settings button on the pause panel.</summary>
+    public void OpenSettings()
+    {
+        if (!IsPaused || settingsMenu == null)
+            return;
+
+        settingsMenu.OpenSettings();
     }
 
     static bool IsAnyComputerOpen()

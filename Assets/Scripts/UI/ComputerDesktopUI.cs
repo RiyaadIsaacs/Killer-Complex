@@ -205,6 +205,28 @@ public class ComputerDesktopUI : MonoBehaviour
         hackingTerminalIconButton.interactable = available;
     }
 
+    /// <summary>Fresh gameplay session — hide hacking until remote access is earned again.</summary>
+    public void ResetForNewGameplaySession()
+    {
+        _badEndingDesktopMode = false;
+        _badEndingDesktopLockPendingOnSessionClose = false;
+        CloseMessengerPanel();
+        CloseHackingTerminalPanel();
+        SetHackingTerminalIconAvailable(false);
+
+        if (messengerIconButton != null)
+        {
+            messengerIconButton.gameObject.SetActive(true);
+            messengerIconButton.interactable = true;
+        }
+
+        if (shutdownComputerButton != null)
+        {
+            shutdownComputerButton.gameObject.SetActive(true);
+            shutdownComputerButton.interactable = true;
+        }
+    }
+
     private void OnShutdownComputerClicked()
     {
         CloseMessengerPanel();

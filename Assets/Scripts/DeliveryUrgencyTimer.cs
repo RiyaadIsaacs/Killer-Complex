@@ -15,7 +15,7 @@ public class DeliveryUrgencyTimer : MonoBehaviour
     [Header("Timer")]
     [Tooltip("Countdown budget for the first delivery leg (seconds).")]
     [SerializeField, Min(1f)]
-    private float initialLegTimeSeconds = 90f;
+    private float initialLegTimeSeconds = 160f;
 
     [Tooltip("Subtract this many seconds from the budget for each delivery leg already completed when the next leg starts.")]
     [SerializeField, Min(0f)]
@@ -134,6 +134,7 @@ public class DeliveryUrgencyTimer : MonoBehaviour
         _pendingTimerCompletedLegCount = 0;
 
         ResolveDeliveryManager()?.ResetRunStateForNewPlaySession(queueDeferredFirstPrepare: true);
+        GameplaySessionReset.NotifyGameplaySceneLoaded(scene);
     }
 
     void EnterMenuScene()
@@ -332,6 +333,9 @@ public class DeliveryUrgencyTimer : MonoBehaviour
             StopCountdown();
             return;
         }
+
+        if (IsAnyComputerSessionOpen())
+            return;
 
         _awaitingComputerCloseToStartTimer = false;
         BeginLegCountdown(_pendingTimerCompletedLegCount);

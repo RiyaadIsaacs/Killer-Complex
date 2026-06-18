@@ -33,6 +33,9 @@ public class DeliveryManager : MonoBehaviour
     /// </summary>
     public int CurrentLegDestinationApartment { get; private set; } = -1;
 
+    /// <summary>Human-readable pickup site for the active leg (LLM CONTEXT + objective HUD).</summary>
+    public string CurrentPickupLocationLabel { get; private set; } = string.Empty;
+
     static readonly Dictionary<int, int> ApartmentRoomByDropPointId = new()
     {
         [0] = 201,
@@ -136,6 +139,7 @@ public class DeliveryManager : MonoBehaviour
         currentDeliveryID = TotalDeliveryLegs + 1;
         ActiveDropPointId = -1;
         CurrentLegDestinationApartment = -1;
+        CurrentPickupLocationLabel = string.Empty;
         hasPickedUpCurrentPackage = false;
         receptionDeliveryItem?.Deactivate();
         _postDeliveryStepAwayBeatPending = true;
@@ -161,6 +165,7 @@ public class DeliveryManager : MonoBehaviour
         currentDeliveryID = 0;
         ActiveDropPointId = -1;
         CurrentLegDestinationApartment = -1;
+        CurrentPickupLocationLabel = string.Empty;
         hasPickedUpCurrentPackage = false;
         _postDeliveryStepAwayBeatPending = false;
         receptionDeliveryItem?.Deactivate();
@@ -208,7 +213,9 @@ public class DeliveryManager : MonoBehaviour
             return;
 
         int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
-        receptionDeliveryItem.transform.position = spawnPoints[randomIndex].transform.position;
+        var spawnGo = spawnPoints[randomIndex];
+        receptionDeliveryItem.transform.position = spawnGo.transform.position;
+        CurrentPickupLocationLabel = ResolvePickupLabel(spawnGo);
 
         hasPickedUpCurrentPackage = false;
         RollNextRandomDropPoint();
@@ -257,6 +264,7 @@ public class DeliveryManager : MonoBehaviour
         // Clear the finished leg before OnDeliveryCompleted so listeners see no active drop.
         ActiveDropPointId = -1;
         CurrentLegDestinationApartment = -1;
+        CurrentPickupLocationLabel = string.Empty;
 
         CompleteCurrentDeliveryStep();
         return true;
@@ -288,7 +296,12 @@ public class DeliveryManager : MonoBehaviour
         if (dropPointId != ActiveDropPointId)
             return "Wrong drop-off for this job.";
         if (receptionDeliveryItem != null && !hasPickedUpCurrentPackage)
-            return "Pick up the package at reception first.";
+        {
+            var loc = CurrentPickupLocationLabel;
+            return string.IsNullOrWhiteSpace(loc)
+                ? "Pick up the package first."
+                : $"Pick up the package in {loc} first.";
+        }
         return null;
     }
 
@@ -311,5 +324,17 @@ public class DeliveryManager : MonoBehaviour
         }
 
         // Next leg starts when the player sends on the messenger (see ChatManager), not automatically here.
+    }
+
+    static string ResolvePickupLabel(GameObject spawnGo)
+    {
+        if (spawnGo == null)
+            return string.Empty;
+
+        var point = spawnGo.GetComponent<DeliveryPickupSpawnPoint>();
+        if (point != null)
+            return point.GetPickupLabelForLlm();
+
+        return DeliveryPickupSpawnPoint.DeriveLabelFromObjectName(spawnGo.name);
     }
 }

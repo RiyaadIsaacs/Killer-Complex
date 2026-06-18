@@ -158,7 +158,7 @@ I see you're finally at the computer. Stop looking for your wife—she's not at 
 
 **Outcome:** In-engine; re-test with insults, friendly, and serious player lines after `ollama pull` / Play.
 
-**Iteration notes:** Local **mistral:7b-instruct** may still be stiff—raise temperature in Ollama options later if needed.
+**Iteration notes:** Local **mistral:7b-instruct** may still be stiff—raise temperature in Ollama options later if needed. **2026-06-18:** Shipped default **`llama3.2:3b`** per Joburg Game Dev Meetup feedback (see **`feedback-summary.md`**).
 
 ---
 
@@ -177,6 +177,18 @@ I see you're finally at the computer. Stop looking for your wife—she's not at 
 **Outcome:** In-engine; no **`Remote access established`** suffix for this reply; doors/knocks start immediately; **`BadEndingOrchestrator.StartBadEnding(deferRestrictedDesktopUntilComputerClosed: true)`** defers **`ComputerDesktopUI`** shutdown-only lock until **`ComputerTerminal.CloseTerminal()`** so the trap **H** line can appear in messenger first (world traps use immediate lock).
 
 **Iteration notes:** Tune trap copy only in code (or extract to serialized string later) and log changes here + **`ollama-plan.md`** §8.
+
+---
+
+## Game — LLM pickup location in CONTEXT — 2026-06-18
+
+**Goal:** When `DeliveryManager` randomizes package spawn, **H** must name the same place as gameplay (not lobby/reception by default).
+
+**CONTEXT fragment (when leg active, paraphrased):** `The package for this leg is at {CurrentPickupLocationLabel} (authoritative pickup location — do not say lobby, reception, or a different room).`
+
+**System prompt addition:** Use authoritative pickup location from CONTEXT only; never invent lobby/reception.
+
+**Outcome:** `DeliveryPickupSpawnPoint` on spawn empties (optional); fallback derives label from GameObject name.
 
 ---
 

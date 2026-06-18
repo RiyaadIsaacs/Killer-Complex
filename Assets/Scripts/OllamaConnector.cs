@@ -44,7 +44,8 @@ public class OllamaConnector : MonoBehaviour
         "Answer the provocation directly: icy contempt, a cutting comeback, or an immediate concrete hostage consequence tied to Wife status in CONTEXT. Escalate when they push harder. " +
         "FRIENDLY, POLITE, OR SERIOUS: Acknowledge it in character—suspicious, mocking, or grim—not with generic package orders. Bargain, warn, or needle them; do not pretend their tone did not happen. " +
         "DELIVERY FACTS: When CONTEXT names a destination apartment, use that exact three-digit number only. Never invent units not listed as valid. " +
-        "If CONTEXT says they have not picked up the package, mention finding it in the complex only when relevant—not every message. " +
+        "When CONTEXT names an authoritative package pickup location, use that exact place only — never say lobby or reception unless CONTEXT explicitly says so. " +
+        "If CONTEXT says they have not picked up the package, mention finding it at the named location only when relevant—not every message. " +
         "If CONTEXT gives urgent timer seconds, weave time pressure into your tone; do not only recite the number. " +
         "If the player delays or fails deliveries, you may describe a clinical detail about the wife (from Wife status in CONTEXT) to terrify them. " +
         "STYLE: Natural messenger voice; often 3–6 sentences. Clinical menace plus sparing South African slang (bru, wena). H does not make jokes. Never apologize, back down, or admit fault. " +
@@ -97,7 +98,7 @@ public class OllamaConnector : MonoBehaviour
 
     [Header("Ollama")]
     [SerializeField] private string apiUrl = DefaultEndpoint;
-    [SerializeField] private string model = "mistral:7b-instruct";
+    [SerializeField] private string model = "llama3.2:3b";
     [Tooltip("Seconds before the request is aborted (large models may be slow).")]
     [SerializeField] private int requestTimeoutSeconds = 180;
 
@@ -138,6 +139,17 @@ public class OllamaConnector : MonoBehaviour
 
     ChatManager _runtimeResolvedChatManager;
     DeliveryManager _runtimeResolvedDeliveryManager;
+
+    /// <summary>Clears in-flight flags when a gameplay scene reloads (new scene instance).</summary>
+    public void ResetSessionStateForSceneLoad()
+    {
+        StopAllCoroutines();
+        ClearPendingDesktopMessengerToasts();
+        _hackReversalComplete = false;
+        _awaitingPlayerMessengerReplyAfterH = false;
+        _runtimeResolvedChatManager = null;
+        _runtimeResolvedDeliveryManager = null;
+    }
 
     /// <summary>Inspector reference, else first <see cref="ChatManager"/> in loaded scenes (including inactive).</summary>
     ChatManager GetChatManager()
@@ -569,7 +581,7 @@ public class OllamaConnector : MonoBehaviour
                 EndBadEndingFlightIfNeeded();
                 HandleFailure(
                     $"Ollama request failed ({request.result}): {request.error}\n" +
-                    "Is Ollama running? Try: ollama serve — and ensure the model is pulled (e.g. ollama pull mistral:7b-instruct).");
+                    "Is Ollama running? Try: ollama serve — and ensure the model is pulled (e.g. ollama pull llama3.2:3b).");
                 yield break;
             }
 
@@ -873,7 +885,16 @@ public class OllamaConnector : MonoBehaviour
         {
             ctx.Append(
                 " Background (mention only if useful after you have answered the player): an urgent customer package leg is active; ");
-            ctx.Append("the package is somewhere in the apartment complex (lobby, reception, or common areas) before drop-off at the assigned unit.");
+
+            var pickupLabel = dm.CurrentPickupLocationLabel;
+            if (!string.IsNullOrWhiteSpace(pickupLabel))
+            {
+                ctx.Append("The package for this leg is at ");
+                ctx.Append(pickupLabel.Trim());
+                ctx.Append(" (authoritative pickup location — do not say lobby, reception, or a different room).");
+            }
+            else
+                ctx.Append("The package is somewhere in the apartment complex before drop-off at the assigned unit.");
 
             int dest = dm.CurrentLegDestinationApartment;
             if (dest < 0 && dm.TryGetApartmentRoomForActiveDrop(out int mapped))

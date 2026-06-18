@@ -17,7 +17,7 @@
 3. Pull a model (example — pick one your hardware can run):
 
    ```bash
-   ollama pull llama3.2
+   ollama pull llama3.2:3b
    ```
 
 4. Keep the **daemon** running (Ollama runs in the background). Default API: **`http://127.0.0.1:11434`**.
@@ -52,7 +52,7 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 
 ## 3. Unity ↔ Ollama
 
-- **Script:** `Assets/Scripts/OllamaConnector.cs` — `UnityWebRequest` **POST** to **`http://localhost:11434/api/generate`** (override in the Inspector on the component). JSON body: `model`, `prompt`, `stream: false`. Default model field: **`mistral:7b-instruct`** (change to match what you pulled).
+- **Script:** `Assets/Scripts/OllamaConnector.cs` — `UnityWebRequest` **POST** to **`http://localhost:11434/api/generate`** (override in the Inspector on the component). JSON body: `model`, `prompt`, `stream: false`. Default model field: **`llama3.2:3b`** (change to match what you pulled).
 - **Timeout:** `requestTimeoutSeconds` on the component (default **180**).
 - **Chat hook:** `Assets/Scripts/UI/ChatManager.cs` has an optional **`OllamaConnector`** reference. When set, each player send appends the visible `[Player]: …` line, shows a **typing indicator** (optional dedicated `TMP_Text`, or a temporary **`[H]: …`** line in the feed), then calls **`SendToOllama`** with the same plain text. The indicator hides when the HTTP response returns; then **`[H]: …`** is appended for the model reply. The **prompt** sent to Ollama is **not** the raw line only: see **`ollama-plan.md`** (hidden `[CONTEXT: …] Player says: …` block). **Persona and tone** for **H** (kidnapper / hostage fiction) are defined in the system string in `OllamaConnector.cs` (mirrored in **`prompts-used.md`**). Hidden context can include **`wifeStatusForLlmContext`** on **`OllamaConnector`** (tunable **Wife status** prose for threats; see **`prompts-used.md`**).
 - **Desktop / hacking gate:** **`ComputerDesktopUI`** hides the **HACKING** dock icon until **`NotifyRemoteAccessEstablished`** (post–drop-off Ollama reply appends **`Remote access established`**). **`ComputerTerminal`** calls **`OnComputerSessionOpened` / `OnComputerSessionClosed`**. After the maze **breach-count gate**, **`ApplySuspicionIncrementForIgnoredMazeAttempt`** (meter only) and **`NotifyMazeBreachRoundAttemptFinished(..., mergeIgnore…)`** perform **one** `/api/generate` for breach + optional ignore beat (see **`ollama-plan.md`** §4).

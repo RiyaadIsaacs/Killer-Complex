@@ -189,3 +189,19 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify: **Hack** → large readable maze; status readable at bottom; **Abort breach** and **Esc** close without progress; controls dock still readable on the left.
 
 ---
+
+## 2026-06-18 — Part 3: Joburg Game Dev Meetup refinements
+
+**Feedback source:** Joburg Game Dev Meetup — see **`feedback-summary.md`**, **`critical-feedback.md`**.
+
+- **Timer:** Per-leg base budget **160s** (`DeliveryUrgencyTimer`); meetup consensus (was 90s).
+- **Objective HUD:** `DeliveryObjectiveHud` — find package / deliver room while leg active.
+- **LLM pickup sync:** `DeliveryPickupSpawnPoint` + `DeliveryManager.CurrentPickupLocationLabel`; `OllamaConnector` CONTEXT uses authoritative location (removed lobby/reception default); system prompt rule against inventing lobby.
+- **Settings:** `GameSettingsMenu` — **Esc → Pause → Settings** — mouse sensitivity via `PlayerPrefs` on `PlayerController`.
+- **UX:** Center-screen package-delivered banner (`GlobalNotificationHud`); `DeliveryItem` spin/bob highlight.
+- **Restart/build:** `GameplaySessionReset` on gameplay scene load — maze force-close, `ComputerDesktopUI.ResetForNewGameplaySession`, `OllamaConnector.ResetSessionStateForSceneLoad`; timer defer until PC closed after maze if desk still open.
+- **Model:** Default **`llama3.2:3b`** (`OllamaConnector`, `setup.md`, `ollama-plan.md` §2).
+- **Declined:** Tab-phone terminal (scope + computer-hub design) — documented in `critical-feedback.md`.
+- **AI-assisted:** Cursor; verify in Editor/build: restart, objective HUD, settings, one full delivery leg with Ollama.
+
+---

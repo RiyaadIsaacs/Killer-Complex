@@ -25,7 +25,8 @@ Team schedule and ownership live in **`plan.md`**. Update this document whenever
 | Item | Value |
 |------|--------|
 | Ollama version | *(e.g. 0.x.x)* |
-| Model name | *(e.g. llama3.2, mistral)* |
+| Model name | **`llama3.2:3b`** (Part 3 default; was `mistral:7b-instruct`) |
+| Rationale | ~2 GB, faster CPU inference; meetup feedback; CONTEXT-grounded pickup/room facts mitigate smaller-model drift |
 | Host / port | Default `http://127.0.0.1:11434` unless overridden |
 | Dev machine specs | *(CPU, RAM, GPU if used — both partners)* |
 
@@ -115,4 +116,4 @@ OllamaConnector (player SEND after final delivery + post-drop “step away” be
 | 2026-05-16 | **Merged maze suspicion + hacking icon gate** — **`ApplySuspicionIncrementForIgnoredMazeAttempt`** + **`NotifyMazeBreachRoundAttemptFinished(..., mergeIgnore…)`** (one `/api/generate`); **`mazeBreachesBeforeMessengerJob`** ≥ **2**; **`ComputerDesktopUI`** hides HACKING until **`NotifyRemoteAccessEstablished`**; **`ComputerTerminal`** session open/close; docs (`setup`, §4/§8 here, `prompts-used`, `refinements-changes`, `RiyaadWork`) |
 | 2026-05-28 | **Bad ending** — after **`currentDeliveryID >= TotalDeliveryLegs`** and post-drop beat, messenger **`TryBuildBadEndingPlayerTurn`** (hidden **`[SYSTEM]`** trap); **`BadEndingOrchestrator`**, **`InteractDoor`** (my apartment door + knocks), **`SoundManager`** (world knocks + **`PlayOneShotNonSpatial`** gunshot), **`BadEndingCanvasCreator`** prefab menu; **`setup.md`**, **`prompts-used.md`**, **`refinements-changes`**, **`RiyaadWork`**, **`README`** |
 | 2026-05-17 | **Delivery urgency timer** — HUD countdown **defers** until **`ComputerTerminal.CloseTerminal`** when **H** posts during an open PC session; **`DeliveryUrgencyTimer.NotifyComputerSessionClosed`**; **`[CONTEXT]`** urgent seconds only while countdown runs (**`setup.md`** §2c); **`refinements-changes`**, **`RiyaadWork`** |
-| 2026-05-15 | **Urgency timer + maze + LLM polish** — leg-2 / reorder / maze-close flush; **`DeliveryManager`** DDOL reset on scene load; maze hazard/layout robustness; post-drop step-away **CONTEXT** + system rules; bad-ending **Ollama** path defers desktop lock until leave-PC; interact viewport ray (**`setup.md`**, **`prompts-used.md`**, **`refinements-changes`**) |
+| 2026-06-18 | **Part 3 meetup refinements** — model **`llama3.2:3b`**; **`CurrentPickupLocationLabel`** in CONTEXT (no lobby default); 160s timer; objective HUD; settings menu; center delivery banner; session reset (**`feedback-summary.md`**, **`critical-feedback.md`**) |

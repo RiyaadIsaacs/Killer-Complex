@@ -289,7 +289,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4bdc00e583e2d641b12d3b5476d9228, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DeliveryUrgencyTimer
-  initialLegTimeSeconds: 90
+  initialLegTimeSeconds: 160
   secondsReducedPerCompletedLeg: 5
   minimumLegTimeSeconds: 0
   deliveryManager: {fileID: 8959749687944729099}

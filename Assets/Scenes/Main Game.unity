@@ -11549,7 +11549,7 @@ MonoBehaviour:
     nominal; restraint abrasion on wrists observed. Escalate with new concrete clinical
     detail when the player delays, ignores orders, or fails a delivery.
   apiUrl: http://localhost:11434/api/generate
-  model: mistral:7b-instruct
+  model: llama3.2:3b
   requestTimeoutSeconds: 180
   badEndingOrchestrator: {fileID: 633164256}
   goodEndingOrchestrator: {fileID: 633164258}

@@ -3,8 +3,8 @@ using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
-
-    #region Variable Declarations
+    public const string MouseSensitivityPrefKey = "MouseSensitivityMultiplier";
+    const float DefaultMouseSensitivity = 120f;
     // Movement
     [Header("Movement")]
     [SerializeField] private float walkSpeed = 3f;
@@ -18,7 +18,7 @@ public class PlayerController : MonoBehaviour
     // Camera
     [Header("Camera")]
     [SerializeField] private Transform cameraTransform;
-    [SerializeField] private float mouseSensitivity = 120f;
+    [SerializeField] private float mouseSensitivity = DefaultMouseSensitivity;
     [SerializeField] private float verticalLookLimit = 80f;
 
     // Interaction
@@ -41,9 +41,6 @@ public class PlayerController : MonoBehaviour
     private float verticalVelocity;
 
     private float _xRotation;
-
-
-    #endregion
 
     #region Input Callbacks
     // Stores directional movement input (WASD)
@@ -105,8 +102,20 @@ public class PlayerController : MonoBehaviour
 
         if (GetComponent<InteractPromptHud>() == null)
             gameObject.AddComponent<InteractPromptHud>();
+
+        ApplySavedMouseSensitivity();
     }
 
+    public static float GetSavedSensitivityMultiplier() =>
+        PlayerPrefs.GetFloat(MouseSensitivityPrefKey, 1f);
+
+    public static void SaveSensitivityMultiplier(float multiplier) =>
+        PlayerPrefs.SetFloat(MouseSensitivityPrefKey, Mathf.Clamp(multiplier, 0.5f, 3f));
+
+    public void ApplySavedMouseSensitivity()
+    {
+        mouseSensitivity = DefaultMouseSensitivity * GetSavedSensitivityMultiplier();
+    }
 
     private void Update()
     {
