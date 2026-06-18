@@ -320,6 +320,14 @@ public class HackingMazeMinigame : MonoBehaviour
         return Mathf.Min(9, tier + (tier >= 3 ? 1 : 0) + (tier >= 5 ? 1 : 0) + (tier >= 7 ? 1 : 0));
     }
 
+    public static bool ForceCloseBecauseHReturned()
+    {
+        if (s_ActiveOverlay == null || !s_ActiveOverlay.IsOpen)
+            return false;
+        s_ActiveOverlay.AbortBecauseHReturned();
+        return true;
+    }
+
     public void CloseWithoutSuccess()
     {
         if (_host != null && _walkable != null && !_won && !_runEnded)
@@ -329,6 +337,18 @@ public class HackingMazeMinigame : MonoBehaviour
         if (s_ActiveOverlay == this)
             s_ActiveOverlay = null;
         _host?.AppendConsoleLine("> Breach sim aborted.");
+    }
+
+    void AbortBecauseHReturned()
+    {
+        if (!IsOpen)
+            return;
+
+        _runEnded = true;
+        _host?.AppendConsoleLine("> H returned — breach sim terminated.");
+        HideMazeUi();
+        if (s_ActiveOverlay == this)
+            s_ActiveOverlay = null;
     }
 
     /// <summary>Scene restart / load — close overlay without maze outcome side effects.</summary>

@@ -157,6 +157,15 @@ public class ComputerDesktopUI : MonoBehaviour
         SetHackingTerminalIconAvailable(true);
     }
 
+    /// <summary>Locks the hacking dock when H returns to the messenger (closes panel and any active breach UI).</summary>
+    public void RevokeRemoteAccess()
+    {
+        if (_badEndingDesktopMode)
+            return;
+        CloseHackingTerminalPanel();
+        SetHackingTerminalIconAvailable(false);
+    }
+
     /// <summary>
     /// After the final delivery trap message: restrict the desktop to shutdown-only. When <paramref name="deferRestrictedLayoutUntilPlayerClosesComputer"/> is true,
     /// messenger and icons stay available until the player closes the computer session so the in-flight AI line can appear in chat first.

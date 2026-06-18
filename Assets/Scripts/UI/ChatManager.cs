@@ -174,12 +174,22 @@ public class ChatManager : MonoBehaviour
     }
 
     // Appends a new line to the feed with the format "[senderName]: response". 
-    public void UpdateChatFeed(string senderName, string response)
+    public void UpdateChatFeed(string senderName, string response, bool establishesRemoteAccess = false)
     {
         if (string.IsNullOrWhiteSpace(response))
             return;
 
-        var line = FormatLine(senderName, response.Trim());
+        var body = response.Trim();
+        if (IsHSender(senderName))
+        {
+            bool establishRemote = establishesRemoteAccess
+                                   || HackingRemoteAccessController.ResponseEstablishesRemoteAccess(body);
+            bool caughtMidBreach = HackingRemoteAccessController.PrepareForHLine(establishRemote);
+            if (caughtMidBreach)
+                body = HackingRemoteAccessController.EnsureCaughtHackingComment(body);
+        }
+
+        var line = FormatLine(senderName, body);
         if (IsHSender(senderName))
             line += "\n";
         AppendLine(line);

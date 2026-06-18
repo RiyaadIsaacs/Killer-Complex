@@ -115,14 +115,13 @@ public class PauseScreen : MonoBehaviour
         if (existing != null)
         {
             PauseMenuUiFactory.RewireButton(existing.GetComponent<Button>(), OpenSettings);
-            PauseMenuUiFactory.ApplyButtonLabel(existing, "Settings", styleSource);
             return;
         }
 
         PauseMenuUiFactory.CreateTextButton(
             pausePanel.transform,
             "Settings",
-            "Settings",
+            "",
             new Vector2(0f, -111f),
             new Vector2(250f, 80f),
             styleSource,

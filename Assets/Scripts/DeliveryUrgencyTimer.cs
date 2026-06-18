@@ -192,6 +192,8 @@ public class DeliveryUrgencyTimer : MonoBehaviour
             if (timer != null)
                 timer.TryCommitDeferredLegCountdown();
         }
+
+        GlobalNotificationHud.FindDeliveryManager()?.AnnounceDestinationForActiveLegIfNeeded();
     }
 
     /// <summary>

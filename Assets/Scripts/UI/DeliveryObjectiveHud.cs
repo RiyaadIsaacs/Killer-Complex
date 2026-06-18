@@ -124,10 +124,10 @@ public class DeliveryObjectiveHud : MonoBehaviour
         if (objectivePanel == null || objectiveLabel == null)
             return;
 
-        var timer = ResolveTimer();
-        if (timer == null || !timer.IsCountdownActive)
+        if (PauseScreen.IsGameplayPaused || GameSceneIntroPanel.BlocksGameplay)
         {
-            objectivePanel.SetActive(false);
+            if (objectivePanel != null && objectivePanel.activeSelf)
+                objectivePanel.SetActive(false);
             return;
         }
 
