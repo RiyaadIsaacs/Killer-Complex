@@ -29,6 +29,7 @@ public class GlobalNotificationHud : MonoBehaviour
     [SerializeField] private bool useCenterScreenDeliveryBanner = true;
     [SerializeField] private float centerBannerFontSize = 36f;
     [SerializeField] private float centerBannerDisplaySeconds = 3f;
+    [SerializeField] private float destinationBannerDisplaySeconds = 4.5f;
 
     private static GlobalNotificationHud _instance;
 
@@ -327,6 +328,24 @@ public class GlobalNotificationHud : MonoBehaviour
             hud.ShowCenterDeliveryBanner(message, hud.centerBannerDisplaySeconds);
     }
 
+    /// <summary>
+    /// Large center-screen toast when the player leaves the computer with an active delivery destination.
+    /// </summary>
+    public static void ShowDeliveryDestinationAnnouncement(int destinationRoom)
+    {
+        if (destinationRoom < 0)
+            return;
+
+        var hud = FindHud();
+        if (hud == null)
+        {
+            Debug.Log($"[Delivery] Deliver to Room {destinationRoom}");
+            return;
+        }
+
+        hud.ShowCenterDeliveryBanner($"Deliver to Room {destinationRoom}", hud.destinationBannerDisplaySeconds);
+    }
+
     void ShowTimedDeliveryRowMessage(string message, float displaySeconds)
     {
         if (packageDeliveredLabel == null)
@@ -389,7 +408,7 @@ public class GlobalNotificationHud : MonoBehaviour
 
         var rt = _centerBannerRoot.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(720f, 120f);
+        rt.sizeDelta = new Vector2(760f, 140f);
 
         var img = _centerBannerRoot.GetComponent<UnityEngine.UI.Image>();
         img.sprite = sprite;
@@ -411,6 +430,7 @@ public class GlobalNotificationHud : MonoBehaviour
         _centerBannerLabel.fontStyle = FontStyles.Bold;
         _centerBannerLabel.alignment = TextAlignmentOptions.Center;
         _centerBannerLabel.color = new Color32(230, 245, 255, 255);
+        _centerBannerLabel.enableWordWrapping = true;
         _centerBannerRoot.SetActive(false);
     }
 

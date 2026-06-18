@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,6 +9,16 @@ using UnityEngine.UI;
 /// </summary>
 public static class PauseMenuSettingsSetup
 {
+    const string MainGameScenePath = "Assets/Scenes/Main Game.unity";
+
+    /// <summary>Opens Main Game and saves pause settings UI into the scene (for batch/CI).</summary>
+    public static void SetupMainGamePauseSettingsBatch()
+    {
+        EditorSceneManager.OpenScene(MainGameScenePath);
+        SetupPauseSettingsMenu();
+        EditorSceneManager.SaveOpenScenes();
+    }
+
     [MenuItem("Killer Complex/UI/Setup Pause Settings Menu")]
     public static void SetupPauseSettingsMenu()
     {
@@ -43,7 +54,7 @@ public static class PauseMenuSettingsSetup
             settingsButton = PauseMenuUiFactory.CreateTextButton(
                 pausePanel.transform,
                 "Settings",
-                "Settings",
+                "",
                 new Vector2(0f, -111f),
                 new Vector2(250f, 80f),
                 styleSource,
@@ -54,7 +65,6 @@ public static class PauseMenuSettingsSetup
         {
             settingsButton = settingsTransform.GetComponent<Button>();
             PauseMenuUiFactory.RewireButton(settingsButton, pauseScreen.OpenSettings);
-            PauseMenuUiFactory.ApplyButtonLabel(settingsTransform, "Settings", styleSource);
         }
 
         var settingsMenu = pausePanel.GetComponentInChildren<GameSettingsMenu>(true);

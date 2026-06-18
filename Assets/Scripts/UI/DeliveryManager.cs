@@ -65,6 +65,8 @@ public class DeliveryManager : MonoBehaviour
     /// <summary>Comma-separated sorted list of every apartment number in <see cref="ApartmentRoomByDropPointId"/> (for LLM constraints).</summary>
     public static string MappedApartmentsListForPrompt { get; } = BuildMappedApartmentsListForPrompt();
 
+    int _destinationAnnouncedForDropPointId = -1;
+
     static string BuildMappedApartmentsListForPrompt()
     {
         var set = new HashSet<int>();
@@ -74,6 +76,35 @@ public class DeliveryManager : MonoBehaviour
         set.CopyTo(arr);
         Array.Sort(arr);
         return string.Join(", ", arr);
+    }
+
+    /// <summary>Sorted apartment numbers for drop zones registered in the current scene (for player-facing HUD).</summary>
+    public string GetRegisteredApartmentRoomsListForDisplay()
+    {
+        var rooms = new List<int>();
+        foreach (var id in _registeredDropPointIds)
+        {
+            if (TryGetApartmentRoomForDropPoint(id, out int room))
+                rooms.Add(room);
+        }
+
+        rooms.Sort();
+        if (rooms.Count == 0)
+            return MappedApartmentsListForPrompt;
+
+        return string.Join(", ", rooms);
+    }
+
+    /// <summary>One-shot center HUD toast for the active leg's destination when the player leaves the computer (deduped per <see cref="ActiveDropPointId"/>).</summary>
+    public void AnnounceDestinationForActiveLegIfNeeded()
+    {
+        if (ActiveDropPointId < 0 || CurrentLegDestinationApartment < 0)
+            return;
+        if (_destinationAnnouncedForDropPointId == ActiveDropPointId)
+            return;
+
+        _destinationAnnouncedForDropPointId = ActiveDropPointId;
+        GlobalNotificationHud.ShowDeliveryDestinationAnnouncement(CurrentLegDestinationApartment);
     }
 
     public event Action<int> OnDeliveryCompleted;
@@ -233,6 +264,7 @@ public class DeliveryManager : MonoBehaviour
         SafeDeactivateReceptionItem();
         _postDeliveryStepAwayBeatPending = true;
         _pendingDestinationAnnouncementForLlm = false;
+        _destinationAnnouncedForDropPointId = -1;
     }
 
     void OnValidate()
@@ -260,6 +292,7 @@ public class DeliveryManager : MonoBehaviour
         hasPickedUpCurrentPackage = false;
         _postDeliveryStepAwayBeatPending = false;
         _pendingDestinationAnnouncementForLlm = false;
+        _destinationAnnouncedForDropPointId = -1;
         SafeDeactivateReceptionItem();
 
         if (queueDeferredFirstPrepare)
@@ -389,6 +422,7 @@ public class DeliveryManager : MonoBehaviour
         CurrentLegDestinationApartment = -1;
         CurrentPickupLocationLabel = string.Empty;
         _pendingDestinationAnnouncementForLlm = false;
+        _destinationAnnouncedForDropPointId = -1;
 
         CompleteCurrentDeliveryStep();
         return true;

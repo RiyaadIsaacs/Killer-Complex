@@ -89,6 +89,10 @@ public class OllamaConnector : MonoBehaviour
     [Tooltip("Suspicion added when the player loses a maze breach run (bomb, trap, or abort). Set 0 to disable.")]
     private float suspicionPerMazeLoss = 8f;
 
+    [SerializeField, Min(0f)]
+    [Tooltip("Suspicion added when H posts while a breach maze level is open (caught hacking). Set 0 to disable.")]
+    private float suspicionPerCaughtHacking = 10f;
+
     [SerializeField]
     [Tooltip("Synthetic messenger line used when suspicion hits 100% and the bad-ending Ollama request fires automatically (maze loss, etc.).")]
     private string suspicionMaxBadEndingPlayerLine = "You pushed too far.";
@@ -387,6 +391,19 @@ public class OllamaConnector : MonoBehaviour
         AddSuspicion(delta);
     }
 
+    /// <summary>Adds <see cref="suspicionPerCaughtHacking"/> when H returned during an open breach maze.</summary>
+    public void ApplySuspicionIncrementForCaughtHacking()
+    {
+        if (GoodEndingTakesPriorityOverBadEnding())
+            return;
+
+        float delta = Mathf.Max(0f, suspicionPerCaughtHacking);
+        if (delta <= 0f)
+            return;
+
+        AddSuspicion(delta);
+    }
+
     /// <summary>
     /// Queues a non-streaming generate call to Ollama. On success, appends H's reply via <see cref="ChatManager.UpdateChatFeed"/>.
     /// The request includes a hidden context prefix (deliveries, suspicion, wife status) before the player line.
@@ -656,11 +673,9 @@ public class OllamaConnector : MonoBehaviour
                 yield break;
             }
 
-            cm.UpdateChatFeed(HackerSenderLabel, cleaned);
+            cm.UpdateChatFeed(HackerSenderLabel, cleaned, postDeliveryAwayBeatReply);
             MaybeTriggerDesktopMessengerNotificationAfterHReply(cleaned);
             GetDeliveryManager()?.ClearPendingDestinationAnnouncementForLlm();
-            if (postDeliveryAwayBeatReply)
-                ResolveComputerDesktopUi()?.NotifyRemoteAccessEstablished();
 
             EndBadEndingFlightIfNeeded();
         }
