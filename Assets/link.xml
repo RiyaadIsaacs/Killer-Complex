@@ -1,0 +1,12 @@
+<linker>
+  <!--
+    Standalone builds must keep RenderPipelineManager hooks in CoreModule.
+    Without this, ManagedStripped ships an old CoreModule (isCurrentPipelineValid only)
+    and the player crashes on launch with IsCurrentRenderPipelineValid errors.
+  -->
+  <assembly fullname="UnityEngine.CoreModule" preserve="all" />
+  <assembly fullname="Unity.RenderPipelines.Core.Runtime" preserve="all" />
+  <assembly fullname="Unity.RenderPipelines.Universal.Runtime" preserve="all" />
+  <assembly fullname="Unity.RenderPipelines.GPUDriven.Runtime" preserve="all" />
+  <assembly fullname="Unity.RenderPipelines.Core.Runtime.Shared" preserve="all" />
+</linker>

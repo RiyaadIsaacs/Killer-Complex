@@ -285,3 +285,13 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify: **H** assigns job at PC → leave desk → room toast; no toast while still at PC; maze **Abort breach** + **Esc**; **H** returns during maze → breach closes + suspicion bump; hack locked until remote access again.
 
 ---
+
+## 2026-06-19 — Windows standalone build crash (URP stripping)
+
+- **Symptom:** Built `.exe` exits immediately; **`Player.log`** shows **`Unable to find method IsCurrentRenderPipelineValid`** on **`RenderPipelineManager`** during startup (before Main Menu).
+- **Cause:** Stale **`Library/Bee/artifacts/WinPlayerBuildProgram/ManagedStripped`** cached an old **`UnityEngine.CoreModule.dll`** (missing **`IsCurrentRenderPipelineValid`** / **`InitializeGlobalRenderPipelineTag`**) while the Editor has the current API — often after UWP builds or **High** managed stripping.
+- **Fix:** **`ProjectSettings`** — **`stripEngineCode: 0`**, **`managedStrippingLevel.Standalone: Disabled`**; **`Assets/link.xml`** preserves **`UnityEngine.CoreModule`** + URP; **`BuildCacheMaintenance`** clears Win player Bee cache before Standalone builds.
+- **Docs:** **`setup.md`** §7 (Windows build steps) + §8 troubleshooting row.
+- **AI-assisted:** Cursor; verify: fresh Standalone x86_64 build launches to Main Menu.
+
+---

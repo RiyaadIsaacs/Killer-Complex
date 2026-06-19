@@ -113,10 +113,24 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 
 ---
 
-## 6. Troubleshooting
+## 7. Windows standalone build (`.exe`)
+
+1. **File → Build Settings** → **PC, Mac & Linux Standalone** → **Switch Platform** (if needed).
+2. **Target Platform:** Windows · **Architecture:** **Intel 64-bit** (x86_64).
+3. **Scenes in build:** `Main Menu` (0), `Main Game` (1).
+4. **Player Settings → Other Settings:** **Strip Engine Code** = **off**; **Managed Stripping Level** = **Disabled** for **Standalone** (project + **`Killer Complex → Build → Apply Standalone Build Settings (URP-safe)`**). Unity may reset stripping to **High** after platform switches — run the menu item before each release build.
+5. **Build** into a new empty folder (e.g. `Builds/Windows/`). Zip or copy the **whole** folder for testers — not just the `.exe`. Use **Build** rather than **Build And Run** if you see **`SplashScreenCache`** errors.
+6. **Ollama** must still be running on the playtest machine for messenger / delivery AI (`setup.md` §2).
+7. If the build crashes immediately, see **§8 Troubleshooting** (Player.log path) and rebuild from a clean output folder.
+
+---
+
+## 8. Troubleshooting
 
 | Issue | Things to try |
 |-------|----------------|
 | Unity version mismatch | Install exact version from `ProjectVersion.txt`. |
 | Ollama connection refused | Start Ollama; check nothing else uses port **11434**; try `127.0.0.1` not `localhost` if IPv6 oddities. |
 | Model too slow | Smaller quant / smaller model; document in `ollama-plan.md`. |
+| **Windows `.exe` crashes on launch** (no menu) | Check **`Player.log`**. If you see **`IsCurrentRenderPipelineValid`** / **`InitializeGlobalRenderPipelineTag`**: the build shipped a **stale stripped `UnityEngine.CoreModule.dll`**. Run **Killer Complex → Build → Clear Windows Player Build Cache**, then **Apply Standalone Build Settings (URP-safe)**, delete the old build folder, and **Build** again to a **new** folder. Confirm **Strip Engine Code** off + **Managed Stripping Level: Disabled**. Keep **`Assets/link.xml`**. |
+| **Build error: `SplashScreenCache/...`** | Corrupted local cache. **Close Unity** → delete **`Library/SplashScreenCache`** (or **Killer Complex → Build → Clear Splash Screen Cache** in Editor) → reopen project → **Build** again (prefer **Build**, not **Build And Run**, to a **new** folder). If it returns, close Unity and delete the whole **`Library`** folder (long reimport). Keep the project off OneDrive/cloud sync if possible. |
