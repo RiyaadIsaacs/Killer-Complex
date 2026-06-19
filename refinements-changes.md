@@ -250,3 +250,38 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify: pause settings Apply, min mouse sens, SFX mute/low, door toggle sounds, rebuild panel + save scene.
 
 ---
+
+## 2026-06-18 (menu UI polish) — Title screen + settings button art
+
+**Feedback-driven follow-up:** meetup **mouse sensitivity / settings** access (see **`feedback-summary.md`**, **`critical-feedback.md`**) plus clearer **first-run branding** on the title flow.
+
+- **Main menu screen:** **`Main Menu.unity`** — new full-screen **`Main Menu screen`** canvas; **`Panel`** uses baked title art **`Assets/Prefabs/killer complex title screen.png`** (game title visible on load). **Play Game** / **Quit Game** keep baked sprite labels with blank **TMP** children (same pattern as pause buttons).
+- **Pause settings button:** **`Main Game.unity`** — **Settings** child under **Pause Menu** (between **Restart** and **Main Menu**); new baked sprite **`Assets/Prefabs/Gemini_Generated_Image_ajxdouajxdouajxd.png`** on the button **Image**; **TMP** label left blank (label in art only, matching **Resume** / **Restart** / **Main Menu**).
+- **Wiring:** **Settings** → **`PauseScreen.OpenSettings`**; **`GameSettingsMenu`** on pause panel; **`PauseMenuContent`** references **`settingsMenu`** in the Inspector.
+- **Code:** **`PauseScreen`** / **`PauseMenuSettingsSetup`** no longer overlay a runtime **"Settings"** TMP string on scene buttons; **`PauseMenuSettingsSetup.SetupMainGamePauseSettingsBatch`** for batch scene setup when Unity is closed.
+- **Manual / hand-authored:** Title screen layout and button art in Editor; save **`Main Menu`** + **`Main Game`** scenes after changes.
+- **Verify:** Main menu shows title art; **Esc → Pause → Settings** opens overlay; button reads clearly at 1920×1080; no duplicate TMP label over sprite.
+
+---
+
+## 2026-06-18 (maze + delivery toast) — Playtest UX follow-up
+
+**Feedback-driven:** meetup **objective clarity after closing the PC** (Attendee C — see **`feedback-summary.md`**, **`critical-feedback.md`**); playtest fixes for **maze readability**, **Abort breach**, and **H catching mid-hack**.
+
+### Hacking maze
+
+- **Layout / readability:** Maze overlay parents to **`PanelHackingTerminal`** (avoids **`VerticalLayoutGroup`** squashing on **`HackingTerminalContent`**). Larger **`MazeBox`** / grid sizing; bottom **light status strip** with dark text; **`ConsoleScrollView`** hidden while the maze is open.
+- **Abort breach:** Raycast / sibling / reparent fixes so **Abort breach** is clickable again; **`LayoutElement.ignoreLayout`** + **`BringMazeOverlayToFront()`** on the overlay host.
+- **H returns mid-breach:** **`HackingRemoteAccessController`** — any **H** messenger line **except** “Remote access established” calls **`ComputerDesktopUI.RevokeRemoteAccess()`** (hide **HACKING**, close terminal panel). If the maze is open: **`HackingMazeMinigame.ForceCloseBecauseHReturned()`** / **`AbortBecauseHReturned()`** (no decryption % gain); **`OllamaConnector.ApplySuspicionIncrementForCaughtHacking()`** (default **+10%**, **`suspicionPerCaughtHacking`**); caught-hacking line appended to **H**’s reply when needed. Remote hacking available again only after **H** steps away (“Remote access established”), as before.
+- **Code:** `HackingMazeMinigame`, `HackingRemoteAccessController`, `ComputerDesktopUI`, `ChatManager` (remote-access flag on **`UpdateChatFeed`**), `OllamaConnector`.
+
+### Delivery room notification (leave PC)
+
+- **UX:** Center-screen banner **`Deliver to Room {N}`** when the player **closes the computer session** with an active delivery leg — so the destination is obvious after reading **H** at the desk, without re-opening messenger.
+- **Timing:** Fired from **`ComputerTerminal.CloseTerminal`** → **`DeliveryUrgencyTimer.NotifyComputerSessionClosed()`** → **`DeliveryManager.AnnounceDestinationForActiveLegIfNeeded()`**. **Not** shown on job assign or when **H** first posts while still at the PC.
+- **Copy:** Destination **room number only** (e.g. **Room 204**) — not the full list of valid apartments.
+- **Dedup:** One toast per active drop point per leg (**`_destinationAnnouncedForDropPointId`**).
+- **Code:** `DeliveryManager`, `GlobalNotificationHud.ShowDeliveryDestinationAnnouncement`, `DeliveryUrgencyTimer`; removed announce calls from **`PrepareNextDeliveryFromAi`** and **`ChatManager`** on **H** post.
+- **AI-assisted:** Cursor; verify: **H** assigns job at PC → leave desk → room toast; no toast while still at PC; maze **Abort breach** + **Esc**; **H** returns during maze → breach closes + suspicion bump; hack locked until remote access again.
+
+---
