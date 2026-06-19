@@ -9,7 +9,9 @@
 
 ## Event and purpose
 
-*(Fill before submission: **date**, **venue**, **lecturer approval** reference if required.)*
+**Full attendance write-up (POE Deliverable 1):** [`attendance-evidence.md`](attendance-evidence.md) — photo placeholder, event paragraph, engagement log, attendee quotes, submission checklist.
+
+*(Fill before submission: **date**, **venue**, **lecturer approval** reference in `attendance-evidence.md`.)*
 
 We attended the **Joburg Game Dev Meetup** as our lecturer-approved external engagement for Part 3. The event gathers Johannesburg-area developers, artists, and hobbyists — a realistic critique environment outside the classroom. We attended to **stress-test Killer Complex with strangers** (not classmates or close friends), observe how technically literate players react to a **local LLM-driven antagonist**, and collect actionable feedback before final POE submission. Presenting live with **Ollama** on a laptop also tested whether “emerging tech” demo friction (latency, restarts) would overshadow design intent.
 
@@ -21,10 +23,11 @@ We attended the **Joburg Game Dev Meetup** as our lecturer-approved external eng
 
 | Evidence type | Location / notes | Status |
 |---------------|------------------|--------|
-| Photo at event | Add to `Docs/Part3/Evidence/` *(e.g. `meetup-attendance.jpg`)* — link or embed in ARC PDF | ☐ **Team: add** |
+| **Submission document** | [`attendance-evidence.md`](attendance-evidence.md) — quotes, roles, engagement, event rationale | ☑ |
+| Photo at event | Add to `Docs/Part3/Evidence/meetup-attendance.jpg` — embed in ARC PDF | ☐ **Team: add** |
 | Event name | Joburg Game Dev Meetup | ☑ |
 | Demo format | Live Windows/Editor playtest, ~5–10 min per attendee | ☑ |
-| Raw session notes | This file + team notebooks | ☑ partial |
+| Raw session notes | `attendance-evidence.md` §5 + this file | ☑ |
 
 ---
 
