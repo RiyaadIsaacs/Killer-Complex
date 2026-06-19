@@ -2,7 +2,7 @@
 
 **Project:** Killer Complex (GADS7331)  
 **lecturer-approved Event:** Joburg Game Dev Meetup  
-**Authors:** Joshua Trent and Riyaad Isaacs
+**Authors:** Joshua Moonsamy and Riyaad Isaacs
 
 
 
