@@ -10279,6 +10279,9 @@ MonoBehaviour:
   apartmentKnockSpacingSeconds: 0.14
   apartmentKnockStartDelaySeconds: 0.55
   apartmentKnockVolumeScale: 1
+  doorOpenClip: {fileID: 0}
+  doorCloseClip: {fileID: 0}
+  doorOpenCloseVolumeScale: 1
   autoFixRoomNumberLabels: 1
   roomNumbersRoot: {fileID: 0}
   disableAnimatorsUnderPivot: 1
@@ -17117,6 +17120,9 @@ MonoBehaviour:
   apartmentKnockSpacingSeconds: 0.14
   apartmentKnockStartDelaySeconds: 0.55
   apartmentKnockVolumeScale: 1
+  doorOpenClip: {fileID: 0}
+  doorCloseClip: {fileID: 0}
+  doorOpenCloseVolumeScale: 1
   autoFixRoomNumberLabels: 1
   roomNumbersRoot: {fileID: 0}
   disableAnimatorsUnderPivot: 1
@@ -22658,6 +22664,9 @@ MonoBehaviour:
   apartmentKnockSpacingSeconds: 0.14
   apartmentKnockStartDelaySeconds: 0.55
   apartmentKnockVolumeScale: 1
+  doorOpenClip: {fileID: 0}
+  doorCloseClip: {fileID: 0}
+  doorOpenCloseVolumeScale: 1
   autoFixRoomNumberLabels: 1
   roomNumbersRoot: {fileID: 0}
   disableAnimatorsUnderPivot: 1
@@ -29162,6 +29171,9 @@ MonoBehaviour:
   apartmentKnockSpacingSeconds: 0.14
   apartmentKnockStartDelaySeconds: 0.55
   apartmentKnockVolumeScale: 1
+  doorOpenClip: {fileID: 0}
+  doorCloseClip: {fileID: 0}
+  doorOpenCloseVolumeScale: 1
   autoFixRoomNumberLabels: 1
   roomNumbersRoot: {fileID: 0}
   disableAnimatorsUnderPivot: 1
@@ -30495,7 +30507,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 21300000, guid: 93e674f27a0f70b43a33614fce65e5d2, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -30701,6 +30713,8 @@ MonoBehaviour:
   settingsPanel: {fileID: 0}
   mouseSensitivitySlider: {fileID: 0}
   mouseSensitivityValueLabel: {fileID: 0}
+  sfxVolumeSlider: {fileID: 0}
+  sfxVolumeValueLabel: {fileID: 0}
   player: {fileID: 1963267871}
 --- !u!1001 &2111151487
 PrefabInstance:
