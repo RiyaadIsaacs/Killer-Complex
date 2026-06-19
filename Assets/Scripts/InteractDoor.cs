@@ -39,6 +39,15 @@ public class InteractDoor : MonoBehaviour
 
     [SerializeField, Range(0f, 2f)] private float apartmentKnockVolumeScale = 1f;
 
+    [Header("Open / close SFX")]
+    [Tooltip("Played when the player opens this door. If unset, SoundManager Door Open is used.")]
+    [SerializeField] private AudioClip doorOpenClip;
+
+    [Tooltip("Played when the player closes this door. If unset, SoundManager Door Close is used.")]
+    [SerializeField] private AudioClip doorCloseClip;
+
+    [SerializeField, Range(0f, 2f)] private float doorOpenCloseVolumeScale = 1f;
+
     [Header("Room numbers")]
     [Tooltip("Reparents modular letter room numbers under the door pivot and clears Static flags so they rotate with the door.")]
     [SerializeField] private bool autoFixRoomNumberLabels = true;
@@ -168,6 +177,12 @@ public class InteractDoor : MonoBehaviour
         if (doorPivot == null)
             doorPivot = transform;
         return doorPivot.position;
+    }
+
+    void PlayDoorOpenCloseSound(bool opening)
+    {
+        var clip = opening ? doorOpenClip : doorCloseClip;
+        SoundManager.TryPlayDoorOpenCloseAt(GetKnockWorldPosition(), opening, clip, doorOpenCloseVolumeScale);
     }
 
     void DisableAnimatorsUnderPivotIfConfigured()
@@ -350,5 +365,7 @@ public class InteractDoor : MonoBehaviour
 
         if (rotationDuration <= 0f)
             doorPivot.localRotation = targetRotation;
+
+        PlayDoorOpenCloseSound(isOpen);
     }
 }

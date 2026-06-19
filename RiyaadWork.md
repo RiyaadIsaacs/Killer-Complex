@@ -136,7 +136,7 @@
 - **Objective HUD:** **`DeliveryObjectiveHud.cs`** — top-center “Find package” / “Deliver to: Room …” while a leg is active; auto-added on **`GlobalNotificationHud`**.
 - **LLM pickup sync:** **`DeliveryPickupSpawnPoint.cs`**, **`DeliveryManager.CurrentPickupLocationLabel`**; **`OllamaConnector`** CONTEXT uses authoritative pickup site (removed lobby/reception default); system prompt rule against inventing lobby.
 - **Model:** Default **`llama3.2:3b`** on **`OllamaConnector`**, **`Main Game.unity`**, **`setup.md`**, **`ollama-plan.md`** §2 (meetup feedback: faster/smaller local model).
-- **Settings:** **`GameSettingsMenu.cs`** + **`PauseScreen`** — **Esc → Pause → Settings** (runtime **Settings** button if missing); **`PlayerController`** mouse sensitivity via **`PlayerPrefs`** (0.5×–3×).
+- **Settings:** **`GameSettingsMenu.cs`** + **`PauseScreen`** — **Esc → Pause → Settings** (runtime **Settings** button if missing); **`PlayerController`** mouse sensitivity (**0.1×–2×**, `PlayerPrefs`); **`SoundManager`** master SFX volume (**0–100%**).
 - **UX polish:** **`GlobalNotificationHud`** center-screen package-delivered banner; **`DeliveryItem`** spin/bob highlight while active.
 - **Restart / build stability:** **`GameplaySessionReset.cs`** on gameplay scene load — **`HackingMazeMinigame.ForceCloseForSessionReset`**, **`ComputerDesktopUI.ResetForNewGameplaySession`**, **`OllamaConnector.ResetSessionStateForSceneLoad`**; **`DeliveryUrgencyTimer.TryCommitDeferredLegCountdown`** waits if PC session still open after maze.
 - **Declined (documented):** Tab-phone terminal — conflicts with computer-as-hub design; see **`critical-feedback.md`**.
@@ -163,6 +163,16 @@
 - **Main menu:** `SceneNavigationUtility` + intro merge on DDOL HUD reload; Editor Inspector selection cleared before scene load.
 - **Audio:** `DeliveryZone` door knock on successful delivery; `PlayerMovementAudio` + `SoundManager.WalkingLoopClip` (`Assets/SFX/Walking.mp3`, `Door Knock.mp3` on desktop canvas).
 - **Documentation:** `refinements-changes.md`, `setup.md`, `README.md`, `feedback-summary.md`, this file.
+
+---
+
+## 2026-06-18 (settings & audio) — Pause settings polish + door SFX
+
+- **Mouse sensitivity:** Lower base (**40**); slider **0.1×–2×**; `PlayerPrefs` key **`MouseSensitivityMultiplier`**; fixed save clamp vs UI range.
+- **SFX volume:** `GameSettingsMenu` second slider; **`SoundManager.SfxVolume`** / **`SfxVolume`** `PlayerPrefs` scales all game SFX.
+- **Door audio:** `InteractDoor` open/close one-shots; **`Open Door.mp3`**, **`Close Door.mp3`** on desktop **`SoundManager`**.
+- **Settings UI:** Layout overlap fix; readable light text; **Rebuild Pause Settings Panel** editor menu for scene-editable hierarchy.
+- **Documentation:** `README.md`, `setup.md`, `refinements-changes.md`, `feedback-summary.md`, `prompts-used.md`, this file; pushed to **`origin/main`**.
 
 ---
 

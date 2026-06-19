@@ -15,30 +15,18 @@ public static class PauseMenuSettingsSetup
     public static void SetupMainGamePauseSettingsBatch()
     {
         EditorSceneManager.OpenScene(MainGameScenePath);
-        SetupPauseSettingsMenu();
+        RebuildPauseSettingsPanel();
         EditorSceneManager.SaveOpenScenes();
     }
 
     [MenuItem("Killer Complex/UI/Setup Pause Settings Menu")]
     public static void SetupPauseSettingsMenu()
     {
-        var pauseScreen = Object.FindFirstObjectByType<PauseScreen>();
-        if (pauseScreen == null)
-        {
-            EditorUtility.DisplayDialog("Pause Settings", "No PauseScreen found in the open scene.", "OK");
+        if (!TryGetPauseContext(out var pauseScreen, out var pausePanel, out var styleSource))
             return;
-        }
-
-        var pausePanel = GetPausePanel(pauseScreen);
-        if (pausePanel == null)
-        {
-            EditorUtility.DisplayDialog("Pause Settings", "PauseScreen has no pause panel assigned.", "OK");
-            return;
-        }
 
         Undo.RegisterFullObjectHierarchyUndo(pausePanel, "Setup Pause Settings Menu");
 
-        var styleSource = PauseMenuUiFactory.FindMenuButtonStyleSource(pausePanel.transform);
         var mainMenu = pausePanel.transform.Find("Main Menu");
         if (mainMenu != null)
         {
@@ -67,6 +55,54 @@ public static class PauseMenuSettingsSetup
             PauseMenuUiFactory.RewireButton(settingsButton, pauseScreen.OpenSettings);
         }
 
+        var settingsMenu = EnsureSettingsMenuComponent(pausePanel, pauseScreen, styleSource);
+        RebuildSettingsPanelOnMenu(settingsMenu, pausePanel, styleSource, pauseScreen);
+
+        EditorUtility.SetDirty(pauseScreen);
+        EditorUtility.SetDirty(pausePanel);
+        Debug.Log("Pause settings menu setup complete.");
+    }
+
+    [MenuItem("Killer Complex/UI/Rebuild Pause Settings Panel")]
+    public static void RebuildPauseSettingsPanel()
+    {
+        if (!TryGetPauseContext(out var pauseScreen, out var pausePanel, out var styleSource))
+            return;
+
+        var settingsMenu = EnsureSettingsMenuComponent(pausePanel, pauseScreen, styleSource);
+        Undo.RegisterFullObjectHierarchyUndo(settingsMenu.gameObject, "Rebuild Pause Settings Panel");
+        RebuildSettingsPanelOnMenu(settingsMenu, pausePanel, styleSource, pauseScreen);
+
+        EditorUtility.SetDirty(settingsMenu);
+        EditorSceneManager.MarkSceneDirty(settingsMenu.gameObject.scene);
+        Debug.Log("Pause settings panel rebuilt in scene. Expand GameSettingsMenu → SettingsPanel to edit layout.");
+    }
+
+    static bool TryGetPauseContext(out PauseScreen pauseScreen, out GameObject pausePanel, out Button styleSource)
+    {
+        pauseScreen = Object.FindFirstObjectByType<PauseScreen>();
+        pausePanel = null;
+        styleSource = null;
+
+        if (pauseScreen == null)
+        {
+            EditorUtility.DisplayDialog("Pause Settings", "No PauseScreen found in the open scene.", "OK");
+            return false;
+        }
+
+        pausePanel = GetPausePanel(pauseScreen);
+        if (pausePanel == null)
+        {
+            EditorUtility.DisplayDialog("Pause Settings", "PauseScreen has no pause panel assigned.", "OK");
+            return false;
+        }
+
+        styleSource = PauseMenuUiFactory.FindMenuButtonStyleSource(pausePanel.transform);
+        return true;
+    }
+
+    static GameSettingsMenu EnsureSettingsMenuComponent(GameObject pausePanel, PauseScreen pauseScreen, Button styleSource)
+    {
         var settingsMenu = pausePanel.GetComponentInChildren<GameSettingsMenu>(true);
         if (settingsMenu == null)
         {
@@ -83,13 +119,41 @@ public static class PauseMenuSettingsSetup
 
         settingsMenu.Initialize(pausePanel, styleSource, pauseScreen);
 
-        var so = new SerializedObject(pauseScreen);
-        so.FindProperty("settingsMenu").objectReferenceValue = settingsMenu;
-        so.ApplyModifiedPropertiesWithoutUndo();
+        var pauseSo = new SerializedObject(pauseScreen);
+        pauseSo.FindProperty("settingsMenu").objectReferenceValue = settingsMenu;
+        pauseSo.ApplyModifiedPropertiesWithoutUndo();
 
-        EditorUtility.SetDirty(pauseScreen);
-        EditorUtility.SetDirty(pausePanel);
-        Debug.Log("Pause settings menu setup complete.");
+        return settingsMenu;
+    }
+
+    static void RebuildSettingsPanelOnMenu(
+        GameSettingsMenu settingsMenu,
+        GameObject pausePanel,
+        Button styleSource,
+        PauseScreen pauseScreen)
+    {
+        settingsMenu.Initialize(pausePanel, styleSource, pauseScreen);
+        settingsMenu.EditorRebuildPanel();
+        AssignBuiltReferences(settingsMenu);
+    }
+
+    static void AssignBuiltReferences(GameSettingsMenu settingsMenu)
+    {
+        var panelTransform = settingsMenu.transform.Find("SettingsPanel");
+        if (panelTransform == null)
+            return;
+
+        var box = panelTransform.Find("SettingsBox");
+        if (box == null)
+            return;
+
+        var menuSo = new SerializedObject(settingsMenu);
+        menuSo.FindProperty("settingsPanel").objectReferenceValue = panelTransform.gameObject;
+        menuSo.FindProperty("mouseSensitivitySlider").objectReferenceValue = box.Find("MouseSlider")?.GetComponent<Slider>();
+        menuSo.FindProperty("mouseSensitivityValueLabel").objectReferenceValue = box.Find("MouseValue")?.GetComponent<TMPro.TMP_Text>();
+        menuSo.FindProperty("sfxVolumeSlider").objectReferenceValue = box.Find("SfxSlider")?.GetComponent<Slider>();
+        menuSo.FindProperty("sfxVolumeValueLabel").objectReferenceValue = box.Find("SfxValue")?.GetComponent<TMPro.TMP_Text>();
+        menuSo.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static GameObject GetPausePanel(PauseScreen pauseScreen)

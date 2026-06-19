@@ -64,7 +64,7 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 
 - **Flow:** After the **last** delivery leg, the next messenger send uses a hidden **`[SYSTEM]`** trap prompt in **`OllamaConnector.TryBuildBadEndingPlayerTurn`** (not posted as a separate visible `[SYSTEM]` line). **`BadEndingOrchestrator`** (scene object) runs **`StartBadEnding(deferRestrictedDesktopUntilComputerClosed: …)`**: closes **`InteractDoor`** instances with **My apartment door** checked, starts **3D** knock bursts (**`SoundManager.PlayOneShotWorld`**) with optional **repeat every N seconds**. For the **Ollama** trap request, desktop lock (**messenger / hacking hidden, shutdown only**) is **deferred** until **`ComputerTerminal.CloseTerminal()`** so the player can read the final **H** line; **world traps** still apply the lock **immediately**. **`Interact`** on that door opens it and shows the bad-end canvas; **`RevealBadEndingCanvas()`** plays a **non-spatial** gunshot via **`SoundManager.PlayOneShotNonSpatial`** when configured.
 - **`BadEndingOrchestrator`:** Assign **bad ending canvas root** (inactive overlay). Inspector: **gunshot** clip for canvas reveal; **knock repeat interval** / toggle. **`OllamaConnector`** may assign **`BadEndingOrchestrator`** explicitly; otherwise it is resolved at runtime when present.
-- **`InteractDoor`:** Exactly one apartment unit should have **My apartment door** + knock clip (or rely on **`SoundManager`** **Door knock** fallback). **`SoundManager`** (on **`ComputerDesktopCanvas`**): **notification** clip (2D messenger toast), **door knock** clip (bad-ending knocks + **successful delivery** drop-off at **`DeliveryZone`**), **walking loop** clip (player footstep loop via **`PlayerMovementAudio`**), **`PlayOneShotNonSpatial`** for orchestrator gunshot.
+- **`InteractDoor`:** Exactly one apartment unit should have **My apartment door** + knock clip (or rely on **`SoundManager`** **Door knock** fallback). **`SoundManager`** (on **`ComputerDesktopCanvas`**): **notification** clip (2D messenger toast), **door knock** clip (bad-ending knocks + **successful delivery** drop-off at **`DeliveryZone`**), **door open/close** clips (player toggle on **`InteractDoor`**), **walking loop** clip (player footstep loop via **`PlayerMovementAudio`**), master **SFX volume** (`PlayerPrefs`), **`PlayOneShotNonSpatial`** for orchestrator gunshot.
 - **Prefab:** **Tools → Killer-Complex → Create Bad Ending Canvas Prefab** writes **`Assets/Prefabs/BadEndingCanvas.prefab`** (black full-screen + **Bad Ending** TMP). Drag the instance into the scene and wire it to the orchestrator.
 
 ---
@@ -74,7 +74,19 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 - **Intro panel:** **`GameSceneIntroPanel`** on **`GlobalNotificationHUD`** shows narrative copy on **Main Game** load (after **Main Menu → Play** or direct scene play). Default body in **`GameSceneIntroPanel.DefaultBody`**; blocks movement until Continue (click / Space / Enter). Build UI via **Tools → Killer-Complex → Build Game Intro Panel UI on GlobalNotificationHUD** if missing.
 - **Walking loop:** **`PlayerMovementAudio`** on **`Temp-Player`** (added by **`PlayerController`** if absent) plays **`SoundManager.WalkingLoopClip`** while grounded and moving; stops during intro, pause, or open PC. Assign **`Assets/SFX/Walking.mp3`** on **`ComputerDesktopCanvas` → SoundManager** (or override on the player component).
 - **Delivery knock:** Successful **`DeliveryZone`** interact plays **`SoundManager`** door knock at the door ( **`Assets/SFX/Door Knock.mp3`** on desktop **`SoundManager`**).
+- **Door open/close:** **`InteractDoor.MoveDoor()`** plays **`Open Door.mp3`** / **`Close Door.mp3`** at the door (assign on door or **`SoundManager`** fallbacks on desktop canvas).
 - **Main menu entry:** Start Play Mode from **`Main Menu.unity`** for the shipped flow. **`SceneNavigationUtility`** clears Editor Inspector selection before **`LoadScene`** to avoid harmless **`SerializedObjectNotCreatableException`** spam when the menu unloads (Editor only).
+
+---
+
+## 3d. Pause settings (mouse + SFX volume)
+
+- **Menu:** **Esc → Pause → Settings** — **`GameSettingsMenu`** overlay on the pause canvas (`PauseScreen.OpenSettings`).
+- **Mouse sensitivity:** Base look speed on **`PlayerController`** (default **40**); slider multiplier **0.1×–2×** saved as **`MouseSensitivityMultiplier`** in **`PlayerPrefs`**.
+- **SFX volume:** Master scale **0–100%** for all game SFX (notifications, door knock/open/close, walking loop, ending stingers) via **`SoundManager.SfxVolume`** / **`SfxVolume`** in **`PlayerPrefs`**.
+- **Apply:** Changes take effect after clicking **Apply** (same pattern as sensitivity).
+- **Editor setup:** **Killer Complex → UI → Setup Pause Settings Menu** — adds the pause **Settings** button and **`GameSettingsMenu`** root if missing.
+- **Editor layout:** **Killer Complex → UI → Rebuild Pause Settings Panel** — builds **`SettingsPanel`** as scene children and wires Inspector references so you can move sliders/labels under **`GameSettingsMenu → SettingsPanel → SettingsBox`**. **Save the scene** after rebuilding.
 
 ---
 
@@ -85,6 +97,8 @@ Document the **exact model tag** your team ships with in **`ollama-plan.md`**.
 | Move | WASD |
 | Look | Mouse |
 | Sprint | Left Shift (toggle) |
+| Pause | Esc |
+| Settings | Esc → Pause → **Settings** (mouse sensitivity + SFX volume; **Apply** to save) |
 | Jump | Space |
 | Interact | *(check `InputSystem_Actions` — often E)* — **`PlayerController`** prefers a **viewport-center** ray from the gameplay **Camera** when assigned; optional **`interactRayOriginOverride`** for a custom pivot. |
 

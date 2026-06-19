@@ -4,7 +4,10 @@ using UnityEngine.InputSystem;
 public class PlayerController : MonoBehaviour
 {
     public const string MouseSensitivityPrefKey = "MouseSensitivityMultiplier";
-    const float DefaultMouseSensitivity = 120f;
+    public const float DefaultMouseSensitivity = 40f;
+    public const float MinSensitivityMultiplier = 0.1f;
+    public const float MaxSensitivityMultiplier = 2f;
+    public const float DefaultSensitivityMultiplier = 1f;
     // Movement
     [Header("Movement")]
     [SerializeField] private float walkSpeed = 3f;
@@ -111,11 +114,14 @@ public class PlayerController : MonoBehaviour
         ApplySavedMouseSensitivity();
     }
 
+    public static float ClampSensitivityMultiplier(float multiplier) =>
+        Mathf.Clamp(multiplier, MinSensitivityMultiplier, MaxSensitivityMultiplier);
+
     public static float GetSavedSensitivityMultiplier() =>
-        PlayerPrefs.GetFloat(MouseSensitivityPrefKey, 1f);
+        ClampSensitivityMultiplier(PlayerPrefs.GetFloat(MouseSensitivityPrefKey, DefaultSensitivityMultiplier));
 
     public static void SaveSensitivityMultiplier(float multiplier) =>
-        PlayerPrefs.SetFloat(MouseSensitivityPrefKey, Mathf.Clamp(multiplier, 0.5f, 3f));
+        PlayerPrefs.SetFloat(MouseSensitivityPrefKey, ClampSensitivityMultiplier(multiplier));
 
     public void ApplySavedMouseSensitivity()
     {

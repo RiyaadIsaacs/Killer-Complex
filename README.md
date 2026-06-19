@@ -56,10 +56,10 @@ This prototype includes **pressure / coercion / thriller** themes (fiction: **ho
 | Look     | Mouse      |
 | Sprint   | Left Shift |
 | Pause    | Esc |
-| Settings (in-game) | Esc → Pause → **Settings** (mouse sensitivity) |
+| Settings (in-game) | Esc → Pause → **Settings** (mouse sensitivity, SFX volume) |
 | Jump     | Space      |
 
-**Pause → Settings:** Runtime **Settings** button on the pause panel (or **Killer Complex → UI → Setup Pause Settings Menu** in Editor if missing). Adjust mouse look sensitivity (saved via `PlayerPrefs`).
+**Pause → Settings:** Runtime **Settings** button on the pause panel (or **Killer Complex → UI → Setup Pause Settings Menu** in Editor if missing). Adjust **mouse look sensitivity** (0.1×–2× multiplier on a lower base sens; saved as `MouseSensitivityMultiplier` in `PlayerPrefs`) and **sound effects volume** (0–100%; saved as `SfxVolume`). Click **Apply** to save. To edit the settings layout in the scene: **Killer Complex → UI → Rebuild Pause Settings Panel**, then expand **GameSettingsMenu → SettingsPanel** in the Hierarchy.
 
 Sprint is **toggle**: press once to sprint, press again to stop.  
 **Interact:** see `Assets/InputSystem_Actions.inputactions` (commonly **E** once wired).
@@ -72,7 +72,7 @@ Sprint is **toggle**: press once to sprint, press again to stop.
 - **Universal Render Pipeline (URP)**  
 - **Input System** — `Assets/InputSystem_Actions.inputactions`  
 - **CharacterController** — `Assets/Scripts/PlayerController.cs`  
-- **Audio** — `SoundManager` on desktop canvas (`Door Knock`, walking loop, messenger notification); `PlayerMovementAudio` on player  
+- **Audio** — `SoundManager` on desktop canvas (messenger notification, door knock/open/close, walking loop, master **SFX volume** via `PlayerPrefs`); `PlayerMovementAudio` on player  
 - **Ollama** — local HTTP **`/api/generate`** via `Assets/Scripts/OllamaConnector.cs` (see `ollama-plan.md` for prompt contract and context block)
 
 ---

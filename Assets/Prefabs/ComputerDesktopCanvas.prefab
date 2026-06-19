@@ -2863,6 +2863,9 @@ MonoBehaviour:
   notificationSound: {fileID: 0, guid: 14fedcf6ccfcfee4a81ac53bd9c75c03, type: 3}
   doorKnockClip: {fileID: 8300000, guid: 110d3b56ed1ca83469879823fd8e1d8b, type: 3}
   doorKnockVolumeScale: 1
+  doorOpenClip: {fileID: 8300000, guid: a8aa5663b07579d448c1e7355b0f4c7d, type: 3}
+  doorCloseClip: {fileID: 8300000, guid: ce76f443269238b428e95b01925b7cf0, type: 3}
+  doorOpenCloseVolumeScale: 1
   walkingLoopClip: {fileID: 8300000, guid: 2e1efe584305aa349b2ce4e1755d4f14, type: 3}
   walkingLoopVolume: 0.45
 --- !u!114 &8216390624072352868

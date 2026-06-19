@@ -183,7 +183,7 @@ When feedback conflicts, we prioritized **completion of the core loop** over aes
 
 | LLM / spawn mismatch | Removed lobby default; spawn label per leg |
 
-| Sensitivity (all attendees) | **Esc → Pause → Settings** |
+| Sensitivity (all attendees) | **Esc → Pause → Settings** (mouse + SFX volume) |
 
 | Faster model (all attendees) | **`llama3.2:3b`** default |
 

@@ -70,7 +70,7 @@ We attended the **Joburg Game Dev Meetup** as our lecturer-approved external eng
 | 16 | *(Observed during playtest)* H sometimes says package is in lobby but spawn is randomized | Team | LLM accuracy | `OllamaConnector` CONTEXT vs `DeliveryManager` spawns — **addressed 2026-06-18** (pickup hidden from player; authoritative spawn in CONTEXT only) |
 | 17 | Computer should be more obvious to find | C | UX / onboarding | Scene arrow hints at desk; hidden after first **`ComputerTerminal`** interact — **addressed 2026-06-18 (polish)** |
 
-**Status after 2026-06-18 (polish):** Rows **2–4**, **7**, **9–10**, **12–17** targeted in code/docs. Latest: intro copy, PC hides **TopLeftNotifications**, delivery knock + walking SFX, main-menu load stability. Re-test in **Windows build** before final submission video.
+**Status after 2026-06-18 (settings & audio):** Rows **2–4**, **7**, **9–10**, **12–17** targeted in code/docs. Latest: pause **mouse + SFX volume** settings, door open/close SFX, editable settings panel layout. Re-test in **Windows build** before final submission video.
 
 ---
 
@@ -79,7 +79,7 @@ We attended the **Joburg Game Dev Meetup** as our lecturer-approved external eng
 | Project aspect | Feedback IDs | Addressed? | Implementation / doc |
 |--------------|--------------|------------|----------------------|
 | Delivery pacing / timer | 5, 7, 8, 15 | Yes | `DeliveryUrgencyTimer` 160s; pause at PC; objective under timer |
-| Controls / comfort | 9 | Yes | `GameSettingsMenu` — Esc → Pause → Settings |
+| Controls / comfort | 9 | Yes | `GameSettingsMenu` — Esc → Pause → Settings (mouse **0.1×–2×**, SFX volume **0–100%**) |
 | LLM performance | 10 | Yes | Default `llama3.2:3b` — `ollama-plan.md` |
 | LLM accuracy / trust | 16 | Yes | `CurrentPickupLocationLabel` in CONTEXT; destination in orders |
 | Objective clarity | 12, 15 | Yes | `DeliveryObjectiveHud` |

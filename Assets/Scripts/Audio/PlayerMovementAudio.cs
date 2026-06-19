@@ -21,6 +21,7 @@ public class PlayerMovementAudio : MonoBehaviour
         _player = GetComponent<PlayerController>();
         EnsureAudioSource();
         ResolveWalkingClip();
+        SoundManager.ApplySavedSfxVolume();
     }
 
     void ResolveWalkingClip()
@@ -90,7 +91,7 @@ public class PlayerMovementAudio : MonoBehaviour
         }
 
         _source.clip = walkingClip;
-        _source.volume = walkingVolume;
+        _source.volume = walkingVolume * SoundManager.SfxVolume;
         _source.pitch = _player != null && _player.IsSprinting ? sprintPitch : 1f;
 
         if (!_source.isPlaying)

@@ -3,15 +3,32 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// In-game settings overlay (opened from <see cref="PauseScreen"/>). Persists mouse sensitivity via <see cref="PlayerController"/>.
+/// In-game settings overlay (opened from <see cref="PauseScreen"/>). Persists mouse sensitivity and SFX volume.
+/// Assign <see cref="settingsPanel"/> in the scene (or run <b>Killer Complex → UI → Rebuild Pause Settings Panel</b>) to edit layout in the Editor.
 /// </summary>
 public class GameSettingsMenu : MonoBehaviour
 {
     public static GameSettingsMenu Instance { get; private set; }
 
+    static readonly Color32 PanelBoxColor = new(38, 48, 62, 250);
+    static readonly Color32 TitleTextColor = new(255, 255, 255, 255);
+    static readonly Color32 LabelTextColor = new(236, 242, 248, 255);
+    static readonly Color32 ValueTextColor = new(200, 220, 235, 255);
+
+    const float SettingsBoxHeight = 500f;
+    const float HorizontalInset = 32f;
+    const float ButtonRowBottom = 24f;
+    const float ButtonHeight = 52f;
+    const float RowGap = 20f;
+    const float SliderHeight = 32f;
+    const float LabelHeight = 28f;
+    const float ValueHeight = 24f;
+
     [SerializeField] private GameObject settingsPanel;
     [SerializeField] private Slider mouseSensitivitySlider;
     [SerializeField] private TMP_Text mouseSensitivityValueLabel;
+    [SerializeField] private Slider sfxVolumeSlider;
+    [SerializeField] private TMP_Text sfxVolumeValueLabel;
     [SerializeField] private PlayerController player;
 
     GameObject _pauseMenuRoot;
@@ -49,12 +66,23 @@ public class GameSettingsMenu : MonoBehaviour
 
         Instance = this;
 
+        TryResolveReferencesFromPanel();
+        WirePanelControls();
+
         if (settingsPanel != null)
             settingsPanel.SetActive(false);
 
         if (player == null)
             player = FindFirstObjectByType<PlayerController>();
     }
+
+#if UNITY_EDITOR
+    void OnValidate()
+    {
+        if (!Application.isPlaying)
+            TryResolveReferencesFromPanel();
+    }
+#endif
 
     void OnDestroy()
     {
@@ -73,10 +101,20 @@ public class GameSettingsMenu : MonoBehaviour
         settingsPanel.SetActive(true);
         settingsPanel.transform.SetAsLastSibling();
 
+        WirePanelControls();
+
         if (mouseSensitivitySlider != null)
         {
+            ConfigureSensitivitySlider(mouseSensitivitySlider);
             mouseSensitivitySlider.SetValueWithoutNotify(PlayerController.GetSavedSensitivityMultiplier());
             UpdateSensitivityLabel(mouseSensitivitySlider.value);
+        }
+
+        if (sfxVolumeSlider != null)
+        {
+            ConfigureSfxVolumeSlider(sfxVolumeSlider);
+            sfxVolumeSlider.SetValueWithoutNotify(SoundManager.GetSavedSfxVolume());
+            UpdateSfxVolumeLabel(sfxVolumeSlider.value);
         }
     }
 
@@ -95,6 +133,11 @@ public class GameSettingsMenu : MonoBehaviour
         if (mouseSensitivitySlider != null)
             PlayerController.SaveSensitivityMultiplier(mouseSensitivitySlider.value);
 
+        if (sfxVolumeSlider != null)
+            SoundManager.SaveSfxVolume(sfxVolumeSlider.value);
+
+        SoundManager.ApplySavedSfxVolume();
+
         if (player == null)
             player = FindFirstObjectByType<PlayerController>();
         player?.ApplySavedMouseSensitivity();
@@ -104,10 +147,34 @@ public class GameSettingsMenu : MonoBehaviour
 
     public void OnBackClicked() => CloseSettings();
 
+#if UNITY_EDITOR
+    /// <summary>Destroys any existing panel and rebuilds it as scene children so layout can be edited in the Inspector.</summary>
+    public void EditorRebuildPanel()
+    {
+        DestroyExistingPanel();
+        _built = true;
+        BuildDefaultPanel();
+        WirePanelControls();
+        UnityEditor.EditorUtility.SetDirty(this);
+    }
+#endif
+
     void EnsureBuilt()
     {
-        if (_built || settingsPanel != null)
+        if (_built)
             return;
+
+        if (TryResolveReferencesFromPanel())
+        {
+            _built = true;
+            return;
+        }
+
+        if (settingsPanel != null)
+        {
+            _built = true;
+            return;
+        }
 
         _built = true;
         BuildDefaultPanel();
@@ -116,13 +183,113 @@ public class GameSettingsMenu : MonoBehaviour
             settingsPanel.SetActive(false);
     }
 
+    bool TryResolveReferencesFromPanel()
+    {
+        if (settingsPanel == null)
+        {
+            var panelTransform = transform.Find("SettingsPanel");
+            if (panelTransform != null)
+                settingsPanel = panelTransform.gameObject;
+        }
+
+        if (settingsPanel == null)
+            return false;
+
+        var box = settingsPanel.transform.Find("SettingsBox");
+        if (box == null)
+            return false;
+
+        mouseSensitivitySlider ??= box.Find("MouseSlider")?.GetComponent<Slider>();
+        mouseSensitivityValueLabel ??= box.Find("MouseValue")?.GetComponent<TMP_Text>();
+        sfxVolumeSlider ??= box.Find("SfxSlider")?.GetComponent<Slider>();
+        sfxVolumeValueLabel ??= box.Find("SfxValue")?.GetComponent<TMP_Text>();
+
+        return mouseSensitivitySlider != null && sfxVolumeSlider != null;
+    }
+
+    void WirePanelControls()
+    {
+        if (mouseSensitivitySlider != null)
+        {
+            mouseSensitivitySlider.onValueChanged.RemoveListener(OnSensitivitySliderChanged);
+            mouseSensitivitySlider.onValueChanged.AddListener(OnSensitivitySliderChanged);
+        }
+
+        if (sfxVolumeSlider != null)
+        {
+            sfxVolumeSlider.onValueChanged.RemoveListener(OnSfxVolumeSliderChanged);
+            sfxVolumeSlider.onValueChanged.AddListener(OnSfxVolumeSliderChanged);
+        }
+
+        if (settingsPanel == null)
+            return;
+
+        var box = settingsPanel.transform.Find("SettingsBox");
+        if (box == null)
+            return;
+
+        WireButton(box.Find("ApplyButton")?.GetComponent<Button>(), OnApplyClicked);
+        WireButton(box.Find("BackButton")?.GetComponent<Button>(), OnBackClicked);
+    }
+
+    static void WireButton(Button button, UnityEngine.Events.UnityAction onClick)
+    {
+        if (button == null || onClick == null)
+            return;
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(onClick);
+    }
+
+    void DestroyExistingPanel()
+    {
+        var existing = transform.Find("SettingsPanel");
+        if (existing != null)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                DestroyImmediate(existing.gameObject);
+            else
+#endif
+                Destroy(existing.gameObject);
+        }
+
+        settingsPanel = null;
+        mouseSensitivitySlider = null;
+        mouseSensitivityValueLabel = null;
+        sfxVolumeSlider = null;
+        sfxVolumeValueLabel = null;
+        _built = false;
+    }
+
     void OnSensitivitySliderChanged(float value) => UpdateSensitivityLabel(value);
+
+    void OnSfxVolumeSliderChanged(float value) => UpdateSfxVolumeLabel(value);
+
+    static void ConfigureSensitivitySlider(Slider slider)
+    {
+        slider.minValue = PlayerController.MinSensitivityMultiplier;
+        slider.maxValue = PlayerController.MaxSensitivityMultiplier;
+    }
 
     void UpdateSensitivityLabel(float multiplier)
     {
         if (mouseSensitivityValueLabel == null)
             return;
         mouseSensitivityValueLabel.text = $"{multiplier:0.0}×";
+    }
+
+    static void ConfigureSfxVolumeSlider(Slider slider)
+    {
+        slider.minValue = SoundManager.MinSfxVolume;
+        slider.maxValue = SoundManager.MaxSfxVolume;
+    }
+
+    void UpdateSfxVolumeLabel(float volume)
+    {
+        if (sfxVolumeValueLabel == null)
+            return;
+        sfxVolumeValueLabel.text = $"{Mathf.RoundToInt(volume * 100f)}%";
     }
 
     void BuildDefaultPanel()
@@ -150,15 +317,13 @@ public class GameSettingsMenu : MonoBehaviour
         box.transform.SetParent(root.transform, false);
         var boxRt = box.GetComponent<RectTransform>();
         boxRt.anchorMin = boxRt.anchorMax = new Vector2(0.5f, 0.5f);
-        boxRt.sizeDelta = new Vector2(520f, 340f);
+        boxRt.sizeDelta = new Vector2(520f, SettingsBoxHeight);
         var boxImg = box.GetComponent<Image>();
         boxImg.sprite = panelSprite;
-        boxImg.color = Color.white;
+        boxImg.color = PanelBoxColor;
         boxImg.raycastTarget = true;
 
-        var font = GetPauseMenuFont();
-
-        var titleGo = CreateLabel(box.transform, "Title", "Settings", 28, TextAlignmentOptions.Center);
+        var titleGo = CreateLabel(box.transform, "Title", "Settings", 28, TextAlignmentOptions.Center, TitleTextColor);
         var titleRt = titleGo.GetComponent<RectTransform>();
         titleRt.anchorMin = new Vector2(0f, 1f);
         titleRt.anchorMax = new Vector2(1f, 1f);
@@ -167,34 +332,56 @@ public class GameSettingsMenu : MonoBehaviour
         titleRt.sizeDelta = new Vector2(-48f, 48f);
         titleGo.GetComponent<TextMeshProUGUI>().fontStyle = FontStyles.Bold;
 
-        var labelGo = CreateLabel(box.transform, "MouseLabel", "Mouse sensitivity", 22, TextAlignmentOptions.Left);
-        var labelRt = labelGo.GetComponent<RectTransform>();
-        labelRt.anchorMin = new Vector2(0f, 0.58f);
-        labelRt.anchorMax = new Vector2(1f, 0.58f);
-        labelRt.sizeDelta = new Vector2(-64f, 32f);
+        var buttonRowTop = ButtonRowBottom + ButtonHeight;
+        var sfxValueBottom = buttonRowTop + RowGap;
+        var sfxSliderBottom = sfxValueBottom + ValueHeight + 8f;
+        var sfxLabelBottom = sfxSliderBottom + SliderHeight + 8f;
+        var mouseValueBottom = sfxLabelBottom + LabelHeight + RowGap;
+        var mouseSliderBottom = mouseValueBottom + ValueHeight + 8f;
+        var mouseLabelBottom = mouseSliderBottom + SliderHeight + 8f;
 
-        mouseSensitivitySlider = CreateSensitivitySlider(box.transform, whiteSprite);
-        var sliderRt = mouseSensitivitySlider.GetComponent<RectTransform>();
-        sliderRt.anchorMin = new Vector2(0.08f, 0.44f);
-        sliderRt.anchorMax = new Vector2(0.92f, 0.44f);
-        sliderRt.sizeDelta = new Vector2(0f, 28f);
-        mouseSensitivitySlider.minValue = 0.5f;
-        mouseSensitivitySlider.maxValue = 3f;
+        CreateStyledButton(box.transform, "ApplyButton", "Apply", new Vector2(-124f, ButtonRowBottom), OnApplyClicked);
+        CreateStyledButton(box.transform, "BackButton", "Back", new Vector2(124f, ButtonRowBottom), OnBackClicked);
+
+        PlaceBottomRow(box.transform, CreateLabel(box.transform, "MouseLabel", "Mouse sensitivity", 22, TextAlignmentOptions.Left, LabelTextColor), mouseLabelBottom, LabelHeight);
+        mouseSensitivitySlider = CreateSettingsSlider(box.transform, whiteSprite, "MouseSlider");
+        PlaceBottomRow(box.transform, mouseSensitivitySlider.GetComponent<RectTransform>(), mouseSliderBottom, SliderHeight);
+        ConfigureSensitivitySlider(mouseSensitivitySlider);
         mouseSensitivitySlider.wholeNumbers = false;
-        mouseSensitivitySlider.onValueChanged.AddListener(OnSensitivitySliderChanged);
+        mouseSensitivitySlider.value = PlayerController.DefaultSensitivityMultiplier;
 
-        var valueGo = CreateLabel(box.transform, "MouseValue", "1.0×", 20, TextAlignmentOptions.Center);
+        var valueGo = CreateLabel(box.transform, "MouseValue", "1.0×", 20, TextAlignmentOptions.Center, ValueTextColor);
         mouseSensitivityValueLabel = valueGo.GetComponent<TextMeshProUGUI>();
-        var valueRt = valueGo.GetComponent<RectTransform>();
-        valueRt.anchorMin = new Vector2(0f, 0.34f);
-        valueRt.anchorMax = new Vector2(1f, 0.34f);
-        valueRt.sizeDelta = new Vector2(-64f, 28f);
+        PlaceBottomRow(box.transform, valueGo, mouseValueBottom, ValueHeight);
 
-        CreateStyledButton(box.transform, "ApplyButton", "Apply", new Vector2(-140f, 56f), OnApplyClicked);
-        CreateStyledButton(box.transform, "BackButton", "Back", new Vector2(140f, 56f), OnBackClicked);
+        PlaceBottomRow(box.transform, CreateLabel(box.transform, "SfxLabel", "Sound effects volume", 22, TextAlignmentOptions.Left, LabelTextColor), sfxLabelBottom, LabelHeight);
+        sfxVolumeSlider = CreateSettingsSlider(box.transform, whiteSprite, "SfxSlider");
+        PlaceBottomRow(box.transform, sfxVolumeSlider.GetComponent<RectTransform>(), sfxSliderBottom, SliderHeight);
+        ConfigureSfxVolumeSlider(sfxVolumeSlider);
+        sfxVolumeSlider.wholeNumbers = false;
+        sfxVolumeSlider.value = SoundManager.DefaultSfxVolume;
+
+        var sfxValueGo = CreateLabel(box.transform, "SfxValue", "100%", 20, TextAlignmentOptions.Center, ValueTextColor);
+        sfxVolumeValueLabel = sfxValueGo.GetComponent<TextMeshProUGUI>();
+        PlaceBottomRow(box.transform, sfxValueGo, sfxValueBottom, ValueHeight);
+
+        WirePanelControls();
     }
 
-    GameObject CreateLabel(Transform parent, string name, string text, int fontSize, TextAlignmentOptions alignment)
+    static void PlaceBottomRow(Transform parent, RectTransform rt, float bottom, float height)
+    {
+        rt.SetParent(parent, false);
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 0f);
+        rt.pivot = new Vector2(0.5f, 0f);
+        rt.anchoredPosition = new Vector2(0f, bottom);
+        rt.sizeDelta = new Vector2(-HorizontalInset * 2f, height);
+    }
+
+    static void PlaceBottomRow(Transform parent, GameObject go, float bottom, float height) =>
+        PlaceBottomRow(parent, go.GetComponent<RectTransform>(), bottom, height);
+
+    GameObject CreateLabel(Transform parent, string name, string text, int fontSize, TextAlignmentOptions alignment, Color32 color)
     {
         var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(parent, false);
@@ -205,7 +392,7 @@ public class GameSettingsMenu : MonoBehaviour
         tmp.text = text;
         tmp.fontSize = fontSize;
         tmp.alignment = alignment;
-        tmp.color = new Color32(50, 50, 50, 255);
+        tmp.color = color;
         tmp.raycastTarget = false;
         return go;
     }
@@ -217,18 +404,19 @@ public class GameSettingsMenu : MonoBehaviour
             name,
             label,
             pos,
-            new Vector2(220f, 64f),
+            new Vector2(200f, ButtonHeight),
             _templateButton,
             onClick);
 
         var rt = btn.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
+        rt.pivot = new Vector2(0.5f, 0f);
         rt.anchoredPosition = pos;
     }
 
-    Slider CreateSensitivitySlider(Transform parent, Sprite sprite)
+    Slider CreateSettingsSlider(Transform parent, Sprite sprite, string name)
     {
-        var root = new GameObject("MouseSlider", typeof(RectTransform), typeof(Slider));
+        var root = new GameObject(name, typeof(RectTransform), typeof(Slider));
         root.transform.SetParent(parent, false);
 
         var bg = new GameObject("Background", typeof(RectTransform), typeof(Image));
@@ -236,7 +424,7 @@ public class GameSettingsMenu : MonoBehaviour
         StretchFull(bg.GetComponent<RectTransform>());
         var bgImg = bg.GetComponent<Image>();
         bgImg.sprite = sprite;
-        bgImg.color = new Color32(40, 55, 71, 220);
+        bgImg.color = new Color32(24, 32, 42, 255);
 
         var fillArea = new GameObject("Fill Area", typeof(RectTransform));
         fillArea.transform.SetParent(root.transform, false);
@@ -261,7 +449,7 @@ public class GameSettingsMenu : MonoBehaviour
         var handle = new GameObject("Handle", typeof(RectTransform), typeof(Image));
         handle.transform.SetParent(handleArea.transform, false);
         var handleRt = handle.GetComponent<RectTransform>();
-        handleRt.sizeDelta = new Vector2(20f, 0f);
+        handleRt.sizeDelta = new Vector2(24f, 0f);
         var handleImg = handle.GetComponent<Image>();
         handleImg.sprite = sprite;
         handleImg.color = Color.white;

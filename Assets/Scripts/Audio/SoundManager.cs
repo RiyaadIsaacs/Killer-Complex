@@ -6,6 +6,14 @@ using UnityEngine;
 /// </summary>
 public class SoundManager : MonoBehaviour
 {
+    public const string SfxVolumePrefKey = "SfxVolume";
+    public const float DefaultSfxVolume = 1f;
+    public const float MinSfxVolume = 0f;
+    public const float MaxSfxVolume = 1f;
+
+    /// <summary>Master scale for all game SFX (0–1). Loaded from <see cref="PlayerPrefs"/> on startup.</summary>
+    public static float SfxVolume { get; private set; } = DefaultSfxVolume;
+
     [SerializeField]
     [Tooltip("Played by PlayNotificationSound() — e.g. a clip under Assets/SFX.")]
     private AudioClip notificationSound;
@@ -17,6 +25,14 @@ public class SoundManager : MonoBehaviour
     [SerializeField, Range(0f, 2f)]
     [Tooltip("Volume scale for PlayDoorKnockWorld and for InteractDoor fallback knocks.")]
     private float doorKnockVolumeScale = 1f;
+
+    [Tooltip("Played when InteractDoor opens (player toggle). Fallback for doors without a per-door clip.")]
+    [SerializeField] private AudioClip doorOpenClip;
+
+    [Tooltip("Played when InteractDoor closes (player toggle). Fallback for doors without a per-door clip.")]
+    [SerializeField] private AudioClip doorCloseClip;
+
+    [SerializeField, Range(0f, 2f)] private float doorOpenCloseVolumeScale = 1f;
 
     [Header("Player movement")]
     [Tooltip("Looped while the player walks. Used by PlayerMovementAudio when its clip is unset.")]
@@ -33,6 +49,12 @@ public class SoundManager : MonoBehaviour
     /// <inheritdoc cref="doorKnockVolumeScale"/>
     public float DoorKnockVolumeScale => doorKnockVolumeScale;
 
+    public AudioClip DoorOpenClip => doorOpenClip;
+
+    public AudioClip DoorCloseClip => doorCloseClip;
+
+    public float DoorOpenCloseVolumeScale => doorOpenCloseVolumeScale;
+
     public AudioClip WalkingLoopClip => walkingLoopClip;
 
     public float WalkingLoopVolume => walkingLoopVolume;
@@ -40,6 +62,21 @@ public class SoundManager : MonoBehaviour
     /// <summary>First <see cref="SoundManager"/> in loaded scenes (desktop canvas, etc.).</summary>
     public static SoundManager FindInstance() =>
         Object.FindFirstObjectByType<SoundManager>(FindObjectsInactive.Include);
+
+    public static float ClampSfxVolume(float volume) =>
+        Mathf.Clamp(volume, MinSfxVolume, MaxSfxVolume);
+
+    public static float GetSavedSfxVolume() =>
+        ClampSfxVolume(PlayerPrefs.GetFloat(SfxVolumePrefKey, DefaultSfxVolume));
+
+    public static void SaveSfxVolume(float volume) =>
+        PlayerPrefs.SetFloat(SfxVolumePrefKey, ClampSfxVolume(volume));
+
+    public static void ApplySavedSfxVolume() =>
+        SfxVolume = GetSavedSfxVolume();
+
+    static float ScaleSfxVolume(float volumeScale) =>
+        Mathf.Clamp(volumeScale, 0f, 2f) * SfxVolume;
 
     void Awake()
     {
@@ -53,6 +90,8 @@ public class SoundManager : MonoBehaviour
         audioSource.mute = false;
         audioSource.loop = false;
         audioSource.priority = 0;
+
+        ApplySavedSfxVolume();
     }
 
     public void PlayNotificationSound()
@@ -72,7 +111,7 @@ public class SoundManager : MonoBehaviour
             return;
         }
 
-        audioSource.PlayOneShot(notificationSound, 1f);
+        audioSource.PlayOneShot(notificationSound, SfxVolume);
     }
 
     /// <summary>Plays <see cref="doorKnockClip"/> at a world position with 3D attenuation (no clip = no-op).</summary>
@@ -113,6 +152,26 @@ public class SoundManager : MonoBehaviour
         PlayOneShotWorld(clip, worldPosition, vol);
     }
 
+    /// <summary>Plays door open/close at a world position using SoundManager fallbacks when clips are unset.</summary>
+    public static void TryPlayDoorOpenCloseAt(Vector3 worldPosition, bool opening, AudioClip clipOverride = null, float volumeScale = 1f)
+    {
+        var clip = clipOverride;
+        SoundManager sm = null;
+        var vol = Mathf.Clamp(volumeScale, 0f, 2f);
+
+        if (clip == null)
+        {
+            sm = FindInstance();
+            if (sm != null)
+            {
+                clip = opening ? sm.DoorOpenClip : sm.DoorCloseClip;
+                vol *= sm.DoorOpenCloseVolumeScale;
+            }
+        }
+
+        PlayOneShotWorld(clip, worldPosition, vol);
+    }
+
     /// <summary>
     /// Spawns a short-lived <see cref="AudioSource"/> at <paramref name="worldPosition"/> for spatial knock / impact SFX.
     /// </summary>
@@ -126,7 +185,7 @@ public class SoundManager : MonoBehaviour
         if (clip == null)
             return;
 
-        volumeScale = Mathf.Clamp(volumeScale, 0f, 2f);
+        volumeScale = ScaleSfxVolume(volumeScale);
         var go = new GameObject("One-shot audio (world)");
         go.transform.position = worldPosition;
         var src = go.AddComponent<AudioSource>();
@@ -151,7 +210,7 @@ public class SoundManager : MonoBehaviour
         if (clip == null)
             return;
 
-        volumeScale = Mathf.Clamp(volumeScale, 0f, 2f);
+        volumeScale = ScaleSfxVolume(volumeScale);
         Vector3 pos = Vector3.zero;
         var listener = Object.FindFirstObjectByType<AudioListener>(FindObjectsInactive.Include);
         if (listener != null)

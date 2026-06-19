@@ -236,3 +236,17 @@ Dated log of **scope**, **design**, and **implementation** changes. Mention **AI
 - **AI-assisted:** Cursor; verify: deliver at door (knock), walk/sprint loop, PC session hides top-left HUD, Main Menu → Play (Editor + build).
 
 ---
+
+## 2026-06-18 (settings & audio) — Mouse/SFX sliders, door SFX, editable settings panel
+
+**Follow-up:** meetup **mouse sensitivity** still too high at minimum; request for **master SFX volume**; settings UI overlap/readability in pause overlay.
+
+- **Mouse sensitivity:** `PlayerController` base **40**; slider range **0.1×–2×** (`MouseSensitivityMultiplier` in `PlayerPrefs`); fixed mismatch where UI allowed lower values but **Apply** clamped to **0.5×** minimum.
+- **SFX volume:** `SoundManager.SfxVolume` master scale (**0–100%**, `SfxVolume` in `PlayerPrefs`) applied to notifications, world one-shots, walking loop, ending stingers.
+- **Door open/close:** `InteractDoor.MoveDoor()` plays **`Open Door.mp3`** / **`Close Door.mp3`** via `SoundManager.TryPlayDoorOpenCloseAt` (per-door or desktop canvas fallbacks).
+- **Settings UI:** `GameSettingsMenu` — second slider for SFX; light-on-dark label colours; bottom-anchored layout (sliders above Apply/Back); scene-persistent panel via **Killer Complex → UI → Rebuild Pause Settings Panel**; `PauseMenuSettingsSetup` wires serialized refs for Inspector editing.
+- **Assets:** `Assets/SFX/Open Door.mp3`, `Close Door.mp3` on **`ComputerDesktopCanvas`** **`SoundManager`**.
+- **Docs:** `README.md`, `setup.md` §3d, `feedback-summary.md`, `RiyaadWork.md`, `prompts-used.md`, this file.
+- **AI-assisted:** Cursor; verify: pause settings Apply, min mouse sens, SFX mute/low, door toggle sounds, rebuild panel + save scene.
+
+---

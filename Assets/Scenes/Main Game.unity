@@ -28675,7 +28675,7 @@ MonoBehaviour:
   gravity: -9.81
   isSprinting: 0
   cameraTransform: {fileID: 1187192705}
-  mouseSensitivity: 120
+  mouseSensitivity: 40
   verticalLookLimit: 80
   interactDistance: 4
   interactableLayers:

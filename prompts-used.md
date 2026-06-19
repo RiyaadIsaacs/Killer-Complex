@@ -433,6 +433,22 @@ Ollama as online persona blackmailing with fictional personal info; designates a
 
 ---
 
+## Cursor — 2026-06-18 — Pause settings: mouse sensitivity, SFX volume, layout (user prompts)
+
+**Goal:** Lower minimum mouse sensitivity; master SFX volume slider; fix settings UI overlap and dark text; make settings panel editable in the Unity scene.
+
+**Prompts (user, verbatim):**
+
+1. `I dont like how the mouse sensitivty slider scales. The minimum mouse sensittivity is still way too high`
+2. `Would it be possible to make another slider in the settings menu to control the volume of all game sfx`
+3. `Can you please update the relevant documents including the readme and push to the repo` *(after layout overlap / unreadable text)*
+
+**Outcome:** `PlayerController` base sens **40**, multiplier **0.1×–2×** (`MouseSensitivityMultiplier`); `SoundManager.SfxVolume` + **`SfxVolume`** `PlayerPrefs`; `GameSettingsMenu` SFX slider + layout/colour fixes; **Killer Complex → UI → Rebuild Pause Settings Panel**; door **open/close** SFX on `InteractDoor` / `SoundManager`.
+
+**Iteration notes:** Click **Apply** in pause settings to persist; run **Rebuild Pause Settings Panel** once in Editor and save **Main Game** to edit layout in Hierarchy.
+
+---
+
 ## Template — copy for new rows
 
 ### YYYY-MM-DD — Game Ollama — 
